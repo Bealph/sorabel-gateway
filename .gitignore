@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+.python-version
+
+# Environnements & secrets
+.env
+.env.*
+!.env.example
+
+# Outils
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Données locales & runtime
+.docker-data/
+chroma-data/
+logs/*.jsonl
+data/sorabel.db
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
