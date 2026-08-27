@@ -1,0 +1,162 @@
+# Passation vers le développement — Sorabel Data Gateway
+
+> Document de démarrage pour la session de développement (VSCode / Claude Code).
+> La conception est terminée et figée. Ce document dit quoi lire, ce qui est
+> décidé (donc à ne pas rediscuter), comment monter l'environnement, dans quel
+> ordre développer, et comment savoir qu'une étape est finie.
+>
+> Règle d'or : avancer LOT PAR LOT, un livrable à la fois, en validant après
+> chaque étape. Ne pas tout ouvrir d'un coup. En cas de doute d'architecture,
+> se référer aux docs de conception, ne pas réinventer.
+
+---
+
+## 1. État actuel
+
+```
+Conception    TERMINEE (docs/conception/ : 00 a 05 + schemas.html)
+Donnees       PRESENTES (data/sorabel.db + data/corpus/{fiches,notices,sav,notes})
+Jeux d'eval   PRESENTS (eval/questions_sql.jsonl 24, eval/questions_rag.jsonl 30)
+Code          PAS ENCORE ECRIT (rag/ text2sql/ governance/ mcp_server/ vides)
+```
+
+## 2. À lire en premier (et rien de plus pour démarrer)
+
+```
+1. CLAUDE.md                          memoire + decisions + journal
+2. docs/conception/00_architecture.md vue d'ensemble
+3. docs/conception/05_catalogue_tools.md   contrat des 8 tools (entrees/sorties)
+4. Le doc du lot en cours (01 pour le RAG, 02 pour le SQL, 03 pour la matrice)
+```
+
+Ne pas relire tout le dossier avant d'agir. Charger le doc du lot courant, faire,
+valider, puis passer au suivant.
+
+## 3. Décisions verrouillées (NE PAS rediscuter)
+
+```
+- Stack RAG : embeddings BAAI/bge-m3 ; reranker BAAI/bge-reranker-v2-m3 (local).
+- Store : Chroma (dense) + BM25 applicatif (lexical) ; fusion RRF (k=60).
+- Court-circuit REF : si la question matche REF-\d+, filtre exact d'abord.
+- Versions : indexer TOUTES, champ is_latest, citer/privilegier la plus recente.
+- Chunking : structure-aware (fiche=1 chunk ; notice/sav=par section ; note=1).
+- Text-to-SQL : LLM LOCAL oriente code (ex. Qwen2.5-Coder via Ollama).
+- Lecture seule : connexion RO + AST sqlglot SELECT-only + perimetre profil +
+  LIMIT/timeout + SQL renvoye + journal. Pas de SELECT *.
+- Sortie typee par status : ok | out_of_corpus | out_of_schema | not_found |
+  clarify | refused | error. Un non-ok n'est JAMAIS rendu comme une reponse.
+- not_found : entite par identifiant precis introuvable (ex. SQL-08). Liste/
+  agregat vide = ok avec rows[].
+- Desambiguisation : critere indefini -> clarify ; libelle -> plusieurs ref ->
+  reponse multiligne (ok).
+- Gouvernance : matrice declarative deny-by-default, appliquee gateway + tool.
+- Catalogue : 8 tools (voir 05). Briques RAG (search_docs/get_document/
+  list_sources) reservees a dev/IDE. Collection notes interdite au support.
+- Colonnes sensibles jamais pour support : produits.prix_achat_ht,
+  produits.marge_pct, ventes.marge_ht.
+```
+
+Reste ouvert (à trancher en dev) : P8, mécanisme d'identité du client MCP.
+
+## 4. Environnement
+
+```
+- Python >= 3.11. Creer un venv.
+- Dependances (a valider a l'install) : mcp / fastmcp, chromadb, bm25s (ou
+  rank-bm25), sentence-transformers, sqlglot, pymupdf (ou pdfplumber),
+  beautifulsoup4, pyyaml.
+- Modeles locaux : embeddings + reranker (sentence-transformers) ; LLM SQL via
+  Ollama (modele coder instruct). Prevoir un repli si un modele est trop lourd.
+- Donnees : data/sorabel.db en LECTURE SEULE ; corpus sous data/corpus/.
+  Ces fichiers sont gitignore (ne pas les versionner).
+- La base a des trous de numerotation (CMD-2026-0042 absent) : normal, gere par
+  not_found.
+```
+
+## 5. Backlog de développement (ordre imposé)
+
+```
++-----+------------------------------+--------------------------------------------+
+| Lot | Objet                        | Livrable / fin de lot                      |
++-----+------------------------------+--------------------------------------------+
+| 0   | Bootstrap                    | venv, deps installees, arbo de code,       |
+|     |                              | chargeur de config + matrice YAML          |
+| 1   | Ingestion RAG                | loaders PDF/HTML/MD -> Document canonique  |
+|     | (doc 01)                     | + versions/is_latest + chunking ; index    |
+|     |                              | Chroma + BM25 construits                   |
+| 2   | Recherche RAG                | hybride + RRF + court-circuit REF + rerank |
+|     | (doc 01)                     | + seuil + citations ; tool answer_question |
+| 3   | Mesure E6                    | baseline dense vs avance sur questions_rag |
+|     | (doc 01 Q5, mesure_e6.md)    | ; Recall@k + MRR ; gold couverte annotes ; |
+|     |                              | resultats dans eval/results/               |
+| 4   | Text-to-SQL                  | connexion RO, get_schema, generation +     |
+|     | (doc 02)                     | validation AST + perimetre + LIMIT +       |
+|     |                              | sortie typee ; figes check_stock/          |
+|     |                              | order_status                               |
+| 5   | Gouvernance + serveur MCP    | matrice gateway+tool, journal JSONL,       |
+|     | (docs 03, 05)                | catalogue expose (FastMCP), refus types    |
+| 6   | Interface + mini guide       | UI du produit + mini guide d'acces ;       |
+|     |                              | preparation soutenance                     |
++-----+------------------------------+--------------------------------------------+
+```
+
+Ne pas commencer un lot avant que le precedent passe ses criteres.
+
+## 6. Définition de « fini » (tests d'acceptation = objectif)
+
+Chaque lot vise des tests précis. Les jeux `eval/*.jsonl` sont les fixtures.
+
+```
+RAG (lots 1-3) :
+  RAG-01..08 (reference_exacte) -> la bonne ref en tete.
+  RAG-09..22 (couverte)         -> reponse + sources (titre/ref/date).
+  RAG-23..30 (hors_corpus)      -> abstention (status=out_of_corpus).
+  E6 : recherche avancee > dense simple, chiffre a l'appui.
+
+Text-to-SQL (lot 4) :
+  SQL-01..12 (metier)     -> resultat + SQL renvoye.
+    dont SQL-08 -> not_found (id absent) ; SQL-10 -> reponse multiligne (4 ref).
+  SQL-13..16 (ecriture)   -> refus READ_ONLY_VIOLATION + journal.
+  SQL-17..20 (support)    -> refus FORBIDDEN_COLUMN (colonnes sensibles).
+  SQL-21..22 (hors_schema)-> refus clair, aucun SQL hallucine.
+  SQL-23..24 (ambigue)    -> clarify (critere indefini).
+
+MCP / gouvernance (lot 5) :
+  profil autorise -> acces borne ; appel non autorise -> refus + journal ;
+  search_docs puis get_document -> briques separees (client dev/IDE) ;
+  session de demo -> journal contient TOUS les appels (autorises + refuses).
+```
+
+Valeurs de contrôle sur les données (utiles pour vérifier le SQL) :
+
+```
+commandes 2026-04 = 27 | livrees 2026-06 = 11 | total mars 2026 = 432 245,90 EUR
+annulations depuis janvier = 41 | refs sous seuil a LYON = 3
+statut commande : annulee/en_attente/expediee/livree/preparee
+entrepots : LILLE/LYON/NANTES | plage dates : 2025-09-04 a 2026-08-19
+```
+
+## 7. Conventions et garde-fous (anti-emballement)
+
+```
+- Avancer par petits pas : un fichier / une fonction, puis tester, puis avancer.
+- Ne PAS modifier les fixtures eval/*.jsonl (fournies / a garder telles quelles).
+- Ne PAS rediscuter les decisions de la section 3.
+- Ecrire les resultats/logs sous eval/results/ et governance/logs/ (gitignore).
+- Jamais de secret en clair ; base ouverte en read-only ; aucun SELECT *.
+- Docs en francais ; tableaux ASCII ; schemas Mermaid.
+- Tenir le journal : ajouter une ligne datee dans CLAUDE.md section 10 a la fin
+  de chaque lot (ce qui est fait, ce qui reste).
+- Multi-session : une seule session ecrit un fichier donne a la fois ; CLAUDE.md
+  tranche en cas de doute.
+- Si bloque > 2 essais sur un point : s'arreter, ecrire l'etat dans le journal,
+  et demander au pilote plutot que d'insister.
+```
+
+## 8. Première action conseillée
+
+Lot 0 puis Lot 1. Concrètement pour démarrer le Lot 1 : écrire les loaders par
+format qui produisent le `Document` canonique de `01_flux_chunks.md` (section
+1.2), en extrayant les métadonnées de citation (titre, ref, version, date) et en
+calculant `version_group` / `is_latest`. Vérifier sur un échantillon (par
+exemple les deux versions de REF-8842) avant de généraliser au corpus entier.
