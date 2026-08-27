@@ -30,7 +30,7 @@
 <body>
 <header>
   <h1>Sorabel Data Gateway — Vues schématisées</h1>
-  <p>Flux complet, architecture, modèle de données et interactions, rendus depuis les sources Mermaid.</p>
+  <p>11 schémas : flux complet, architecture, ingestion, modèle de données, recherche et interactions, rendus depuis les sources Mermaid.</p>
 </header>
 <main>
 
@@ -85,7 +85,29 @@ flowchart TB
   </section>
 
   <section>
-    <h2>3. Modèle de données : Document / Chunk <span class="tag">chunks + métadonnées</span></h2>
+    <h2>3. Flux d'ingestion (par artefacts) <span class="tag">chantier 1</span></h2>
+    <p class="cap">400 fichiers, 350 groupes de versions, 820 chunks, deux index. Chaque étape affiche son entrée et sa sortie.</p>
+    <pre class="mermaid">
+flowchart TB
+    A["400 fichiers bruts<br/>150 PDF fiches, 80 PDF notices,<br/>90 HTML procedures, 80 MD notes"]
+    B["Texte + entete extraits<br/>400 objets, un par fichier"]
+    C["Document canonique<br/>400 objets au meme schema"]
+    D["350 groupes de versions<br/>is_latest calcule"]
+    E["820 chunks<br/>metadonnees de citation heritees"]
+    F[("Chroma<br/>820 vecteurs bge-m3")]
+    G[("Index BM25<br/>820 sacs de mots ponderes")]
+
+    A -->|"1. parser selon le format"| B
+    B -->|"2. normaliser et sectionner"| C
+    C -->|"3. regrouper les versions"| D
+    D -->|"4. decouper selon la structure"| E
+    E -->|"5a. encoder en vecteurs"| F
+    E -->|"5b. tokeniser et ponderer par IDF"| G
+    </pre>
+  </section>
+
+  <section>
+    <h2>4. Modèle de données : Document / Chunk <span class="tag">chunks + métadonnées</span></h2>
     <p class="cap">Métadonnées de citation portées jusqu'au chunk ; ref et version filtrables.</p>
     <pre class="mermaid">
 erDiagram
@@ -97,28 +119,72 @@ erDiagram
         string title
         string version
         date   date
-        string version_group
-        bool   is_latest
+        string version_group "cle de regroupement"
+        bool   is_latest "calcule a l'ingestion"
         string source_path
         string url
     }
     CHUNK {
         string chunk_id PK
         string doc_id FK
-        string ref
-        string doc_type
-        string section
-        string title
-        string version
-        date   date
-        bool   is_latest
+        string ref "herite"
+        string doc_type "herite"
+        string title "herite"
+        string version "herite"
+        date   date "herite"
+        bool   is_latest "herite"
+        string section "propre au chunk"
         text   contenu
     }
     </pre>
   </section>
 
   <section>
-    <h2>4. Question documentaire : réponse ou abstention <span class="tag">E1 · E2</span></h2>
+    <h2>5. Le modèle sur un cas réel : REF-8842 <span class="tag">chantier 1</span></h2>
+    <p class="cap">Trois documents, six chunks, une seule référence produit. Le versionnage se fait par type de document.</p>
+    <pre class="mermaid">
+flowchart LR
+    GF["version_group<br/>fiche_REF-8842<br/>2 versions"]
+    GN["version_group<br/>notice_REF-8842<br/>1 version"]
+
+    GF --> D1["fiche_REF-8842_v1.0<br/>2022-10-21<br/>is_latest = false"]
+    GF --> D2["fiche_REF-8842_v2.1<br/>2024-05-25<br/>is_latest = true"]
+    GN --> D3["notice_REF-8842_v1.0<br/>2023-12-18<br/>is_latest = true"]
+
+    D1 --> C1["1 chunk<br/>document entier"]
+    D2 --> C2["1 chunk<br/>document entier"]
+    D3 --> C3["4 chunks<br/>Consignes de securite<br/>Installation<br/>Mise en service<br/>Entretien"]
+    </pre>
+  </section>
+
+  <section>
+    <h2>6. Flux de recherche (entonnoir) <span class="tag">E1 · E2</span></h2>
+    <p class="cap">820 chunks vers 50, vers 20, vers 5. Le modèle le plus coûteux ne voit que la présélection.</p>
+    <pre class="mermaid">
+flowchart TB
+    Q["Question de l'utilisateur"] --> R{"La question contient-elle<br/>un motif REF-XXXX ?"}
+
+    R -->|oui| EX["Court-circuit exact<br/>filtre sur la metadonnee ref<br/>820 chunks vers 6"]
+    R -->|non| SP["Interrogation des deux index<br/>en parallele"]
+
+    SP --> BM["BM25 lexical<br/>820 vers top 50"]
+    SP --> DN["Dense bge-m3, cosinus<br/>820 vers top 50"]
+
+    BM --> FU["Fusion RRF, k=60<br/>2 listes de 50 vers 20"]
+    DN --> FU
+
+    EX --> RR["Reranking cross-encoder<br/>bge-reranker-v2-m3<br/>20 vers 5 reordonnes"]
+    FU --> RR
+
+    RR --> SG{"Score du meilleur passage<br/>superieur au seuil tau ?"}
+    SG -->|non| AB["Abstention E1<br/>status = out_of_corpus"]
+    SG -->|oui| GE["Generation ancree<br/>sur les 5 passages retenus"]
+    GE --> OU["Reponse + sources<br/>titre, ref, version, date"]
+    </pre>
+  </section>
+
+  <section>
+    <h2>7. Question documentaire : réponse ou abstention <span class="tag">E1 · E2</span></h2>
     <p class="cap">answer_question : recherche hybride, reranking, seuil, sources citées ou abstention.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -147,7 +213,7 @@ sequenceDiagram
   </section>
 
   <section>
-    <h2>5. Text-to-SQL autorisé : gardes lecture seule <span class="tag">E3</span></h2>
+    <h2>8. Text-to-SQL autorisé : gardes lecture seule <span class="tag">E3</span></h2>
     <p class="cap">ask_database : génération, validation AST, périmètre, LIMIT, exécution read-only, SQL renvoyé.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -174,7 +240,7 @@ sequenceDiagram
   </section>
 
   <section>
-    <h2>6. Colonne sensible pour le support : refus <span class="tag">E5</span></h2>
+    <h2>9. Colonne sensible pour le support : refus <span class="tag">E5</span></h2>
     <p class="cap">Le périmètre bloque prix d'achat et marges pour le profil support.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -198,7 +264,7 @@ sequenceDiagram
   </section>
 
   <section>
-    <h2>7. Appel non autorisé au niveau tool <span class="tag">E4</span></h2>
+    <h2>10. Appel non autorisé au niveau tool <span class="tag">E4</span></h2>
     <p class="cap">Le refus intervient à l'entrée, aucun moteur n'est atteint.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -215,7 +281,7 @@ sequenceDiagram
   </section>
 
   <section>
-    <h2>8. Tentative d'écriture : lecture seule <span class="tag">E3</span></h2>
+    <h2>11. Tentative d'écriture : lecture seule <span class="tag">E3</span></h2>
     <p class="cap">L'AST rejette le non-SELECT, la connexion read-only est le garde-fou ultime.</p>
     <pre class="mermaid">
 sequenceDiagram

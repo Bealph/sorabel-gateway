@@ -88,24 +88,75 @@ d'historique et impossibilite de repondre sur une version anterieure).
 
 ### 1.5 Flux d'ingestion
 
+L'ingestion tourne **hors ligne**, une fois, avant toute question. Elle transforme
+400 fichiers hétérogènes en 820 chunks indexés deux fois. À la requête, le moteur
+ne lit plus jamais les fichiers d'origine : il lit les index.
+
+Le schéma suit **les artefacts**, pas les actions : chaque étape affiche ce
+qu'elle reçoit et ce qu'elle produit.
+
 ```mermaid
-flowchart TD
-    A[data/corpus] --> B{Type de fichier ?}
-    B -->|PDF fiche / notice| C[Extraction PDF<br/>texte + tables]
-    B -->|HTML sav| D[Parsing HTML<br/>meta + structure]
-    B -->|MD note| E[Frontmatter YAML<br/>+ corps]
-    C --> F[Normalisation vers Document canonique<br/>texte propre + metadonnees]
-    D --> F
-    E --> F
-    F --> G[Regroupement par version_group<br/>calcul de is_latest]
-    G --> H[Chunking structure]
-    H --> I[Encodage dense - embeddings]
-    H --> J[Index lexical - BM25]
-    I --> K[(Store vectoriel)]
-    J --> L[(Index lexical)]
+flowchart TB
+    A["400 fichiers bruts<br/>150 PDF fiches, 80 PDF notices,<br/>90 HTML procedures, 80 MD notes"]
+    B["Texte + entete extraits<br/>400 objets, un par fichier"]
+    C["Document canonique<br/>400 objets au meme schema"]
+    D["350 groupes de versions<br/>is_latest calcule"]
+    E["820 chunks<br/>metadonnees de citation heritees"]
+    F[("Chroma<br/>820 vecteurs bge-m3")]
+    G[("Index BM25<br/>820 sacs de mots ponderes")]
+
+    A -->|"1. parser selon le format"| B
+    B -->|"2. normaliser et sectionner"| C
+    C -->|"3. regrouper les versions"| D
+    D -->|"4. decouper selon la structure"| E
+    E -->|"5a. encoder en vecteurs"| F
+    E -->|"5b. tokeniser et ponderer par IDF"| G
 ```
 
----
+Ce que fait chaque étape :
+
+```
++---+------------------------+-----------------------------+---------------------+
+| # | Entree                 | Operation                   | Sortie              |
++---+------------------------+-----------------------------+---------------------+
+| 1 | 1 fichier PDF/HTML/MD  | parseur dedie au format     | texte + entete brut |
+| 2 | texte + entete brut    | Unicode NFC, espaces,       | 1 Document          |
+|   |                        | decoupe en sections         | canonique           |
+| 3 | 400 Documents          | cle = (doc_type, ref),      | 350 groupes,        |
+|   |                        | tri par version puis date   | is_latest pose      |
+| 4 | 1 Document + sa struct.| regle par doc_type          | 1 a 4 chunks        |
+| 5a| 820 chunks             | bge-m3, 1024 dimensions     | 820 vecteurs        |
+| 5b| 820 chunks             | tokenisation + IDF          | 820 entrees BM25    |
++---+------------------------+-----------------------------+---------------------+
+```
+
+**Étape 1, parser.** Trois formats, trois extracteurs. Le PDF donne un flux de
+texte qu'il faut lire dans l'ordre de lecture. Le HTML porte ses métadonnées dans
+`<title>` et les balises `<meta>`. Le Markdown les porte dans son frontmatter
+YAML. Le piège : perdre l'en-tête, où vivent le titre, la référence, la version
+et la date. Sans lui, la citation E1 devient impossible.
+
+**Étape 2, normaliser.** Tout converge vers un **objet unique**, quel que soit le
+format d'origine. C'est ce qui permet à la suite du pipeline d'ignorer d'où vient
+le document. La normalisation Unicode NFC évite qu'un « é » composé et un « é »
+précomposé soient traités comme deux caractères différents par BM25.
+
+**Étape 3, regrouper les versions.** Les 400 documents ne sont pas 400 sujets :
+`REF-8842` a une fiche en v1.0 et en v2.1. On les rattache au même
+`version_group`, on trie, et la plus récente reçoit `is_latest = true`. C'est ici
+que se règle le défaut nommé par le brief, « confond les versions d'une même
+notice ». On n'écrase rien : les deux versions restent indexées, la récente est
+privilégiée à la citation.
+
+**Étape 4, découper.** Le découpage suit la structure du document, pas un nombre
+de caractères. Une fiche tient sur une page dense : la couper séparerait le
+calibre de la norme. Une notice a quatre sections indépendantes : les fusionner
+diluerait la réponse. Détail en 2.1.
+
+**Étape 5, indexer deux fois.** Le même chunk part dans deux index qui ne savent
+pas faire la même chose. Le vecteur capte le sens, l'index lexical capte les
+termes exacts. Les garder **séparés** est un choix assumé (P3) : il rend la
+branche « dense seule » isolable pour la mesure E6, sans réindexer.
 
 ## Q2. Granularité de chunk et métadonnées
 
@@ -136,24 +187,61 @@ sans diluer le signal.
 
 ### 2.2 Métadonnées portées par chaque chunk
 
+Un champ ne se justifie pas parce qu'il est disponible, mais parce que quelque
+chose casse sans lui. Le tableau est donc classé **par usage**, avec la
+conséquence de son absence.
+
 ```
-+-------------+----------------------------------+-------------------------------+
-| Champ       | Exemple                          | Role                          |
-+-------------+----------------------------------+-------------------------------+
-| chunk_id    | fiche_REF-8842_v2.1#0            | identite du passage           |
-| doc_id      | fiche_REF-8842_v2.1              | rattachement au document      |
-| ref         | REF-8842                         | filtre exact (E2), lien SQL,  |
-|             |                                  | regroupement des versions     |
-| doc_type    | fiche_technique                  | filtrage collection, RBAC (E4)|
-| title       | Disjoncteur tetrapolaire 40 A    | citation (E1)                 |
-| version     | 2.1                              | gestion des versions (E2)     |
-| date        | 2024-05-25                       | citation (E1), tri recence    |
-| is_latest   | true                             | privilegier la derniere       |
-| section     | Mise en service                  | precision de la citation      |
-| source_path | corpus/fiches/REF-8842-v2.1.pdf  | tracabilite                   |
-| url         | (lien interne)                   | citation cliquable (E1)       |
-+-------------+----------------------------------+-------------------------------+
++-----------------+--------------+--------------------------------+-------------------------+
+| Usage           | Champ        | Exemple (fiche REF-8842 v2.1)  | Sans ce champ           |
++-----------------+--------------+--------------------------------+-------------------------+
+| Citation (E1)   | title        | Disjoncteur tetrapolaire       | la source n'est pas     |
+|                 |              | triphase 40 A courbe C         | nommable                |
+|                 | ref          | REF-8842                       | on cite un texte sans   |
+|                 |              |                                | dire de quel produit    |
+|                 | version      | 2.1                            | on cite sans dire       |
+|                 | date         | 2024-05-25                     | laquelle ni de quand    |
+|                 | url          | lien interne                   | l'utilisateur ne peut   |
+|                 |              |                                | pas verifier            |
++-----------------+--------------+--------------------------------+-------------------------+
+| Filtrage exact  | ref          | REF-8842                       | "REF-8842" redevient un |
+| (E2)            |              |                                | token noye, cf. 2.3     |
+|                 | doc_type     | fiche_technique                | impossible de preferer  |
+|                 |              |                                | une fiche a une note    |
++-----------------+--------------+--------------------------------+-------------------------+
+| Gouvernance     | doc_type     | fiche_technique                | la collection interdite |
+| (E4 / E5)       |              |                                | au support ne peut pas  |
+|                 |              |                                | etre filtree            |
++-----------------+--------------+--------------------------------+-------------------------+
+| Versions        | is_latest    | true                           | on cite une v1.0 perimee|
+|                 | version_group| fiche_REF-8842                 | les versions ne se      |
+|                 |              |                                | dedoublonnent pas       |
++-----------------+--------------+--------------------------------+-------------------------+
+| Precision       | section      | (fiche = document entier)      | on cite un document     |
+|                 |              |                                | entier pour une phrase  |
++-----------------+--------------+--------------------------------+-------------------------+
+| Tracabilite     | chunk_id     | fiche_REF-8842_v2.1#0          | pas de rejeu possible   |
+|                 | doc_id       | fiche_REF-8842_v2.1            | on ne remonte pas au    |
+|                 |              |                                | document                |
+|                 | source_path  | corpus/fiches/REF-8842-v2.1.pdf| pas d'audit de l'index  |
++-----------------+--------------+--------------------------------+-------------------------+
 ```
+
+Trois remarques sur la mécanique.
+
+**Les métadonnées sont copiées, pas référencées.** Le chunk porte `title`, `ref`,
+`version` et `date` en dur, alors qu'il pourrait les lire sur son document
+parent. C'est délibéré : au moment de citer, le moteur n'a en main que les chunks
+retournés par la recherche. Une jointure supplémentaire serait un point de panne
+entre « j'ai trouvé le passage » et « je sais d'où il vient ». La citation E1
+devient ainsi **mécanique** et non conditionnelle.
+
+**Certains champs servent deux fois.** `ref` cite et filtre. `doc_type` cite et
+gouverne. C'est normal : ce sont les axes selon lesquels le corpus se lit.
+
+**`is_latest` est un champ calculé, pas lu.** Il n'existe dans aucun fichier
+source. Il est produit à l'étape 3 de l'ingestion et doit être recalculé à chaque
+réindexation, sinon deux versions se déclarent toutes deux les plus récentes.
 
 ### 2.3 Pourquoi la métadonnée `ref` est décisive
 
@@ -169,6 +257,9 @@ l'embedding et perdu pour le filtrage.
 
 ### 2.4 Modèle de données (Document / Chunk)
 
+Deux entités seulement. Le `DOCUMENT` est ce qui existe dans le corpus, le
+`CHUNK` est ce qui est indexé et cité.
+
 ```mermaid
 erDiagram
     DOCUMENT ||--o{ CHUNK : "decoupe en"
@@ -179,30 +270,73 @@ erDiagram
         string title
         string version
         date   date
-        string version_group
-        bool   is_latest
+        string version_group "cle de regroupement"
+        bool   is_latest "calcule a l'ingestion"
         string source_path
         string url
     }
     CHUNK {
         string chunk_id PK
         string doc_id FK
-        string ref
-        string doc_type
-        string section
-        string title
-        string version
-        date   date
-        bool   is_latest
+        string ref "herite"
+        string doc_type "herite"
+        string title "herite"
+        string version "herite"
+        date   date "herite"
+        bool   is_latest "herite"
+        string section "propre au chunk"
         text   contenu
     }
 ```
 
-Chaque document normalisé est découpé en un ou plusieurs chunks ; le chunk hérite
-des métadonnées de citation (title, ref, version, date) pour rendre E1 mécanique,
-et `ref` plus `version` restent des champs filtrables de premier ordre (E2).
+Le modèle appliqué à un cas réel du corpus, la référence `REF-8842` :
 
----
+```mermaid
+flowchart LR
+    GF["version_group<br/>fiche_REF-8842<br/>2 versions"]
+    GN["version_group<br/>notice_REF-8842<br/>1 version"]
+
+    GF --> D1["fiche_REF-8842_v1.0<br/>2022-10-21<br/>is_latest = false"]
+    GF --> D2["fiche_REF-8842_v2.1<br/>2024-05-25<br/>is_latest = true"]
+    GN --> D3["notice_REF-8842_v1.0<br/>2023-12-18<br/>is_latest = true"]
+
+    D1 --> C1["1 chunk<br/>document entier"]
+    D2 --> C2["1 chunk<br/>document entier"]
+    D3 --> C3["4 chunks<br/>Consignes de securite<br/>Installation<br/>Mise en service<br/>Entretien"]
+```
+
+Trois documents, six chunks, une seule référence produit. Ce que le schéma rend
+visible :
+
+**La référence n'est pas une clé.** `REF-8842` apparaît sur les trois documents
+et les six chunks. Ce n'est pas un identifiant, c'est un **axe de regroupement**.
+L'identifiant est `doc_id`, qui inclut le type et la version.
+
+**Le versionnage est par type de document.** La fiche a deux versions, la notice
+une seule. Les regrouper toutes sous « REF-8842 » ferait croire que la notice
+v1.0 est une version périmée de la fiche v2.1. D'où la clé composite
+`(doc_type, ref)`.
+
+**La granularité varie dans un même produit.** Une question sur le calibre vise
+la fiche entière, une question sur le serrage des bornes vise une seule section
+de la notice. Un découpage uniforme servirait mal l'une des deux.
+
+Volumes sur l'ensemble du corpus :
+
+```
++-----------+----------+----------+-------------+---------+
+| Collection| Fichiers | Groupes  | Chunks/doc  | Chunks  |
++-----------+----------+----------+-------------+---------+
+| fiches    |      150 |      120 |           1 |     150 |
+| notices   |       80 |       70 |           4 |     320 |
+| sav       |       90 |       80 |           3 |     270 |
+| notes     |       80 |       80 |           1 |      80 |
++-----------+----------+----------+-------------+---------+
+| TOTAL     |      400 |      350 |             |     820 |
++-----------+----------+----------+-------------+---------+
+Comptes releves sur le corpus reel : les 80 notices ont toutes 4 sections
+numerotees, les 90 procedures SAV ont toutes 3 sections <h2>.
+```
 
 ## Q3. Pourquoi le dense seul rate « REF-8842 », et l'apport de l'hybride + rerank
 
@@ -245,22 +379,82 @@ latence, maîtrisée en ne rerankant que la présélection.
 
 ### 3.5 Flux de recherche
 
+La recherche est un **entonnoir**. Chaque étage réduit le nombre de candidats et
+augmente le coût unitaire de l'examen. C'est cet ordre qui rend le pipeline
+tenable : le modèle le plus coûteux ne voit que ce que les modèles bon marché ont
+présélectionné.
+
 ```mermaid
-flowchart TD
-    Q[Question] --> R{Motif REF-XXXX ?}
-    R -->|oui| RF[Filtre exact sur ref]
-    R -->|non| P
-    RF --> P[PresELECTION]
-    Q --> BM[Recherche lexicale BM25<br/>top-N]
-    Q --> DN[Recherche dense<br/>top-N]
-    BM --> FU[Fusion RRF - k=60]
+flowchart TB
+    Q["Question de l'utilisateur"] --> R{"La question contient-elle<br/>un motif REF-XXXX ?"}
+
+    R -->|oui| EX["Court-circuit exact<br/>filtre sur la metadonnee ref<br/>820 chunks vers 6"]
+    R -->|non| SP["Interrogation des deux index<br/>en parallele"]
+
+    SP --> BM["BM25 lexical<br/>820 vers top 50"]
+    SP --> DN["Dense bge-m3, cosinus<br/>820 vers top 50"]
+
+    BM --> FU["Fusion RRF, k=60<br/>2 listes de 50 vers 20"]
     DN --> FU
-    FU --> P
-    P --> RR[Reranking cross-encoder<br/>top-K -> top-k]
-    RR --> SG{Score top &gt;= seuil ?}
-    SG -->|non| AB[Abstention E1<br/>non couvert par le corpus]
-    SG -->|oui| AN[Reponse ancree<br/>+ sources titre + ref + date]
+
+    EX --> RR["Reranking cross-encoder<br/>bge-reranker-v2-m3<br/>20 vers 5 reordonnes"]
+    FU --> RR
+
+    RR --> SG{"Score du meilleur passage<br/>superieur au seuil tau ?"}
+    SG -->|non| AB["Abstention E1<br/>status = out_of_corpus"]
+    SG -->|oui| GE["Generation ancree<br/>sur les 5 passages retenus"]
+    GE --> OU["Reponse + sources<br/>titre, ref, version, date"]
 ```
+
+L'entonnoir, étage par étage :
+
+```
++-------------------+---------+--------+------------------+---------------------+
+| Etage             | Entree  | Sortie | Cout unitaire    | Ce qu'il apporte    |
++-------------------+---------+--------+------------------+---------------------+
+| Court-circuit ref |     820 |      6 | negligeable      | garantit E2         |
+| BM25              |     820 |     50 | tres faible      | termes exacts       |
+| Dense             |     820 |     50 | faible, precalc. | sens, paraphrases   |
+| Fusion RRF        | 50 + 50 |     20 | nul              | reconcilie les deux |
+| Reranking         |      20 |      5 | ELEVE            | ordre juste + score |
+| Seuil tau         |       5 |  5 ou 0| nul              | abstention E1       |
++-------------------+---------+--------+------------------+---------------------+
+Les valeurs 50 / 20 / 5 sont des points de depart, a calibrer au lot 3 sur
+eval/questions_rag.jsonl. Elles ne sont pas mesurees a ce stade.
+```
+
+**Le court-circuit exact.** Si la question porte un motif `REF-XXXX`, on ne fait
+pas de recherche : on filtre sur une métadonnée. C'est un `WHERE ref = ...`, pas
+une similarité. Le résultat est déterministe et ne peut pas se tromper de
+référence. C'est la réponse directe au test d'acceptance « REF-8842 remonte en
+tête ». Les deux moteurs restent disponibles ensuite pour ordonner les 6 chunks
+du produit selon le reste de la question.
+
+**Les deux moteurs en parallèle.** Ils ne cherchent pas la même chose. BM25
+compare des mots et récompense les termes rares ; il trouve « REF-8842 » et rate
+« triphasé » quand la fiche dit « circuits de force triphasés ». Le dense compare
+des sens ; il fait l'inverse. Les lancer en parallèle coûte peu, car les vecteurs
+sont déjà calculés à l'ingestion.
+
+**La fusion RRF.** Le problème : les deux moteurs produisent des scores
+incomparables, un score BM25 de 12,4 et un cosinus de 0,81 ne se somment pas. RRF
+ignore les scores et ne regarde que les **rangs** : chaque chunk marque
+`1 / (60 + rang)` dans chaque liste, et on additionne. Un chunk 3e partout bat un
+chunk 1er ici et 40e ailleurs. Aucun calibrage à régler, c'est ce qui en fait un
+choix robuste (D5).
+
+**Le reranking.** Les deux premiers moteurs encodent la question et les documents
+**séparément** : ils ne peuvent que comparer deux vecteurs figés. Le
+cross-encoder lit la question et le passage **ensemble**, et note leur pertinence
+réelle. Beaucoup plus juste, beaucoup plus cher : d'où sa place en fin
+d'entonnoir, sur 20 candidats et non sur 820. Il produit en sortie un score
+calibré, réutilisé à l'étage suivant.
+
+**Le seuil tau.** C'est le score du reranker sur le meilleur passage. En dessous,
+on n'appelle pas le générateur du tout : on renvoie `out_of_corpus`. C'est la
+première des deux gardes d'E1 (la seconde étant la consigne d'ancrage donnée au
+LLM, cf. 4.2). Le calibrage de tau se fait sur les 8 questions `hors_corpus` et
+les 14 `couverte` : il faut une marge nette entre les deux populations.
 
 ### 3.6 Benchmark des briques (recommandations)
 
