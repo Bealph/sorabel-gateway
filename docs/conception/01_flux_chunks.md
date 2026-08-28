@@ -23,45 +23,35 @@ et une gestion explicite des versions pour ne jamais les confondre.
 
 Chaque source est convertie vers un même enregistrement :
 
-```
-+--------------+-----------------------------------------------------------------+
-| Champ        | Description                                                     |
-+--------------+-----------------------------------------------------------------+
-| doc_id       | identifiant unique = {doc_type}_{ref|slug}_v{version}            |
-| ref          | reference produit (REF-8842) si applicable, sinon null          |
-| doc_type     | fiche_technique | notice | procedure_sav | note_interne         |
-| title        | titre du document                                               |
-| version      | 1.0 / 2.1 / ...                                                 |
-| date         | AAAA-MM-JJ                                                      |
-| version_group| cle de regroupement des versions d'un meme document logique     |
-| is_latest    | vrai si version la plus recente du groupe                       |
-| lang         | fr                                                             |
-| source_path  | chemin d'origine (tracabilite)                                  |
-| url          | lien interne cliquable (citation E1)                            |
-| text         | contenu normalise (texte propre, structure par sections)        |
-| sections[]   | liste de sections (titre + texte) pour le chunking              |
-+--------------+-----------------------------------------------------------------+
-```
+| Champ | Description |  |  |  |
+| --- | --- | --- | --- | --- |
+| doc_id | identifiant unique = {doc_type}_{ref | slug}_v{version} |  |  |
+| ref | reference produit (REF-8842) si applicable, sinon null |  |  |  |
+| doc_type | fiche_technique | notice | procedure_sav | note_interne |
+| title | titre du document |  |  |  |
+| version | 1.0 / 2.1 / ... |  |  |  |
+| date | AAAA-MM-JJ |  |  |  |
+| version_group | cle de regroupement des versions d'un meme document logique |  |  |  |
+| is_latest | vrai si version la plus recente du groupe |  |  |  |
+| lang | fr |  |  |  |
+| source_path | chemin d'origine (tracabilite) |  |  |  |
+| url | lien interne cliquable (citation E1) |  |  |  |
+| text | contenu normalise (texte propre, structure par sections) |  |  |  |
+| sections[] | liste de sections (titre + texte) pour le chunking |  |  |  |
 
 ### 1.3 Extraction spécifique par format
 
-```
-+-----------+-----------------------------------------------------------------------+
-| Format    | Traitement                                                            |
-+-----------+-----------------------------------------------------------------------+
-| PDF       | Extraction texte (PyMuPDF / pdfplumber) en respectant l'ordre de       |
-| (fiches,  | lecture. Tables eventuelles : extraction dediee (pdfplumber) puis      |
-|  notices) | linearisation en "cle : valeur" ou tableau Markdown, pour preserver    |
-|           | le sens a l'embedding. Le bloc d'entete (titre, ref, version, date)    |
-|           | est parse en metadonnees ET conserve dans le texte.                   |
-| HTML      | Parsing (BeautifulSoup). Metadonnees lues dans <title> et les balises  |
-| (sav)     | <meta version/date/type>. Titres h1/h2 conserves comme sections.      |
-| Markdown  | Frontmatter YAML -> metadonnees (titre, date, auteur, type, version).  |
-| (notes)   | Corps conserve avec ses titres.                                       |
-+-----------+-----------------------------------------------------------------------+
+| Format | Traitement |
+| --- | --- |
+| PDF (fiches, notices) | Extraction texte (PyMuPDF / pdfplumber) en respectant l'ordre de lecture. Tables eventuelles : extraction dediee (pdfplumber) puis linearisation en « cle : valeur » ou tableau Markdown, pour preserver le sens a l'embedding. Le bloc d'entete (titre, ref, version, date) est parse en metadonnees ET conserve dans le texte. |
+| HTML (sav) | Parsing (BeautifulSoup). Metadonnees lues dans `<title>` et les balises `<meta version/date/type>`. Titres h1/h2 conserves comme sections. |
+| Markdown (notes) | Frontmatter YAML vers metadonnees (titre, date, auteur, type, version). Corps conserve avec ses titres. |
+
+Normalisation commune : Unicode NFC, espaces normalisés, sections préservées,
+la référence et le titre restent présents dans le texte (utile au lexical).
+
 Normalisation commune : Unicode NFC, espaces normalises, sections preservees,
 la reference et le titre restent presents dans le texte (utile au lexical).
-```
 
 ### 1.4 Traitement des versions (dédoublonnage)
 
@@ -115,20 +105,14 @@ flowchart TB
 
 Ce que fait chaque étape :
 
-```
-+---+------------------------+-----------------------------+---------------------+
-| # | Entree                 | Operation                   | Sortie              |
-+---+------------------------+-----------------------------+---------------------+
-| 1 | 1 fichier PDF/HTML/MD  | parseur dedie au format     | texte + entete brut |
-| 2 | texte + entete brut    | Unicode NFC, espaces,       | 1 Document          |
-|   |                        | decoupe en sections         | canonique           |
-| 3 | 400 Documents          | cle = (doc_type, ref),      | 350 groupes,        |
-|   |                        | tri par version puis date   | is_latest pose      |
-| 4 | 1 Document + sa struct.| regle par doc_type          | 1 a 4 chunks        |
-| 5a| 820 chunks             | bge-m3, 1024 dimensions     | 820 vecteurs        |
-| 5b| 820 chunks             | tokenisation + IDF          | 820 entrees BM25    |
-+---+------------------------+-----------------------------+---------------------+
-```
+| # | Entree | Operation | Sortie |
+| --- | --- | --- | --- |
+| 1 | 1 fichier PDF/HTML/MD | parseur dedie au format | texte + entete brut |
+| 2 | texte + entete brut | Unicode NFC, espaces, decoupe en sections | 1 Document canonique |
+| 3 | 400 Documents | cle = (doc_type, ref), tri par version puis date | 350 groupes, is_latest pose |
+| 4 | 1 Document + sa struct. | regle par doc_type | 1 a 4 chunks |
+| 5a | 820 chunks | bge-m3, 1024 dimensions | 820 vecteurs |
+| 5b | 820 chunks | tokenisation + IDF | 820 entrees BM25 |
 
 **Étape 1, parser.** Trois formats, trois extracteurs. Le PDF donne un flux de
 texte qu'il faut lire dans l'ordre de lecture. Le HTML porte ses métadonnées dans
@@ -166,19 +150,16 @@ Les documents sont courts et structurés : un découpage à taille fixe casserai
 une fiche ou fusionnerait des sections sans rapport. On découpe selon la
 structure, pas selon un nombre de caractères arbitraire.
 
-```
-+----------------+------------------+---------------------------+---------------+
-| Type           | Taille typique   | Strategie                 | Chunks / doc  |
-+----------------+------------------+---------------------------+---------------+
-| fiche_technique| ~1 page, dense   | 1 chunk = document entier | 1             |
-| notice         | 4 sections       | 1 chunk par section       | ~4            |
-| procedure_sav  | court, sections  | 1 chunk par section       | 1 a 3         |
-| note_interne   | tres court       | 1 chunk = document entier | 1             |
-+----------------+------------------+---------------------------+---------------+
+| Type | Taille typique | Strategie | Chunks / doc |
+| --- | --- | --- | --- |
+| fiche_technique | ~1 page, dense | 1 chunk = document entier | 1 |
+| notice | 4 sections | 1 chunk par section | ~4 |
+| procedure_sav | court, sections | 1 chunk par section | 1 a 3 |
+| note_interne | tres court | 1 chunk = document entier | 1 |
+
 Regle globale : respecter les frontieres section et document ; cible 200 a 400
 tokens ; chevauchement ~15% uniquement si une section depasse la cible ; ne
 jamais couper une phrase ni fusionner deux documents.
-```
 
 Justification : une question cible souvent une section précise (par exemple
 « que vérifier 48 h après la mise en service ? » vise la section Mise en service
@@ -191,41 +172,22 @@ Un champ ne se justifie pas parce qu'il est disponible, mais parce que quelque
 chose casse sans lui. Le tableau est donc classé **par usage**, avec la
 conséquence de son absence.
 
-```
-+-----------------+--------------+--------------------------------+-------------------------+
-| Usage           | Champ        | Exemple (fiche REF-8842 v2.1)  | Sans ce champ           |
-+-----------------+--------------+--------------------------------+-------------------------+
-| Citation (E1)   | title        | Disjoncteur tetrapolaire       | la source n'est pas     |
-|                 |              | triphase 40 A courbe C         | nommable                |
-|                 | ref          | REF-8842                       | on cite un texte sans   |
-|                 |              |                                | dire de quel produit    |
-|                 | version      | 2.1                            | on cite sans dire       |
-|                 | date         | 2024-05-25                     | laquelle ni de quand    |
-|                 | url          | lien interne                   | l'utilisateur ne peut   |
-|                 |              |                                | pas verifier            |
-+-----------------+--------------+--------------------------------+-------------------------+
-| Filtrage exact  | ref          | REF-8842                       | "REF-8842" redevient un |
-| (E2)            |              |                                | token noye, cf. 2.3     |
-|                 | doc_type     | fiche_technique                | impossible de preferer  |
-|                 |              |                                | une fiche a une note    |
-+-----------------+--------------+--------------------------------+-------------------------+
-| Gouvernance     | doc_type     | fiche_technique                | la collection interdite |
-| (E4 / E5)       |              |                                | au support ne peut pas  |
-|                 |              |                                | etre filtree            |
-+-----------------+--------------+--------------------------------+-------------------------+
-| Versions        | is_latest    | true                           | on cite une v1.0 perimee|
-|                 | version_group| fiche_REF-8842                 | les versions ne se      |
-|                 |              |                                | dedoublonnent pas       |
-+-----------------+--------------+--------------------------------+-------------------------+
-| Precision       | section      | (fiche = document entier)      | on cite un document     |
-|                 |              |                                | entier pour une phrase  |
-+-----------------+--------------+--------------------------------+-------------------------+
-| Tracabilite     | chunk_id     | fiche_REF-8842_v2.1#0          | pas de rejeu possible   |
-|                 | doc_id       | fiche_REF-8842_v2.1            | on ne remonte pas au    |
-|                 |              |                                | document                |
-|                 | source_path  | corpus/fiches/REF-8842-v2.1.pdf| pas d'audit de l'index  |
-+-----------------+--------------+--------------------------------+-------------------------+
-```
+| Usage | Champ | Exemple (fiche REF-8842 v2.1) | Sans ce champ |
+| --- | --- | --- | --- |
+| Citation (E1) | `title` | Disjoncteur tetrapolaire triphase 40 A courbe C | la source n'est pas nommable |
+| Citation (E1) | `ref` | REF-8842 | on cite un texte sans dire de quel produit |
+| Citation (E1) | `version` | 2.1 | on cite sans dire laquelle |
+| Citation (E1) | `date` | 2024-05-25 | on cite sans dire de quand |
+| Citation (E1) | `url` | lien interne | l'utilisateur ne peut pas verifier |
+| Filtrage exact (E2) | `ref` | REF-8842 | « REF-8842 » redevient un token noye, cf. 2.3 |
+| Filtrage exact (E2) | `doc_type` | fiche_technique | impossible de preferer une fiche a une note |
+| Gouvernance (E4/E5) | `doc_type` | fiche_technique | la collection interdite au support ne peut pas etre filtree |
+| Versions | `is_latest` | true | on cite une v1.0 perimee |
+| Versions | `version_group` | fiche_REF-8842 | les versions ne se dedoublonnent pas |
+| Precision | `section` | fiche = document entier | on cite un document entier pour une phrase |
+| Tracabilite | `chunk_id` | fiche_REF-8842_v2.1#0 | pas de rejeu possible |
+| Tracabilite | `doc_id` | fiche_REF-8842_v2.1 | on ne remonte pas au document |
+| Tracabilite | `source_path` | corpus/fiches/REF-8842-v2.1.pdf | pas d'audit de l'index |
 
 Trois remarques sur la mécanique.
 
@@ -323,20 +285,16 @@ de la notice. Un découpage uniforme servirait mal l'une des deux.
 
 Volumes sur l'ensemble du corpus :
 
-```
-+-----------+----------+----------+-------------+---------+
-| Collection| Fichiers | Groupes  | Chunks/doc  | Chunks  |
-+-----------+----------+----------+-------------+---------+
-| fiches    |      150 |      120 |           1 |     150 |
-| notices   |       80 |       70 |           4 |     320 |
-| sav       |       90 |       80 |           3 |     270 |
-| notes     |       80 |       80 |           1 |      80 |
-+-----------+----------+----------+-------------+---------+
-| TOTAL     |      400 |      350 |             |     820 |
-+-----------+----------+----------+-------------+---------+
+| Collection | Fichiers | Groupes | Chunks/doc | Chunks |
+| --- | ---: | ---: | ---: | ---: |
+| fiches | 150 | 120 | 1 | 150 |
+| notices | 80 | 70 | 4 | 320 |
+| sav | 90 | 80 | 3 | 270 |
+| notes | 80 | 80 | 1 | 80 |
+| TOTAL | 400 | 350 |  | 820 |
+
 Comptes releves sur le corpus reel : les 80 notices ont toutes 4 sections
 numerotees, les 90 procedures SAV ont toutes 3 sections <h2>.
-```
 
 ## Q3. Pourquoi le dense seul rate « REF-8842 », et l'apport de l'hybride + rerank
 
@@ -408,20 +366,17 @@ flowchart TB
 
 L'entonnoir, étage par étage :
 
-```
-+-------------------+---------+--------+------------------+---------------------+
-| Etage             | Entree  | Sortie | Cout unitaire    | Ce qu'il apporte    |
-+-------------------+---------+--------+------------------+---------------------+
-| Court-circuit ref |     820 |      6 | negligeable      | garantit E2         |
-| BM25              |     820 |     50 | tres faible      | termes exacts       |
-| Dense             |     820 |     50 | faible, precalc. | sens, paraphrases   |
-| Fusion RRF        | 50 + 50 |     20 | nul              | reconcilie les deux |
-| Reranking         |      20 |      5 | ELEVE            | ordre juste + score |
-| Seuil tau         |       5 |  5 ou 0| nul              | abstention E1       |
-+-------------------+---------+--------+------------------+---------------------+
+| Etage | Entree | Sortie | Cout unitaire | Ce qu'il apporte |
+| --- | ---: | --- | --- | --- |
+| Court-circuit ref | 820 | 6 | negligeable | garantit E2 |
+| BM25 | 820 | 50 | tres faible | termes exacts |
+| Dense | 820 | 50 | faible, precalc. | sens, paraphrases |
+| Fusion RRF | 50 + 50 | 20 | nul | reconcilie les deux |
+| Reranking | 20 | 5 | ELEVE | ordre juste + score |
+| Seuil tau | 5 | 5 ou 0 | nul | abstention E1 |
+
 Les valeurs 50 / 20 / 5 sont des points de depart, a calibrer au lot 3 sur
 eval/questions_rag.jsonl. Elles ne sont pas mesurees a ce stade.
-```
 
 **Le court-circuit exact.** Si la question porte un motif `REF-XXXX`, on ne fait
 pas de recherche : on filtre sur une métadonnée. C'est un `WHERE ref = ...`, pas
@@ -458,24 +413,17 @@ les 14 `couverte` : il faut une marge nette entre les deux populations.
 
 ### 3.6 Benchmark des briques (recommandations)
 
-```
-+-------------+-------------------------------+----------------------------+-----------------------+
-| Composant   | Recommandation                | Alternatives               | Pourquoi              |
-+-------------+-------------------------------+----------------------------+-----------------------+
-| Embeddings  | BAAI/bge-m3 (multilingue)     | multilingual-e5-large,     | FR natif, dense de    |
-|             |                               | Solon-embeddings (FR)      | qualite, local        |
-| Lexical     | bm25s (ou rank-bm25)          | index sparse d'un store    | tokens exacts, IDF,   |
-|             |                               |                            | transparent           |
-| Fusion      | RRF (k=60)                    | somme ponderee normalisee  | robuste, sans reglage |
-| Reranker    | BAAI/bge-reranker-v2-m3       | jina-reranker-v2, Cohere   | cross-encoder multi-  |
-|             |                               | rerank (API)               | lingue, local         |
-| Store       | Chroma (dense) + bm25         | Qdrant (hybride natif),    | simple ; baseline     |
-|             | applicatif                    | FAISS                      | dense isolable (E6)   |
-+-------------+-------------------------------+----------------------------+-----------------------+
+| Composant | Recommandation | Alternatives | Pourquoi |
+| --- | --- | --- | --- |
+| Embeddings | BAAI/bge-m3 (multilingue) | multilingual-e5-large, Solon-embeddings (FR) | FR natif, dense de qualite, local |
+| Lexical | bm25s (ou rank-bm25) | index sparse d'un store | tokens exacts, IDF, transparent |
+| Fusion | RRF (k=60) | somme ponderee normalisee | robuste, sans reglage |
+| Reranker | BAAI/bge-reranker-v2-m3 | jina-reranker-v2, Cohere rerank (API) | cross-encoder multi-lingue, local |
+| Store | Chroma (dense) + bm25 applicatif | Qdrant (hybride natif), FAISS | simple ; baseline dense isolable (E6) |
+
 Parti pris : garder le lexical applicatif separe du dense (plutot que le sparse
 integre d'un store) pour rendre le baseline "dense seul" trivial a isoler et la
 mesure E6 pleinement reproductible.
-```
 
 ---
 
@@ -518,17 +466,11 @@ tau (jeu de test petit).
 
 ### 5.1 Sous-ensembles de `questions_rag.jsonl`
 
-```
-+--------------------+----+-------------------------+-------------------------------+
-| Type d'eval        | N  | Label disponible        | Usage pour E6                 |
-+--------------------+----+-------------------------+-------------------------------+
-| reference_exacte   | 8  | attendu_reference (dur) | Recall@k, MRR (gain principal)|
-| couverte           | 14 | attendu_type (faible)   | Recall@k si gold doc annote ; |
-|                    |    |                         | sinon type@k (proxy)          |
-| hors_corpus        | 8  | aucun                   | taux d'abstention (E1) +      |
-|                    |    |                         | calibrage du seuil tau        |
-+--------------------+----+-------------------------+-------------------------------+
-```
+| Type d'eval | N | Label disponible | Usage pour E6 |
+| --- | ---: | --- | --- |
+| reference_exacte | 8 | attendu_reference (dur) | Recall@k, MRR (gain principal) |
+| couverte | 14 | attendu_type (faible) | Recall@k si gold doc annote ; sinon type@k (proxy) |
+| hors_corpus | 8 | aucun | taux d'abstention (E1) + calibrage du seuil tau |
 
 Recommandation : annoter le document attendu (gold `doc_id`) pour les 14 questions
 `couverte`, afin d'obtenir un Recall@k rigoureux plutôt qu'un simple `type@k`.
@@ -554,17 +496,13 @@ Sortie   : tableau comparatif dans eval/results/ + synthese dans docs/mesure_e6.
 
 ### 5.4 Tableau de résultats (gabarit à remplir)
 
-```
-+------------------------+----------------+-------------------------+--------+
-| Metrique               | Baseline dense | Avance hybride + rerank | Gain   |
-+------------------------+----------------+-------------------------+--------+
-| Recall@1               |       .        |            .            |   .    |
-| Recall@3               |       .        |            .            |   .    |
-| Recall@5               |       .        |            .            |   .    |
-| MRR                    |       .        |            .            |   .    |
-| Abstention hors_corpus |       .        |            .            |   .    |
-+------------------------+----------------+-------------------------+--------+
-```
+| Metrique | Baseline dense | Avance hybride + rerank | Gain |
+| --- | ---: | ---: | ---: |
+| Recall@1 | . | . | . |
+| Recall@3 | . | . | . |
+| Recall@5 | . | . | . |
+| MRR | . | . | . |
+| Abstention hors_corpus | . | . | . |
 
 ---
 

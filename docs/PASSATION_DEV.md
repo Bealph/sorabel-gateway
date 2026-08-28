@@ -75,30 +75,15 @@ Reste ouvert (à trancher en dev) : P8, mécanisme d'identité du client MCP.
 
 ## 5. Backlog de développement (ordre imposé)
 
-```
-+-----+------------------------------+--------------------------------------------+
-| Lot | Objet                        | Livrable / fin de lot                      |
-+-----+------------------------------+--------------------------------------------+
-| 0   | Bootstrap                    | venv, deps installees, arbo de code,       |
-|     |                              | chargeur de config + matrice YAML          |
-| 1   | Ingestion RAG                | loaders PDF/HTML/MD -> Document canonique  |
-|     | (doc 01)                     | + versions/is_latest + chunking ; index    |
-|     |                              | Chroma + BM25 construits                   |
-| 2   | Recherche RAG                | hybride + RRF + court-circuit REF + rerank |
-|     | (doc 01)                     | + seuil + citations ; tool answer_question |
-| 3   | Mesure E6                    | baseline dense vs avance sur questions_rag |
-|     | (doc 01 Q5, mesure_e6.md)    | ; Recall@k + MRR ; gold couverte annotes ; |
-|     |                              | resultats dans eval/results/               |
-| 4   | Text-to-SQL                  | connexion RO, get_schema, generation +     |
-|     | (doc 02)                     | validation AST + perimetre + LIMIT +       |
-|     |                              | sortie typee ; figes check_stock/          |
-|     |                              | order_status                               |
-| 5   | Gouvernance + serveur MCP    | matrice gateway+tool, journal JSONL,       |
-|     | (docs 03, 05)                | catalogue expose (FastMCP), refus types    |
-| 6   | Interface + mini guide       | UI du produit + mini guide d'acces ;       |
-|     |                              | preparation soutenance                     |
-+-----+------------------------------+--------------------------------------------+
-```
+| Lot | Objet | Livrable / fin de lot |
+| ---: | --- | --- |
+| 0 | Bootstrap | venv, deps installees, arbo de code, chargeur de config + matrice YAML |
+| 1 | Ingestion RAG (doc 01) | loaders PDF/HTML/MD -> Document canonique + versions/is_latest + chunking ; index Chroma + BM25 construits |
+| 2 | Recherche RAG (doc 01) | hybride + RRF + court-circuit REF + rerank + seuil + citations ; tool answer_question |
+| 3 | Mesure E6 (doc 01 Q5, mesure_e6.md) | baseline dense vs avance sur questions_rag ; Recall@k + MRR ; gold couverte annotes ; resultats dans eval/results/ |
+| 4 | Text-to-SQL (doc 02) | connexion RO, get_schema, generation + validation AST + perimetre + LIMIT + sortie typee ; figes check_stock/order_status |
+| 5 | Gouvernance + serveur MCP (docs 03, 05) | matrice gateway+tool, journal JSONL, catalogue expose (FastMCP), refus types |
+| 6 | Interface + mini guide | UI du produit + mini guide d'acces ; preparation soutenance |
 
 Ne pas commencer un lot avant que le precedent passe ses criteres.
 

@@ -26,21 +26,19 @@ Il remplace les bricolages actuels (bot support qui cherche mal, scripts SQL à 
 Sorabel est un distributeur B2B de matériel électrique et d'outillage
 professionnel. Son savoir vit dans deux mondes :
 
-```
-+----------------------------+        +----------------------------+
-|   Corpus documentaire      |        |        Base SQL            |
-|  fiches techniques,        |        |  produits, stocks,         |
-|  notices, procedures SAV   |        |  commandes, ventes         |
-+----------------------------+        +----------------------------+
-            |                                       |
-            v  RAG avance                           v  Text-to-SQL
-        +-----------------------------------------------------+
-        |         Sorabel Data Gateway (serveur MCP)          |
-        |     gouvernance RBAC  +  journalisation             |
-        +-----------------------------------------------------+
-            ^                    ^                     ^
-        bot Slack            IDE devs             poste commerciaux
-        (support)                                  (commercial)
+```mermaid
+flowchart TB
+    DOC["Corpus documentaire<br/>fiches techniques, notices,<br/>procedures SAV"]
+    SQL[("Base SQL<br/>produits, stocks,<br/>commandes, ventes")]
+
+    DOC -->|"RAG avance"| GW
+    SQL -->|"Text-to-SQL"| GW
+
+    GW["Sorabel Data Gateway, serveur MCP<br/>gouvernance RBAC + journalisation"]
+
+    BOT["Bot Slack<br/>profil support"] --> GW
+    IDE["IDE devs<br/>profil dev"] --> GW
+    COM["Poste commercial<br/>profil commercial"] --> GW
 ```
 
 Problèmes constatés : la recherche naïve rate les références exactes (REF-8842),
@@ -53,40 +51,24 @@ unique et gouverné.
 
 ## 3. Les 6 exigences DSI (contrat — non négociable)
 
-```
-+-----+-------------------------------------------------------------------------------+
-| Id  | Exigence                                                                      |
-+-----+-------------------------------------------------------------------------------+
-| E1  | Toute reponse documentaire cite ses sources (titre + reference + date).       |
-|     | Si le corpus ne couvre pas -> l'outil le dit, il n'invente jamais.            |
-| E2  | La recherche trouve aussi bien par reference exacte (REF-8842) que par        |
-|     | question en langage naturel (quel disjoncteur pour du triphase ?).            |
-| E3  | Tout SQL execute est lecture seule, restreint aux tables autorisees du        |
-|     | profil ; la requete generee est toujours renvoyee avec le resultat.           |
-| E4  | Un meme serveur MCP sert tous les clients ; chaque client n'accede qu'aux      |
-|     | tools, collections et tables prevus par la matrice d'acces.                    |
-| E5  | Tout appel (autorise ou refuse) est journalise ; les colonnes sensibles        |
-|     | (prix d'achat, marges) ne sortent jamais pour le profil support.               |
-| E6  | Le gain de la recherche avancee sur la recherche simple est mesure et          |
-|     | documente (preuve chiffree).                                                   |
-+-----+-------------------------------------------------------------------------------+
-```
+| Id | Exigence |
+| --- | --- |
+| E1 | Toute reponse documentaire cite ses sources (titre + reference + date). Si le corpus ne couvre pas -> l'outil le dit, il n'invente jamais. |
+| E2 | La recherche trouve aussi bien par reference exacte (REF-8842) que par question en langage naturel (quel disjoncteur pour du triphase ?). |
+| E3 | Tout SQL execute est lecture seule, restreint aux tables autorisees du profil ; la requete generee est toujours renvoyee avec le resultat. |
+| E4 | Un meme serveur MCP sert tous les clients ; chaque client n'accede qu'aux tools, collections et tables prevus par la matrice d'acces. |
+| E5 | Tout appel (autorise ou refuse) est journalise ; les colonnes sensibles (prix d'achat, marges) ne sortent jamais pour le profil support. |
+| E6 | Le gain de la recherche avancee sur la recherche simple est mesure et documente (preuve chiffree). |
 
 ---
 
 ## 4. Clients & profils d'accès (matrice — à finaliser en conception, chantier 3)
 
-```
-+-------------+------------------+---------------------------+--------------------------+
-| Profil      | Client type      | RAG (collections)         | SQL (tables / colonnes)  |
-+-------------+------------------+---------------------------+--------------------------+
-| support     | bot Slack SAV    | fiches, notices, SAV      | metier SANS prix d'achat |
-|             |                  |                           | ni marges (E5)           |
-| commercial  | poste commercial | fiches, notices, SAV      | produits, stocks,        |
-|             |                  |                           | commandes, ventes        |
-| dev         | IDE developpeurs | toutes collections        | lecture large            |
-+-------------+------------------+---------------------------+--------------------------+
-```
+| Profil | Client type | RAG (collections) | SQL (tables / colonnes) |
+| --- | --- | --- | --- |
+| support | bot Slack SAV | fiches, notices, SAV | metier SANS prix d'achat ni marges (E5) |
+| commercial | poste commercial | fiches, notices, SAV | produits, stocks, commandes, ventes |
+| dev | IDE developpeurs | toutes collections | lecture large |
 
 Statut : **PROPOSÉ** (à valider et détailler au chantier 3 : liste exacte des
 tools, collections, tables et colonnes par profil).
@@ -99,40 +81,26 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 **PROPOSÉ** (recommandation de l'expert, en attente d'accord) /
 **À TRANCHER** (option ouverte).
 
-```
-+------------------------------+--------------------------------------------+-----------+
-| Sujet                        | Orientation                                | Statut    |
-+------------------------------+--------------------------------------------+-----------+
-| Langage / runtime            | Python                                     | PROPOSE   |
-| Framework MCP                | FastMCP (SDK Python officiel)              | PROPOSE   |
-| Base SQL                     | SQLite (fichier fourni), acces read-only   | PROPOSE   |
-| RAG - embeddings             | BAAI/bge-m3 (multilingue, local)           | VALIDE    |
-| RAG - recherche              | Hybride : BM25 + dense, court-circuit REF  | VALIDE    |
-| RAG - fusion                 | RRF (Reciprocal Rank Fusion, k=60)         | VALIDE    |
-| RAG - reranking              | Cross-encoder BAAI/bge-reranker-v2-m3      | VALIDE    |
-| RAG - versions               | Indexer toutes, is_latest, citer la plus   | VALIDE    |
-|                              | recente ; ancienne sur demande explicite   |           |
-| Store vectoriel              | Chroma (dense) + bm25 applicatif           | VALIDE    |
-| RAG - eval E6                | Gold doc annotes pour les "couverte"       | VALIDE    |
-| Text-to-SQL - securite       | Defense en profondeur : connexion RO +     | VALIDE    |
-|                              | AST (sqlglot) SELECT-only + perimetre      |           |
-|                              | profil + LIMIT/timeout + SQL renvoye + log |           |
-| Text-to-SQL - catalogue      | ask_database (generique) + tools figes     | VALIDE    |
-|                              | get_product/get_stock/get_order_status     |           |
-| Text-to-SQL - sortie         | structuree {SQL | CLARIFY | HORS_SCHEMA}    | VALIDE    |
-| Text-to-SQL - LLM generation | Local coder instruct (ex. Qwen2.5-Coder),  | VALIDE    |
-|                              | repli mesure sur SQL-01..12 avant API      |           |
-| Gouvernance / RBAC           | Matrice declarative (config), appliquee aux| VALIDE    |
-|                              | 2 niveaux : gateway (tool) + tool          |           |
-|                              | (collection/table/colonne), deny-by-default|           |
-| Journalisation               | JSONL de tout appel (autorise + refuse),   | VALIDE    |
-|                              | sans valeurs sensibles, avec SQL + code    |           |
-| Catalogue de tools           | 8 tools : answer_question, search_docs,    | VALIDE    |
-|                              | get_document, list_sources, ask_database,  |           |
-|                              | get_schema, check_stock, order_status      |           |
-| Interface graphique          | A definir (livrable : lien vers une UI)    | A TRANCHER|
-+------------------------------+--------------------------------------------+-----------+
-```
+| Sujet | Orientation | Statut |  |  |
+| --- | --- | --- | --- | --- |
+| Langage / runtime | Python | PROPOSE |  |  |
+| Framework MCP | FastMCP (SDK Python officiel) | PROPOSE |  |  |
+| Base SQL | SQLite (fichier fourni), acces read-only | PROPOSE |  |  |
+| RAG - embeddings | BAAI/bge-m3 (multilingue, local) | VALIDE |  |  |
+| RAG - recherche | Hybride : BM25 + dense, court-circuit REF | VALIDE |  |  |
+| RAG - fusion | RRF (Reciprocal Rank Fusion, k=60) | VALIDE |  |  |
+| RAG - reranking | Cross-encoder BAAI/bge-reranker-v2-m3 | VALIDE |  |  |
+| RAG - versions | Indexer toutes, is_latest, citer la plus recente ; ancienne sur demande explicite | VALIDE |  |  |
+| Store vectoriel | Chroma (dense) + bm25 applicatif | VALIDE |  |  |
+| RAG - eval E6 | Gold doc annotes pour les "couverte" | VALIDE |  |  |
+| Text-to-SQL - securite | Defense en profondeur : connexion RO + AST (sqlglot) SELECT-only + perimetre profil + LIMIT/timeout + SQL renvoye + log | VALIDE |  |  |
+| Text-to-SQL - catalogue | ask_database (generique) + tools figes get_product/get_stock/get_order_status | VALIDE |  |  |
+| Text-to-SQL - sortie | structuree {SQL | CLARIFY | HORS_SCHEMA} | VALIDE |
+| Text-to-SQL - LLM generation | Local coder instruct (ex. Qwen2.5-Coder), repli mesure sur SQL-01..12 avant API | VALIDE |  |  |
+| Gouvernance / RBAC | Matrice declarative (config), appliquee aux 2 niveaux : gateway (tool) + tool (collection/table/colonne), deny-by-default | VALIDE |  |  |
+| Journalisation | JSONL de tout appel (autorise + refuse), sans valeurs sensibles, avec SQL + code | VALIDE |  |  |
+| Catalogue de tools | 8 tools : answer_question, search_docs, get_document, list_sources, ask_database, get_schema, check_stock, order_status | VALIDE |  |  |
+| Interface graphique | A definir (livrable : lien vers une UI) | A TRANCHER |  |  |
 
 Référence méthodo RBAC/MCP retenue par le pilote :
 https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-guide-for-engineering-teams-fhf
@@ -166,26 +134,28 @@ sorabel-data-gateway/
 
 ## 7. Méthode de collaboration (règles fixées par le pilote)
 
-```
-+---+-----------------------------------------------------------------------------+
-| 1 | Travail collaboratif rigoureux et exigeant. Claude = expert ; l'utilisateur |
-|   | = pilote qui donne la todolist. Ne rien demarrer sans tache.                |
-| 2 | Expliquer chaque concept avec peu de mots.                                  |
-| 3 | Brainstormer, benchmarker, proposer, s'auto-critiquer AVANT de produire.    |
-| 4 | Conception : tableaux en ASCII lisibles + schemas en Mermaid (mermaid.live).|
-| 5 | README et docs de qualite, dignes d'interet.                                |
-| 6 | L'utilisateur donne les taches une par une.                                 |
-| 7 | Sources d'appui : modalites d'eval, livrables, criteres de perf, article    |
-|   | RBAC/MCP, jeux d'eval questions_sql.jsonl / questions_rag.jsonl.            |
-+---+-----------------------------------------------------------------------------+
-```
+| # | Règle |
+| ---: | --- |
+| 1 | Travail collaboratif rigoureux et exigeant. Claude = expert, l'utilisateur = pilote qui donne la todolist. Ne rien demarrer sans tache. |
+| 2 | Expliquer chaque concept avec peu de mots. |
+| 3 | Brainstormer, benchmarker, proposer, s'auto-critiquer AVANT de produire. |
+| 4 | Conception : tableaux en Markdown lisibles + schemas en Mermaid (mermaid.live). Cette regle disait « tableaux en ASCII » jusqu'au 2026-08-28. |
+| 5 | README et docs de qualite, dignes d'interet. |
+| 6 | L'utilisateur donne les taches une par une. |
+| 7 | Sources d'appui : modalites d'eval, livrables, criteres de perf, article RBAC/MCP, jeux d'eval questions_sql.jsonl / questions_rag.jsonl. |
 
 ---
 
 ## 8. Conventions de rédaction et de code
 
 - Documentation en **français**.
-- **Tableaux en ASCII** lisibles à l'œil ; **schémas en Mermaid**.
+- **Tableaux en Markdown** (rendus comme de vraies tables dans la
+  prévisualisation et sur GitHub) ; **schémas en Mermaid**. Décision du pilote
+  du 2026-08-28, qui remplace la règle « tableaux en ASCII ». Migration
+  **terminée** : 46 tableaux, plus aucune bordure ASCII dans le dépôt.
+- Pièges de conversion, déjà rencontrés : échapper `<` (sinon `<title>` est pris
+  pour une balise) et `*` (sinon le texte entre deux `(*)` passe en italique) ;
+  recoller les mots coupés en fin de ligne (`marge_` + `pct`).
 - Toute réponse documentaire **cite ses sources** (titre + référence + date).
 - Ne jamais utiliser le caractère « tiret cadratin suivi d'espace » dans les textes.
 - Posture d'expert, rigueur, zéro approximation.
@@ -318,6 +288,32 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             docs/PASSATION_DEV.md (etat fige, decisions verrouillees, env,
             backlog par lots avec criteres de fin, garde-fous anti-emballement).
             POINT D'ENTREE DEV : ouvrir PASSATION_DEV.md en premier.
+2026-08-28  Presentation SQL et bases de donnees rendue visuelle (tache pilote).
+            3 diagrammes ajoutes : (a) schema montre a chaque profil, dans
+            02 section 3.1, qui rend E5 visible (le support ne voit pas les
+            colonnes sensibles DANS SON PROMPT, il ne les filtre pas apres) ;
+            (b) jointures canoniques, nouvelle section 1.3 de 02, avec le
+            predicat exact des 4 seuls chemins, principale source d'erreur du
+            SQL genere ; (c) erDiagram de analyse_donnees.md enrichi des
+            volumes reels, des enumerations, de la mention SENSIBLE et des deux
+            pieges des donnees (43 libelles produits dupliques, numerotation
+            des commandes a trous).
+            CONVENTION CHANGEE : tableaux en Markdown et non plus en ASCII
+            (decision du pilote). Migration complete, 46 tableaux, plus aucune
+            bordure ASCII. Le schema de contexte de la section 2 est passe en
+            Mermaid au passage.
+            Pieges rencontres et corriges, a connaitre si l'on reconvertit :
+            echapper < (sinon <title> est pris pour une balise et disparait) et
+            * (sinon le texte entre deux (*) passe en italique) ; recoller les
+            mots coupes en fin de ligne (marge_ + pct, DELETE/ + DROP) mais PAS
+            quand le / est precede d'une espace ; et surtout, un tableau a
+            LIBELLE DE GROUPE (premiere cellule vide pour une nouvelle ligne
+            logique, pas une continuation) ne se convertit pas automatiquement.
+            Deux tableaux dans ce cas ont ete reecrits a la main, section 1.3 et
+            2.2 du chantier 1, apres detection par balayage.
+            Verifie : 19/19 diagrammes valides contre Mermaid 11.12.2, la
+            version exacte de l'extension VSCode ; 46 tableaux controles
+            (colonnes coherentes, aucune ligne vide).
 ```
 
 ---

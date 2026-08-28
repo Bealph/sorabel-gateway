@@ -15,22 +15,19 @@
 
 Réconciliation des noms du brief et du chantier 2 :
 
-```
-+----------------------+------------------------+-------------------------------+
-| Nom retenu           | Ancien nom (chantier 2)| Famille                        |
-+----------------------+------------------------+-------------------------------+
-| answer_question      | answer_question        | RAG (haut niveau)              |
-| search_docs          | search_docs            | RAG (brique)                   |
-| get_document         | get_document           | RAG (brique)                   |
-| list_sources         | (nouveau)              | RAG (brique / decouverte)      |
-| ask_database         | ask_database           | SQL (generatif)                |
-| get_schema           | (nouveau)              | SQL (aide)                     |
-| check_stock          | get_stock              | SQL (fige)                     |
-| order_status         | get_order_status       | SQL (fige)                     |
-+----------------------+------------------------+-------------------------------+
+| Nom retenu | Ancien nom (chantier 2) | Famille |
+| --- | --- | --- |
+| answer_question | answer_question | RAG (haut niveau) |
+| search_docs | search_docs | RAG (brique) |
+| get_document | get_document | RAG (brique) |
+| list_sources | (nouveau) | RAG (brique / decouverte) |
+| ask_database | ask_database | SQL (generatif) |
+| get_schema | (nouveau) | SQL (aide) |
+| check_stock | get_stock | SQL (fige) |
+| order_status | get_order_status | SQL (fige) |
+
 Note : get_product (chantier 2) est absorbe par ask_database + get_schema ; on
 le reintroduira comme fige seulement si un besoin recurrent le justifie.
-```
 
 ---
 
@@ -52,16 +49,11 @@ list_sources      Brique : liste les sources disponibles (references, types,
 
 ### 1.2 À quels clients
 
-```
-+------------------+-----------------------------------------------------------+
-| Client           | Usage                                                     |
-+------------------+-----------------------------------------------------------+
-| Bot Slack support| answer_question : veut une reponse SAV prete, avec sources|
-| Poste commercial | answer_question : idem, cote commercial                   |
-| IDE developpeurs | briques (search_docs, get_document, list_sources) : veut  |
-|                  | chercher SANS generer, composer sa propre logique         |
-+------------------+-----------------------------------------------------------+
-```
+| Client | Usage |
+| --- | --- |
+| Bot Slack support | answer_question : veut une reponse SAV prete, avec sources |
+| Poste commercial | answer_question : idem, cote commercial |
+| IDE developpeurs | briques (search_docs, get_document, list_sources) : veut chercher SANS generer, composer sa propre logique |
 
 Raison : le haut niveau sert les clients qui veulent une réponse clé en main ;
 les briques servent les clients qui pilotent le pipeline (l'IDE qui « cherche
@@ -76,21 +68,12 @@ fonctionnent séparément).
 La description MCP de chaque tool doit dire QUAND l'employer, l'entité attendue,
 et ce qu'il renvoie ou non. C'est ce qui guide le LLM appelant.
 
-```
-+--------------+------------------------------------------------------------------+
-| Tool         | Description orientee "quand l'utiliser"                          |
-+--------------+------------------------------------------------------------------+
-| ask_database | "Repond a une question metier analytique ou ad hoc en generant   |
-|              | du SQL lecture seule (filtre, agregat, jointure). A utiliser      |
-|              | quand aucun tool fige ne couvre le besoin."                       |
-| get_schema   | "Retourne les tables et colonnes AUTORISEES pour ce client. Ne    |
-|              | renvoie aucune donnee. A appeler pour cadrer une question avant   |
-|              | ask_database."                                                    |
-| check_stock  | "Retourne le stock par entrepot d'UNE reference precise (ex.      |
-|              | REF-8842). A utiliser des qu'on dispose de la reference exacte."  |
-| order_status | "Retourne le statut d'UNE commande identifiee (ex. CMD-2026-0042)."|
-+--------------+------------------------------------------------------------------+
-```
+| Tool | Description orientee "quand l'utiliser" |
+| --- | --- |
+| ask_database | "Repond a une question metier analytique ou ad hoc en generant du SQL lecture seule (filtre, agregat, jointure). A utiliser quand aucun tool fige ne couvre le besoin." |
+| get_schema | "Retourne les tables et colonnes AUTORISEES pour ce client. Ne renvoie aucune donnee. A appeler pour cadrer une question avant ask_database." |
+| check_stock | "Retourne le stock par entrepot d'UNE reference precise (ex. REF-8842). A utiliser des qu'on dispose de la reference exacte." |
+| order_status | "Retourne le statut d'UNE commande identifiee (ex. CMD-2026-0042)." |
 
 Arbre de décision suggéré (donné au client dans le mini guide d'accès) :
 
@@ -116,20 +99,11 @@ lookups exacts et le repli vers `ask_database` pour le reste.
 
 ### 3.1 Où l'appliquer : aux DEUX niveaux (défense en profondeur)
 
-```
-+---------------------+-----------------------------------------------------------+
-| Niveau              | Responsabilite                                            |
-+---------------------+-----------------------------------------------------------+
-| Entree serveur      | Authentifier le client -> resoudre le profil. Verifier    |
-| (gateway)           | l'autorisation au niveau TOOL (ce profil peut-il appeler  |
-|                     | ce tool ?). Refus uniforme avant toute logique metier.    |
-|                     | Journalisation centrale.                                  |
-| Dans chaque tool    | Appliquer le perimetre RESSOURCE que seul le tool connait |
-|                     | : collections autorisees (RAG), tables/colonnes (SQL, cf. |
-|                     | pile de gardes chantier 2). Ex. quelles colonnes le SQL   |
-|                     | genere touche reellement.                                 |
-+---------------------+-----------------------------------------------------------+
-```
+| Niveau | Responsabilite |
+| --- | --- |
+| Entree serveur | Authentifier le client -> resoudre le profil. Verifier |
+| (gateway) | l'autorisation au niveau TOOL (ce profil peut-il appeler ce tool ?). Refus uniforme avant toute logique metier. Journalisation centrale. |
+| Dans chaque tool | Appliquer le perimetre RESSOURCE que seul le tool connait : collections autorisees (RAG), tables/colonnes (SQL, cf. pile de gardes chantier 2). Ex. quelles colonnes le SQL genere touche reellement. |
 
 Pourquoi les deux : la gateway offre un point de contrôle uniforme et empêche
 même l'appel d'un tool interdit (E4) ; mais elle ne peut pas savoir quelles
@@ -155,49 +129,38 @@ flowchart TD
 
 ### 3.2 Matrice client x tool
 
-```
-+------------------+---------+------------+----------+
-| Tool             | support | commercial | dev/IDE  |
-+------------------+---------+------------+----------+
-| answer_question  |   oui   |    oui     |   oui    |
-| search_docs      |    -    |     -      |   oui    |  (brique)
-| get_document     |    -    |     -      |   oui    |  (brique)
-| list_sources     |    -    |     -      |   oui    |  (brique)
-| ask_database     |  oui*   |    oui     |   oui    |  (* colonnes sensibles bloquees)
-| get_schema       |  oui*   |    oui     |   oui    |  (* schema filtre au profil)
-| check_stock      |   oui   |    oui     |   oui    |
-| order_status     |   oui   |    oui     |   oui    |
-+------------------+---------+------------+----------+
-Le refus au niveau tool (E4) est demontre par les briques RAG, reservees a
-dev/IDE : un support qui appelle search_docs est refuse.
-```
+| Tool | support | commercial | dev/IDE | Note |
+| --- | :---: | :---: | :---: | --- |
+| answer_question | oui | oui | oui | |
+| search_docs | - | - | oui | brique RAG |
+| get_document | - | - | oui | brique RAG |
+| list_sources | - | - | oui | brique RAG |
+| ask_database | oui | oui | oui | support : colonnes sensibles bloquees |
+| get_schema | oui | oui | oui | support : schema filtre au profil |
+| check_stock | oui | oui | oui | |
+| order_status | oui | oui | oui | |
+
+Le refus au niveau tool (E4) est démontré par les briques RAG, réservées à
+dev/IDE : un support qui appelle `search_docs` est refusé.
 
 ### 3.3 Matrice client x collection (RAG)
 
-```
-+------------+---------+------------+----------+
-| Collection | support | commercial | dev/IDE  |
-+------------+---------+------------+----------+
-| fiches     |   oui   |    oui     |   oui    |
-| notices    |   oui   |    oui     |   oui    |
-| sav        |   oui   |    oui     |   oui    |
-| notes      |    -    |    oui     |   oui    |  (sensibles : politique-tarifaire,
-+------------+---------+------------+----------+   reunion-achat ; jamais support)
-```
+| Collection | support | commercial | dev/IDE | Note |
+| --- | :---: | :---: | :---: | --- |
+| fiches | oui | oui | oui | |
+| notices | oui | oui | oui | |
+| sav | oui | oui | oui | |
+| notes | - | oui | oui | sensibles : politique-tarifaire, reunion-achat. Jamais pour le support |
 
 ### 3.4 Matrice client x table / colonnes (SQL) — rappel chantier 2
 
-```
-+-----------+---------+---------------------------------+-----------------------+
-| Table     | support | colonnes bloquees (support)     | commercial / dev      |
-+-----------+---------+---------------------------------+-----------------------+
-| clients   |  oui    | -                               | toutes                |
-| produits  |  oui    | prix_achat_ht, marge_pct        | toutes                |
-| stocks    |  oui    | -                               | toutes                |
-| commandes |  oui    | -                               | toutes                |
-| ventes    |  oui    | marge_ht                        | toutes                |
-+-----------+---------+---------------------------------+-----------------------+
-```
+| Table | support | colonnes bloquees (support) | commercial / dev |
+| --- | --- | --- | --- |
+| clients | oui | - | toutes |
+| produits | oui | prix_achat_ht, marge_pct | toutes |
+| stocks | oui | - | toutes |
+| commandes | oui | - | toutes |
+| ventes | oui | marge_ht | toutes |
 
 ### 3.5 Source de vérité : configuration déclarative
 
@@ -239,19 +202,15 @@ profils:
 
 Codes normalisés :
 
-```
-+--------------------------+-----------------------------------------------+
-| Code                     | Cas                                           |
-+--------------------------+-----------------------------------------------+
-| UNAUTHORIZED_TOOL        | tool non autorise pour le profil (E4)         |
-| UNAUTHORIZED_COLLECTION  | collection RAG interdite (ex. notes/support)  |
-| FORBIDDEN_COLUMN         | colonne sensible demandee (ex. marge/support) |
-| READ_ONLY_VIOLATION      | SQL en ecriture (E3)                          |
-| OUT_OF_SCHEMA            | question hors schema SQL                       |
-| OUT_OF_CORPUS           | question non couverte par le corpus (E1)       |
-| AMBIGUOUS               | critere ambigu, precision requise              |
-+--------------------------+-----------------------------------------------+
-```
+| Code | Cas |
+| --- | --- |
+| UNAUTHORIZED_TOOL | tool non autorise pour le profil (E4) |
+| UNAUTHORIZED_COLLECTION | collection RAG interdite (ex. notes/support) |
+| FORBIDDEN_COLUMN | colonne sensible demandee (ex. marge/support) |
+| READ_ONLY_VIOLATION | SQL en ecriture (E3) |
+| OUT_OF_SCHEMA | question hors schema SQL |
+| OUT_OF_CORPUS | question non couverte par le corpus (E1) |
+| AMBIGUOUS | critere ambigu, precision requise |
 
 ### 4.2 Journalisation : tout appel, autorisé ou refusé (E5)
 
@@ -292,23 +251,15 @@ Principe : la sortie de chaque tool est **typée par `status`**. Le client ne
 traite comme réponse QUE `status == "ok"` ; tout le reste est un signal de
 contrôle à restituer honnêtement.
 
-```
-+------------------+-------------------------------+-------------------------------+
-| status           | Cas                           | Ce que le client fait         |
-+------------------+-------------------------------+-------------------------------+
-| ok               | reponse valide                | afficher answer/rows + sources|
-| out_of_corpus    | RAG ne couvre pas (E1)        | dire "non trouve dans la doc",|
-|                  |                               | ne rien inventer              |
-| out_of_schema    | SQL hors donnees (E3)         | dire "hors des donnees dispo" |
-| not_found        | entite par identifiant precis | dire "identifiant valide mais |
-|                  | introuvable (SQL valide)      | aucune donnee", pas une       |
-|                  |                               | fausse reponse vide           |
-| clarify          | question ambigue (critere)    | demander la precision (options)|
-| refused          | non autorise / colonne / RO   | message d'acces refuse, pas   |
-|                  |                               | de nouvelle tentative aveugle |
-| error            | panne technique               | erreur technique, reessayer   |
-+------------------+-------------------------------+-------------------------------+
-```
+| status | Cas | Ce que le client fait |
+| --- | --- | --- |
+| ok | reponse valide | afficher answer/rows + sources |
+| out_of_corpus | RAG ne couvre pas (E1) | dire "non trouve dans la doc", ne rien inventer |
+| out_of_schema | SQL hors donnees (E3) | dire "hors des donnees dispo" |
+| not_found | entite par identifiant precis introuvable (SQL valide) | dire "identifiant valide mais aucune donnee", pas une fausse reponse vide |
+| clarify | question ambigue (critere) | demander la precision (options) |
+| refused | non autorise / colonne / RO | message d'acces refuse, pas de nouvelle tentative aveugle |
+| error | panne technique | erreur technique, reessayer |
 
 Recommandation MCP : renvoyer les refus de politique et les cas "pas de
 résultat" (hors corpus/schéma) comme un résultat de tool normal portant un
@@ -326,18 +277,14 @@ deviennent pas de fausses réponses.
 
 ## Correspondance avec les tests d'acceptation MCP
 
-```
-+-----------------------------------------------+-------------------------------+
-| Test d'acceptation                            | Mecanisme                     |
-+-----------------------------------------------+-------------------------------+
-| profil autorise -> acces borne aux tools /    | matrice + double application  |
-| collections / tables prevus                   | (gateway + tool)              |
-| appel non autorise -> refus clair + journal   | contrat de refus + JSONL      |
-| search_docs puis get_document (sans generer)  | briques RAG (dev/IDE)         |
-| session de demo -> journal = tous les appels  | journalisation autorises +    |
-| (autorises + refuses)                         | refuses                       |
-+-----------------------------------------------+-------------------------------+
-```
+| Test d'acceptation | Mecanisme |
+| --- | --- |
+| profil autorise -> acces borne aux tools / | matrice + double application |
+| collections / tables prevus | (gateway + tool) |
+| appel non autorise -> refus clair + journal | contrat de refus + JSONL |
+| search_docs puis get_document (sans generer) | briques RAG (dev/IDE) |
+| session de demo -> journal = tous les appels | journalisation autorises + |
+| (autorises + refuses) | refuses |
 
 ---
 

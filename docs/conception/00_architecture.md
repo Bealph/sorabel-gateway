@@ -43,25 +43,16 @@ flowchart TB
 
 ## Légende et correspondance avec les exigences
 
-```
-+---------------------------+-------------------------------------------+---------+
-| Bloc                      | Role                                      | Exigence|
-+---------------------------+-------------------------------------------+---------+
-| Interface MCP             | expose le catalogue de tools (un serveur  | E4      |
-|                           | pour tous les clients)                    |         |
-| Identite + matrice RBAC   | resout le profil, borne l'acces aux       | E4, E5  |
-|                           | tools / collections / tables / colonnes   |         |
-| Moteur RAG                | recherche hybride + reranking, reponse    | E1, E2, |
-|                           | ancree + sources citees                   | E6      |
-| Moteur Text-to-SQL        | generation SQL + gardes lecture seule,    | E3, E5  |
-|                           | SQL renvoye avec le resultat              |         |
-| Journal JSONL             | trace tout appel (autorise + refuse),     | E5      |
-|                           | sans valeurs sensibles                    |         |
-| Index documentaire        | chunks + embeddings + BM25 (lu par le RAG)| E2      |
-| Base SQL (read-only)      | donnees metier, accedee en lecture seule  | E3      |
-| Ingestion (hors ligne)    | normalise et indexe le corpus en amont    | E1, E2  |
-+---------------------------+-------------------------------------------+---------+
-```
+| Bloc | Role | Exigence |
+| --- | --- | --- |
+| Interface MCP | expose le catalogue de tools (un serveur pour tous les clients) | E4 |
+| Identite + matrice RBAC | resout le profil, borne l'acces aux tools / collections / tables / colonnes | E4, E5 |
+| Moteur RAG | recherche hybride + reranking, reponse ancree + sources citees | E1, E2, E6 |
+| Moteur Text-to-SQL | generation SQL + gardes lecture seule, SQL renvoye avec le resultat | E3, E5 |
+| Journal JSONL | trace tout appel (autorise + refuse), sans valeurs sensibles | E5 |
+| Index documentaire | chunks + embeddings + BM25 (lu par le RAG) | E2 |
+| Base SQL (read-only) | donnees metier, accedee en lecture seule | E3 |
+| Ingestion (hors ligne) | normalise et indexe le corpus en amont | E1, E2 |
 
 ## Points de lecture
 

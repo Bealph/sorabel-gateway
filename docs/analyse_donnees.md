@@ -11,22 +11,15 @@
 
 Six tables métier (plus `sqlite_sequence`, technique). Volumétrie et schéma :
 
-```
-+-----------+--------+----------------------------------------------------------------+
-| Table     | Lignes | Colonnes                                                       |
-+-----------+--------+----------------------------------------------------------------+
-| clients   |     60 | id[PK], raison_sociale, segment, ville, email                  |
-| produits  |    120 | ref[PK], nom, categorie, fabricant, unite, prix_vente_ht,      |
-|           |        | prix_achat_ht(*), marge_pct(*), actif                          |
-| stocks    |    312 | id[PK], ref[FK->produits.ref], entrepot, quantite,             |
-|           |        | seuil_reappro                                                  |
-| commandes |    340 | id[PK], client_id[FK->clients.id], date_commande, statut,      |
-|           |        | montant_ht                                                     |
-| ventes    |    993 | id[PK], commande_id[FK->commandes.id], ref[FK->produits.ref],  |
-|           |        | quantite, prix_unitaire_ht, remise_pct, marge_ht(*)            |
-+-----------+--------+----------------------------------------------------------------+
+| Table | Lignes | Colonnes |
+| --- | ---: | --- |
+| clients | 60 | id[PK], raison_sociale, segment, ville, email |
+| produits | 120 | ref[PK], nom, categorie, fabricant, unite, prix_vente_ht, prix_achat_ht(\*), marge_pct(\*), actif |
+| stocks | 312 | id[PK], ref[FK->produits.ref], entrepot, quantite, seuil_reappro |
+| commandes | 340 | id[PK], client_id[FK->clients.id], date_commande, statut, montant_ht |
+| ventes | 993 | id[PK], commande_id[FK->commandes.id], ref[FK->produits.ref], quantite, prix_unitaire_ht, remise_pct, marge_ht(\*) |
+
 (*) colonne sensible : ne doit jamais sortir pour le profil support (E5).
-```
 
 Modèle relationnel :
 
@@ -38,45 +31,45 @@ erDiagram
     produits  ||--o{ stocks    : "stocke"
 
     clients {
-      TEXT id PK
+      TEXT id PK "60 lignes"
       TEXT raison_sociale
-      TEXT segment
-      TEXT ville
+      TEXT segment "PME, artisan, collectivite, grand compte"
+      TEXT ville "15 villes"
       TEXT email
     }
     produits {
-      TEXT ref PK
-      TEXT nom
-      TEXT categorie
-      TEXT fabricant
-      TEXT unite
-      REAL prix_vente_ht
-      REAL prix_achat_ht "sensible"
-      REAL marge_pct "sensible"
+      TEXT ref PK "120 lignes"
+      TEXT nom "43 libelles sont dupliques"
+      TEXT categorie "9 valeurs"
+      TEXT fabricant "11 valeurs"
+      TEXT unite "piece, conditionnement"
+      REAL prix_vente_ht "public, visible par tous"
+      REAL prix_achat_ht "SENSIBLE, jamais pour le support"
+      REAL marge_pct "SENSIBLE, jamais pour le support"
       INT  actif
     }
     commandes {
-      TEXT id PK
+      TEXT id PK "340 lignes, numerotation a trous"
       TEXT client_id FK
-      TEXT date_commande
-      TEXT statut
+      TEXT date_commande "2025-09-04 a 2026-08-19"
+      TEXT statut "5 valeurs"
       REAL montant_ht
     }
     stocks {
-      INT  id PK
+      INT  id PK "312 lignes"
       TEXT ref FK
-      TEXT entrepot
+      TEXT entrepot "LILLE, LYON, NANTES"
       INT  quantite
       INT  seuil_reappro
     }
     ventes {
-      INT  id PK
+      INT  id PK "993 lignes"
       TEXT commande_id FK
       TEXT ref FK
       INT  quantite
       REAL prix_unitaire_ht
       REAL remise_pct
-      REAL marge_ht "sensible"
+      REAL marge_ht "SENSIBLE, jamais pour le support"
     }
 ```
 
@@ -94,18 +87,13 @@ Observations utiles au Text-to-SQL :
 
 Correspondance avec le jeu d'éval SQL :
 
-```
-+------------------------+-----------------------------------------------------------+
-| Type de question       | Comportement attendu                                      |
-+------------------------+-----------------------------------------------------------+
-| metier (SQL-01..12)    | requete SELECT correcte + SQL renvoye                     |
-| ecriture (SQL-13..16)  | refus (lecture seule) + journalisation                    |
-| table_interdite        | refus par la matrice (marges/prix d'achat), profil support|
-|  (SQL-17..20)          |                                                           |
-| hors_schema (SQL-21,22)| refus clair, aucun SQL hallucine                          |
-| ambigue (SQL-23,24)    | demande de precision, pas de SQL devine                   |
-+------------------------+-----------------------------------------------------------+
-```
+| Type de question | Comportement attendu |
+| --- | --- |
+| metier (SQL-01..12) | requete SELECT correcte + SQL renvoye |
+| ecriture (SQL-13..16) | refus (lecture seule) + journalisation |
+| table_interdite (SQL-17..20) | refus par la matrice (marges/prix d'achat), profil support |
+| hors_schema (SQL-21,22) | refus clair, aucun SQL hallucine |
+| ambigue (SQL-23,24) | demande de precision, pas de SQL devine |
 
 ---
 
@@ -113,21 +101,12 @@ Correspondance avec le jeu d'éval SQL :
 
 Quatre familles de documents, chacune avec ses métadonnées de citation (E1).
 
-```
-+-----------+--------+-------------------------------------------+------------------+
-| Dossier   | Format | Metadonnees (source de la citation E1)     | Versions vues    |
-+-----------+--------+-------------------------------------------+------------------+
-| fiches/   | PDF    | titre, reference, version, date,          | v1.0 et v2.1     |
-|           |        | fabricant, categorie, prix public HT,     |                  |
-|           |        | references associees                      |                  |
-| notices/  | PDF    | titre, reference, version, date ;         | v1.0 et v1.1     |
-|           |        | sections securite/installation/service    |                  |
-| sav/      | HTML   | <title>, <meta version>, <meta date>,     | v1.0 et v2.0     |
-|           |        | <meta type=procedure_sav>                 |                  |
-| notes/    | MD     | frontmatter YAML : titre, date, auteur,   | version unique   |
-|           |        | type=note_interne, version                |                  |
-+-----------+--------+-------------------------------------------+------------------+
-```
+| Dossier | Format | Metadonnees (source de la citation E1) | Versions vues |
+| --- | --- | --- | --- |
+| fiches/ | PDF | titre, reference, version, date, fabricant, categorie, prix public HT, references associees | v1.0 et v2.1 |
+| notices/ | PDF | titre, reference, version, date ; sections securite/installation/service | v1.0 et v1.1 |
+| sav/ | HTML | &lt;title>, &lt;meta version>, &lt;meta date>, &lt;meta type=procedure_sav> | v1.0 et v2.0 |
+| notes/ | MD | frontmatter YAML : titre, date, auteur, type=note_interne, version | version unique |
 
 Sous-types des notes internes (déduits des noms de fichiers) :
 `reunion-achat`, `alerte-qualite`, `politique-tarifaire`, `retour-terrain`,
@@ -135,16 +114,11 @@ Sous-types des notes internes (déduits des noms de fichiers) :
 
 Correspondance avec le jeu d'éval RAG :
 
-```
-+----------------------------+-------------------------------------------------------+
-| Type de question           | Attendu                                               |
-+----------------------------+-------------------------------------------------------+
-| reference_exacte (01..08)  | la fiche de la reference remonte en tete (E2)         |
-| couverte (09..22)          | reponse + sources ; attendu_type = fiche_technique /  |
-|                            | notice / procedure_sav                                |
-| hors_corpus (23..30)       | abstention : l'outil signale l'absence (E1)           |
-+----------------------------+-------------------------------------------------------+
-```
+| Type de question | Attendu |
+| --- | --- |
+| reference_exacte (01..08) | la fiche de la reference remonte en tete (E2) |
+| couverte (09..22) | reponse + sources ; attendu_type = fiche_technique / notice / procedure_sav |
+| hors_corpus (23..30) | abstention : l'outil signale l'absence (E1) |
 
 Note : `attendu_type` de l'éval pointe vers `fiche_technique`, `notice`,
 `procedure_sav`. Le type `note_interne` n'est pas ciblé par l'éval mais existe
@@ -156,19 +130,10 @@ dans le corpus, et porte l'essentiel du contenu sensible (voir §3).
 
 La sensibilité est présente sur **deux plans**, pas seulement en SQL :
 
-```
-+--------------------+------------------------------------------+---------------------+
-| Plan               | Element sensible                          | Regle (profil       |
-|                    |                                          | support)            |
-+--------------------+------------------------------------------+---------------------+
-| SQL (colonnes)     | produits.prix_achat_ht, produits.marge_  | jamais renvoyees    |
-|                    | pct, ventes.marge_ht                      |                     |
-| RAG (collections)  | notes/ (politique-tarifaire, reunion-    | non accessibles     |
-|                    | achat) : marges cibles, prix, negos      |                     |
-|                    | fournisseurs, mention "Diffusion         |                     |
-|                    | restreinte"                              |                     |
-+--------------------+------------------------------------------+---------------------+
-```
+| Plan | Element sensible | Regle (profil support) |
+| --- | --- | --- |
+| SQL (colonnes) | produits.prix_achat_ht, produits.marge_pct, ventes.marge_ht | jamais renvoyees |
+| RAG (collections) | notes/ (politique-tarifaire, reunion-achat) : marges cibles, prix, negos fournisseurs, mention "Diffusion restreinte" | non accessibles |
 
 Conclusion : la matrice d'accès doit gouverner **tools + collections + tables +
 colonnes**. C'est un point de conception à porter au chantier 3.

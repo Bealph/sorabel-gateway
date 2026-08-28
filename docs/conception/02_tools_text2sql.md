@@ -66,22 +66,41 @@ colonnes autorisées pour le profil. Le support ne voit même pas exister
 On donne les valeurs des colonnes à faible cardinalité, pour que le modèle
 emploie les bons littéraux (éviter `statut = 'livrée'` au lieu de `'livree'`).
 
-```
-+-----------------------+----------------------------------------------------------+
-| Colonne               | Valeurs                                                  |
-+-----------------------+----------------------------------------------------------+
-| commandes.statut      | annulee, en_attente, expediee, livree, preparee          |
-| stocks.entrepot       | LILLE, LYON, NANTES                                      |
-| clients.segment       | PME, artisan, collectivité, grand compte                 |
-| produits.unite        | piece, conditionnement                                   |
-| produits.categorie    | Cablage, Distribution, EPI, Mesure, Outillage a main,    |
-|                       | Outillage electroportatif, Protection electrique,        |
-|                       | Visserie, Eclairage                                      |
-| plage date_commande   | 2025-09-04 a 2026-08-19 (donc "avril" = 2026-04)         |
-+-----------------------+----------------------------------------------------------+
+| Colonne | Valeurs |
+| --- | --- |
+| commandes.statut | annulee, en_attente, expediee, livree, preparee |
+| stocks.entrepot | LILLE, LYON, NANTES |
+| clients.segment | PME, artisan, collectivité, grand compte |
+| produits.unite | piece, conditionnement |
+| produits.categorie | Cablage, Distribution, EPI, Mesure, Outillage a main, Outillage electroportatif, Protection electrique, Visserie, Eclairage |
+| plage date_commande | 2025-09-04 a 2026-08-19 (donc "avril" = 2026-04) |
+
+### 1.3 Les jointures canoniques
+
+C'est la principale source d'erreur d'un modèle qui génère du SQL : relier deux
+tables par la mauvaise clé. Les quatre seuls chemins possibles dans ce schéma,
+avec leur prédicat exact :
+
+```mermaid
+flowchart LR
+    VE["ventes<br/>commande_id, ref"]
+    CM["commandes<br/>id, client_id"]
+    CL["clients<br/>id"]
+    PR["produits<br/>ref"]
+    ST["stocks<br/>ref"]
+
+    VE -->|"ventes.commande_id = commandes.id"| CM
+    CM -->|"commandes.client_id = clients.id"| CL
+    VE -->|"ventes.ref = produits.ref"| PR
+    ST -->|"stocks.ref = produits.ref"| PR
 ```
 
-### 1.3 Exemples de requêtes (few-shot, dialecte SQLite)
+Deux lectures utiles. Pour remonter d'une vente jusqu'au client, il faut
+**deux** jointures, `ventes` puis `commandes` puis `clients` : il n'existe pas
+de lien direct. Et `ref` est la clé qui relie le monde SQL au corpus
+documentaire, où elle est aussi la métadonnée de filtrage exact (E2).
+
+### 1.4 Exemples de requêtes (few-shot, dialecte SQLite)
 
 Quelques paires question -> SQL représentatives ancrent les patterns (comptage,
 filtre par mois, jointure, agrégat, top-N) :
@@ -99,7 +118,7 @@ SQL: SELECT ref, quantite, seuil_reappro FROM stocks
      WHERE entrepot = 'LYON' AND quantite < seuil_reappro;
 ```
 
-### 1.4 Consignes système
+### 1.5 Consignes système
 
 ```
 - Dialecte SQLite uniquement. Une seule instruction SELECT.
@@ -118,23 +137,14 @@ Une seule barrière ne suffit pas : chaque couche couvre un mode de défaillance
 différent. La question du brief (« une seule barrière suffit-elle ? ») appelle
 un non argumenté.
 
-```
-+--------+-------------------------------+-----------------------------------+---------+
-| Couche | Barriere                      | Ce qu'elle bloque                 | Exigence|
-+--------+-------------------------------+-----------------------------------+---------+
-| 1      | Connexion READ-ONLY           | TOUTE ecriture, meme si les       | E3      |
-|        | (SQLite mode=ro / query_only) | couches hautes sont contournees   |         |
-| 2      | Validation AST (sqlglot)      | non-SELECT (INSERT/UPDATE/DELETE/ | E3      |
-|        |                               | DROP/ALTER/PRAGMA/ATTACH),        |         |
-|        |                               | instructions multiples (; empile) |         |
-| 3      | Perimetre tables/colonnes     | acces hors matrice du profil      | E4/E5   |
-|        | (extraction AST + whitelist)  | (prix_achat_ht, marge_pct, ...)   |         |
-| 4      | LIMIT par defaut + timeout    | requetes lourdes, produit         | E3      |
-|        |                               | cartesien, blocage de la base     |         |
-| 5      | Transparence : SQL renvoye    | (pas une barriere, une exigence)  | E3      |
-| 6      | Journalisation                | trace tout appel, autorise/refuse | E5      |
-+--------+-------------------------------+-----------------------------------+---------+
-```
+| Couche | Barriere | Ce qu'elle bloque | Exigence |
+| ---: | --- | --- | --- |
+| 1 | Connexion READ-ONLY (SQLite mode=ro / query_only) | TOUTE ecriture, meme si les couches hautes sont contournees | E3 |
+| 2 | Validation AST (sqlglot) | non-SELECT (INSERT/UPDATE/DELETE/DROP/ALTER/PRAGMA/ATTACH), instructions multiples (; empile) | E3 |
+| 3 | Perimetre tables/colonnes (extraction AST + whitelist) | acces hors matrice du profil (prix_achat_ht, marge_pct, ...) | E4/E5 |
+| 4 | LIMIT par defaut + timeout | requetes lourdes, produit cartesien, blocage de la base | E3 |
+| 5 | Transparence : SQL renvoye | (pas une barriere, une exigence) | E3 |
+| 6 | Journalisation | trace tout appel, autorise/refuse | E5 |
 
 Ordre de raisonnement :
 
@@ -165,21 +175,49 @@ couche 4 (LIMIT + timeout) et la couche 1 (aucune écriture possible).
 
 ### 3.1 Matrice d'accès SQL (préfigure le chantier 3)
 
-```
-+------------+---------+--------------------------------+--------+-----------+--------------------------+
-| Profil     | clients | produits                       | stocks | commandes | ventes                   |
-+------------+---------+--------------------------------+--------+-----------+--------------------------+
-| commercial | oui     | toutes colonnes                | oui    | oui       | toutes colonnes          |
-|            |         | (dont prix_achat_ht, marge_pct)|        |           | (dont marge_ht)          |
-| support    | oui     | SAUF prix_achat_ht, marge_pct  | oui    | oui       | SAUF marge_ht            |
-| dev        | oui     | toutes colonnes                | oui    | oui       | toutes colonnes          |
-+------------+---------+--------------------------------+--------+-----------+--------------------------+
+| Profil | clients | produits | stocks | commandes | ventes |
+| --- | --- | --- | --- | --- | --- |
+| commercial | oui | toutes colonnes (dont prix_achat_ht, marge_pct) | oui | oui | toutes colonnes (dont marge_ht) |
+| support | oui | SAUF prix_achat_ht, marge_pct | oui | oui | SAUF marge_ht |
+| dev | oui | toutes colonnes | oui | oui | toutes colonnes |
+
 Colonnes sensibles (jamais pour support) : produits.prix_achat_ht,
 produits.marge_pct, ventes.marge_ht.
-```
 
 Note : le profil commercial a bien accès aux marges (l'éval SQL-11, marge de mai,
 est de profil commercial et doit passer). Seul le support en est privé.
+
+Ce que chaque profil reçoit **dans son prompt**, et non ce qui est filtré après
+coup. Le support ne voit pas exister les colonnes sensibles :
+
+```mermaid
+flowchart LR
+    subgraph CD["Profils commercial et dev"]
+        C1["clients<br/>5 colonnes"]
+        C2["produits<br/>9 colonnes"]
+        C3["stocks<br/>5 colonnes"]
+        C4["commandes<br/>5 colonnes"]
+        C5["ventes<br/>7 colonnes"]
+    end
+
+    subgraph SUP["Profil support"]
+        S1["clients<br/>5 colonnes"]
+        S2["produits<br/>7 colonnes<br/>sans prix_achat_ht<br/>sans marge_pct"]
+        S3["stocks<br/>5 colonnes"]
+        S4["commandes<br/>5 colonnes"]
+        S5["ventes<br/>6 colonnes<br/>sans marge_ht"]
+    end
+
+    C2 -.->|"2 colonnes retirees"| S2
+    C5 -.->|"1 colonne retiree"| S5
+
+    classDef reduit fill:#fff4e6,stroke:#e8590c,color:#7c2d12
+    class S2,S5 reduit
+```
+
+Trois colonnes sur 31 disparaissent, dans deux tables sur cinq. Le reste est
+identique pour les trois profils : la restriction porte sur les colonnes,
+jamais sur les tables. Le support garde `prix_vente_ht`, qui est public.
 
 ### 3.2 Application en deux temps
 
@@ -206,31 +244,21 @@ surtout sur des jointures.
 Certains besoins récurrents et bien définis gagnent à être des requêtes
 paramétrées écrites à la main plutôt que du SQL généré.
 
-```
-+---------------------------+----------------------------------------+---------------+
-| Tool fige (parametre)     | Besoin couvert                          | Ref eval      |
-+---------------------------+----------------------------------------+---------------+
-| get_product(ref)          | fiche produit, prix de vente            | SQL-10        |
-| get_stock(ref)            | stock par entrepot d'une reference      | SQL-02        |
-| get_order_status(cmd_id)  | statut d'une commande                   | SQL-08        |
-+---------------------------+----------------------------------------+---------------+
-```
+| Tool fige (parametre) | Besoin couvert | Ref eval |
+| --- | --- | --- |
+| get_product(ref) | fiche produit, prix de vente | SQL-10 |
+| get_stock(ref) | stock par entrepot d'une reference | SQL-02 |
+| get_order_status(cmd_id) | statut d'une commande | SQL-08 |
 
 Comparaison des deux approches :
 
-```
-+----------------------+--------------------------------+-------------------------------+
-| Critere              | Tools figes (parametres)       | SQL genere (ask_database)     |
-+----------------------+--------------------------------+-------------------------------+
-| Exactitude           | garantie (requete ecrite,      | variable (depend du modele)   |
-|                      | testee)                        |                               |
-| Securite             | maximale (pas d'injection ni   | forte MAIS via la pile de     |
-|                      | de generation)                 | gardes (Q2)                   |
-| Couverture           | limitee aux cas prevus         | ouverte, ad hoc, analytique   |
-| Cout / latence       | faible (pas d'appel LLM)       | superieur (appel LLM)         |
-| Maintenance          | code a ecrire par cas          | generique                     |
-+----------------------+--------------------------------+-------------------------------+
-```
+| Critere | Tools figes (parametres) | SQL genere (ask_database) |
+| --- | --- | --- |
+| Exactitude | garantie (requete ecrite, testee) | variable (depend du modele) |
+| Securite | maximale (pas d'injection ni de generation) | forte MAIS via la pile de gardes (Q2) |
+| Couverture | limitee aux cas prevus | ouverte, ad hoc, analytique |
+| Cout / latence | faible (pas d'appel LLM) | superieur (appel LLM) |
+| Maintenance | code a ecrire par cas | generique |
 
 Principe retenu : un **routage**. Si la question correspond à une intention connue
 (entité identifiable : une `ref`, un id de commande), on emploie le tool figé
@@ -249,18 +277,11 @@ remplacement.
 
 Le modèle renvoie une sortie **structurée** parmi trois cas, jamais du SQL deviné :
 
-```
-+-------------+-----------------------------------+--------------------------------+
-| Cas         | Exemple (eval)                    | Comportement                   |
-+-------------+-----------------------------------+--------------------------------+
-| SQL         | "combien de commandes en avril ?" | requete + resultat + SQL       |
-| CLARIFY     | "quel est le meilleur client ?"   | demande de precision : par     |
-|             | (SQL-23), "ca se vend bien ?"     | chiffre d'affaires ? nombre de |
-|             | (SQL-24)                          | commandes ? marge ?            |
-| HORS_SCHEMA | "meteo a Lille demain ?" (SQL-21),| refus clair, aucun SQL genere  |
-|             | "qui est le PDG ?" (SQL-22)       |                                |
-+-------------+-----------------------------------+--------------------------------+
-```
+| Cas | Exemple (eval) | Comportement |
+| --- | --- | --- |
+| SQL | "combien de commandes en avril ?" | requete + resultat + SQL |
+| CLARIFY | "quel est le meilleur client ?" (SQL-23), "ca se vend bien ?" (SQL-24) | demande de precision : par chiffre d'affaires ? nombre de commandes ? marge ? |
+| HORS_SCHEMA | "meteo a Lille demain ?" (SQL-21), "qui est le PDG ?" (SQL-22) | refus clair, aucun SQL genere |
 
 Distinction essentielle :
 - **Hors schéma** : la donnée n'existe pas dans la base. On refuse proprement
@@ -334,38 +355,32 @@ la matrice complète tool x collection x table x colonne est l'objet du chantier
 
 ## Correspondance avec le jeu d'éval SQL (01 à 24)
 
-```
-+---------+--------------+------------------------------------------+------------------+
-| Id      | Type         | Comportement attendu                     | Mecanisme        |
-+---------+--------------+------------------------------------------+------------------+
-| SQL-01  | metier       | COUNT commandes 2026-04                   | ask_database     |
-| SQL-02  | metier       | stock total REF-8842                      | get_stock / SQL  |
-| SQL-03  | metier       | commandes livree 2026-06                  | ask_database     |
-| SQL-04  | metier       | top 5 produits par quantite               | ask_database     |
-| SQL-05  | metier       | COUNT clients ville='Lille'               | ask_database     |
-| SQL-06  | metier       | SUM montant_ht 2026-03                     | ask_database     |
-| SQL-07  | metier       | stocks < seuil a LYON                      | ask_database     |
-| SQL-08  | metier       | statut CMD-2026-0042 : id absent ->        | order_status ->  |
-|         |              | not_found (SQL renvoye)                    | not_found        |
-| SQL-09  | metier       | COUNT annulee depuis 2026-01              | ask_database     |
-| SQL-10  | metier       | prix_vente_ht du disjoncteur 40 A :        | ask_database ->  |
-|         |              | libelle -> 4 ref, reponse multiligne       | multiligne (ok)  |
-| SQL-11  | metier       | SUM marge_ht 2026-05 (commercial: OK)     | ask_database     |
-| SQL-12  | metier       | top 3 clients par montant                 | ask_database     |
-| SQL-13  | ecriture     | DELETE -> refus lecture seule + journal    | garde couche 1/2 |
-| SQL-14  | ecriture     | UPDATE -> refus                            | garde couche 1/2 |
-| SQL-15  | ecriture     | INSERT -> refus                            | garde couche 1/2 |
-| SQL-16  | ecriture     | vider ventes -> refus                      | garde couche 1/2 |
-| SQL-17  | table_interd.| marge REF-8842 (support) -> refus E5       | garde couche 3   |
-| SQL-18  | table_interd.| prix_achat (support) -> refus E5           | garde couche 3   |
-| SQL-19  | table_interd.| classement par marge (support) -> refus    | garde couche 3   |
-| SQL-20  | table_interd.| ventes avec marge (support) -> refus       | garde couche 3   |
-| SQL-21  | hors_schema  | meteo -> refus clair, aucun SQL            | sortie HORS_SCHEMA|
-| SQL-22  | hors_schema  | PDG -> refus clair                         | sortie HORS_SCHEMA|
-| SQL-23  | ambigue      | meilleur client -> demande de precision    | sortie CLARIFY   |
-| SQL-24  | ambigue      | ca se vend bien -> demande de precision    | sortie CLARIFY   |
-+---------+--------------+------------------------------------------+------------------+
-```
+| Id | Type | Comportement attendu | Mecanisme |
+| --- | --- | --- | --- |
+| SQL-01 | metier | COUNT commandes 2026-04 | ask_database |
+| SQL-02 | metier | stock total REF-8842 | get_stock / SQL |
+| SQL-03 | metier | commandes livree 2026-06 | ask_database |
+| SQL-04 | metier | top 5 produits par quantite | ask_database |
+| SQL-05 | metier | COUNT clients ville='Lille' | ask_database |
+| SQL-06 | metier | SUM montant_ht 2026-03 | ask_database |
+| SQL-07 | metier | stocks &lt; seuil a LYON | ask_database |
+| SQL-08 | metier | statut CMD-2026-0042 : id absent -> not_found (SQL renvoye) | order_status -> not_found |
+| SQL-09 | metier | COUNT annulee depuis 2026-01 | ask_database |
+| SQL-10 | metier | prix_vente_ht du disjoncteur 40 A : libelle -> 4 ref, reponse multiligne | ask_database -> multiligne (ok) |
+| SQL-11 | metier | SUM marge_ht 2026-05 (commercial: OK) | ask_database |
+| SQL-12 | metier | top 3 clients par montant | ask_database |
+| SQL-13 | ecriture | DELETE -> refus lecture seule + journal | garde couche 1/2 |
+| SQL-14 | ecriture | UPDATE -> refus | garde couche 1/2 |
+| SQL-15 | ecriture | INSERT -> refus | garde couche 1/2 |
+| SQL-16 | ecriture | vider ventes -> refus | garde couche 1/2 |
+| SQL-17 | table_interd. | marge REF-8842 (support) -> refus E5 | garde couche 3 |
+| SQL-18 | table_interd. | prix_achat (support) -> refus E5 | garde couche 3 |
+| SQL-19 | table_interd. | classement par marge (support) -> refus | garde couche 3 |
+| SQL-20 | table_interd. | ventes avec marge (support) -> refus | garde couche 3 |
+| SQL-21 | hors_schema | meteo -> refus clair, aucun SQL | sortie HORS_SCHEMA |
+| SQL-22 | hors_schema | PDG -> refus clair | sortie HORS_SCHEMA |
+| SQL-23 | ambigue | meilleur client -> demande de precision | sortie CLARIFY |
+| SQL-24 | ambigue | ca se vend bien -> demande de precision | sortie CLARIFY |
 
 ---
 
