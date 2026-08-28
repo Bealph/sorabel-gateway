@@ -1,5 +1,10 @@
 {
   "recommendations": [
     "bierner.markdown-mermaid"
+  ],
+  "unwantedRecommendations": [
+    "mermaidchart.vscode-mermaid-chart",
+    "vstirbu.vscode-mermaid-preview",
+    "nopeslide.vscode-drawio-plugin-mermaid"
   ]
 }

@@ -314,6 +314,22 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             Verifie : 19/19 diagrammes valides contre Mermaid 11.12.2, la
             version exacte de l'extension VSCode ; 46 tableaux controles
             (colonnes coherentes, aucune ligne vide).
+2026-08-28  PREVISUALISATION MERMAID : cause unique, deux occurrences en deux
+            jours. Deux extensions qui declarent toutes deux
+            markdown.markdownItPlugins + markdown.previewScripts revendiquent le
+            meme bloc mermaid, et le rendu casse. Vues en conflit avec
+            bierner.markdown-mermaid : mermaidchart.vscode-mermaid-chart, puis
+            vstirbu.vscode-mermaid-preview. Les deux desinstallees.
+            REGLE : une seule extension Mermaid installee a la fois. Les trois
+            incompatibles connues sont listees en unwantedRecommendations dans
+            .vscode/extensions.json, VSCode les signale desormais.
+            DIAGNOSTIC, dans cet ordre, avant de suspecter les fichiers :
+            1. code --list-extensions | grep mermaid  (doit n'en montrer qu'une)
+            2. parite des clotures ``` par fichier
+            3. appariement strict des blocs et fuite d'echappement dans mermaid
+            4. syntaxe, contre la version exacte de l'extension (11.12.2)
+            La 2e fois, l'extension avait ete installee 25 min AVANT les
+            modifications de fichiers : la chronologie a suffi a les disculper.
 ```
 
 ---
