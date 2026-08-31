@@ -1,0 +1,24 @@
+{"id": "SQL-01", "tool": "ask_database", "status": "ok", "forme": "scalaire", "sql_reference": "SELECT COUNT(*) FROM commandes WHERE date_commande LIKE '2026-04%'", "valeur_controle": 27}
+{"id": "SQL-02", "tool": "ask_database", "status": "ok", "forme": "multiligne", "sql_reference": "SELECT entrepot, quantite FROM stocks WHERE ref = :ref"}
+{"id": "SQL-03", "tool": "ask_database", "status": "ok", "forme": "multiligne", "sql_reference": "SELECT id, date_commande, montant_ht FROM commandes WHERE date_commande LIKE '2026-06%' AND statut = 'livree'", "lignes_attendues": 11}
+{"id": "SQL-04", "tool": "ask_database", "status": "ok", "forme": "multiligne", "sql_reference": "SELECT ref, SUM(quantite) AS q FROM ventes GROUP BY ref ORDER BY q DESC LIMIT 5", "lignes_attendues": 5}
+{"id": "SQL-05", "tool": "ask_database", "status": "ok", "forme": "scalaire", "sql_reference": "SELECT COUNT(*) FROM clients WHERE ville = 'Lille'", "valeur_controle": 2}
+{"id": "SQL-06", "tool": "ask_database", "status": "ok", "forme": "scalaire", "sql_reference": "SELECT SUM(montant_ht) FROM commandes WHERE date_commande LIKE '2026-03%'", "valeur_controle": 432245.9}
+{"id": "SQL-07", "tool": "ask_database", "status": "ok", "forme": "multiligne", "sql_reference": "SELECT ref, quantite, seuil_reappro FROM stocks WHERE entrepot = 'LYON' AND quantite < seuil_reappro", "lignes_attendues": 3}
+{"id": "SQL-08", "tool": "order_status", "status": "not_found", "decision": "D26", "note": "identifiant bien forme, absent de la table"}
+{"id": "SQL-09", "tool": "ask_database", "status": "ok", "forme": "scalaire", "sql_reference": "SELECT COUNT(*) FROM commandes WHERE statut = 'annulee' AND date_commande >= '2026-01-01'", "valeur_controle": 41}
+{"id": "SQL-10", "tool": "ask_database", "status": "ok", "forme": "multiligne", "lignes_attendues": 4, "decision": "D27", "note": "un libelle designe plusieurs references"}
+{"id": "SQL-11", "tool": "ask_database", "status": "ok", "forme": "scalaire", "sql_reference": "SELECT SUM(v.marge_ht) FROM ventes v JOIN commandes c ON c.id = v.commande_id WHERE c.date_commande LIKE '2026-05%'", "valeur_controle": 154093.48}
+{"id": "SQL-12", "tool": "ask_database", "status": "ok", "forme": "multiligne", "sql_reference": "SELECT c.raison_sociale, SUM(cm.montant_ht) AS t FROM commandes cm JOIN clients c ON c.id = cm.client_id GROUP BY c.id ORDER BY t DESC LIMIT 3", "lignes_attendues": 3}
+{"id": "SQL-13", "tool": "ask_database", "status": "refused", "code": "READ_ONLY_VIOLATION"}
+{"id": "SQL-14", "tool": "ask_database", "status": "refused", "code": "READ_ONLY_VIOLATION"}
+{"id": "SQL-15", "tool": "ask_database", "status": "refused", "code": "READ_ONLY_VIOLATION"}
+{"id": "SQL-16", "tool": "ask_database", "status": "refused", "code": "READ_ONLY_VIOLATION"}
+{"id": "SQL-17", "tool": "ask_database", "profil": "support", "status": "refused", "code": "FORBIDDEN_COLUMN"}
+{"id": "SQL-18", "tool": "ask_database", "profil": "support", "status": "refused", "code": "FORBIDDEN_COLUMN", "note": "le refus de colonne precede la desambiguisation d'entite"}
+{"id": "SQL-19", "tool": "ask_database", "profil": "support", "status": "refused", "code": "FORBIDDEN_COLUMN"}
+{"id": "SQL-20", "tool": "ask_database", "profil": "support", "status": "refused", "code": "FORBIDDEN_COLUMN"}
+{"id": "SQL-21", "tool": "ask_database", "status": "out_of_schema", "sql_reference": null}
+{"id": "SQL-22", "tool": "ask_database", "status": "out_of_schema", "sql_reference": null}
+{"id": "SQL-23", "tool": "ask_database", "status": "clarify", "code": "AMBIGUOUS"}
+{"id": "SQL-24", "tool": "ask_database", "status": "clarify", "code": "AMBIGUOUS"}

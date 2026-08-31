@@ -136,13 +136,13 @@ sequenceDiagram
 
 ## Lecture transversale
 
-| Sequence | Ce qu'elle demontre | Exigence |
-| ---: | --- | --- |
-| 1 | reponse + sources, ou abstention propre | E1, E2 |
-| 2 | SQL genere execute en lecture seule + SQL renvoye (transparence) | E3 |
-| 3 | colonne sensible refusee au support | E5 |
-| 4 | tool interdit refuse a l'entree | E4 |
-| 5 | ecriture refusee (AST + connexion RO) | E3 |
+| Sequence | Ce qu'elle demontre                                              | Exigence |
+| -------: | ---------------------------------------------------------------- | -------- |
+|        1 | reponse + sources, ou abstention propre                          | E1, E2   |
+|        2 | SQL genere execute en lecture seule + SQL renvoye (transparence) | E3       |
+|        3 | colonne sensible refusee au support                              | E5       |
+|        4 | tool interdit refuse a l'entree                                  | E4       |
+|        5 | ecriture refusee (AST + connexion RO)                            | E3       |
 
 Dans tous les cas, l'appel (autorise ou refuse) est journalise (E5), et la
 sortie est typee par status : une abstention ou un refus n'est jamais rendu

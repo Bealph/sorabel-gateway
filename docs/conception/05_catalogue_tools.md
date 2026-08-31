@@ -10,27 +10,19 @@
 
 | Tool | Entrees | Sorties | Garanties / comportement |
 | --- | --- | --- | --- |
-| answer_question | question (texte) | status, answer, | reponse ancree UNIQUEMENT sur |
-| (RAG complet) |  | sources[] {title, ref, version, date, url} | le contexte ; sources citees (E1) ; abstention si score &lt; seuil ; collections bornees au profil (E4) |
-| search_docs | query (texte), | status, hits[] {passage, | recherche hybride (BM25 + |
-| (brique) | k optionnel | score, doc_id, ref, version, section} | dense) + rerank ; AUCUNE generation ; collections bornees au profil |
-| get_document | doc_id (ou ref + | status, document {texte, | renvoie la version demandee |
-| (brique) | version) | metadonnees} | (defaut : is_latest) ; borne aux collections autorisees |
-| list_sources | filtre optionnel | status, sources[] {ref, | decouverte du corpus ; borne |
-| (brique) | (doc_type, ref) | doc_type, versions[], date} | aux collections du profil ; pas de contenu, juste l'index |
+| `answer_question` (RAG complet) | question (texte) | status, answer, sources[] {title, ref, version, date, url} | reponse ancree UNIQUEMENT sur le contexte ; sources citees (E1) ; abstention si score &lt; seuil ; collections bornees au profil (E4) |
+| `search_docs` (brique) | query (texte), k optionnel | status, hits[] {passage, score, doc_id, ref, version, section} | recherche hybride (BM25 + dense) + rerank ; AUCUNE generation ; collections bornees au profil |
+| `get_document` (brique) | doc_id, ou ref + version | status, document {texte, metadonnees} | renvoie la version demandee (defaut : is_latest) ; borne aux collections autorisees |
+| `list_sources` (brique) | filtre optionnel (doc_type, ref) | status, sources[] {ref, doc_type, versions[], date} | decouverte du corpus ; borne aux collections du profil ; pas de contenu, juste l'index |
 
 ## Famille SQL
 
 | Tool | Entrees | Sorties | Garanties / comportement |
 | --- | --- | --- | --- |
-| ask_database | question (texte) | status, rows[], sql | lecture seule (connexion RO + |
-| (generatif) |  | (requete generee) OU refus {status, code} | AST SELECT-only) ; perimetre tables/colonnes du profil (E5) ; LIMIT ; SQL toujours renvoye (E3) ; refus type |
-| get_schema | (identite -> profil) | status, schema {tables, | AUCUNE donnee renvoyee ; |
-| (aide) |  | colonnes autorisees} | schema filtre au profil (support : sans colonnes sensibles) ; aide a la formulation |
-| check_stock | ref | status, stock[] {entrepot, | requete parametree |
-| (fige) |  | quantite, seuil_reappro} | deterministe ; lecture seule ; pas de generation LLM |
-| order_status | commande_id | status, {statut, date, | requete parametree ; lecture |
-| (fige) |  | montant_ht} | seule ; pas de colonne sensible |
+| `ask_database` (generatif) | question (texte) | status, rows[], sql (requete generee), OU refus {status, code} | lecture seule (connexion RO + AST SELECT-only) ; perimetre tables/colonnes du profil (E5) ; LIMIT ; SQL toujours renvoye (E3) ; refus type |
+| `get_schema` (aide) | identite, qui donne le profil | status, schema {tables, colonnes autorisees} | AUCUNE donnee renvoyee ; schema filtre au profil (support : sans colonnes sensibles) ; aide a la formulation |
+| `check_stock` (fige) | ref | status, stock[] {entrepot, quantite, seuil_reappro} | requete parametree deterministe ; lecture seule ; pas de generation LLM |
+| `order_status` (fige) | order_id | status, {statut, date, montant_ht} | requete parametree ; lecture seule ; pas de colonne sensible ; id absent -> not_found |
 
 ## Garanties transverses (tous les tools)
 

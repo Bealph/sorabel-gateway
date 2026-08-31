@@ -15,7 +15,7 @@
 ```mermaid
 flowchart TD
     U[Question metier + profil] --> RT{Intention connue ?<br/>ex. ref produit, id commande}
-    RT -->|oui| FX[Tool fige parametre<br/>get_product / get_stock / get_order_status]
+    RT -->|oui| FX["Tool fige parametre<br/>check_stock / order_status"]
     RT -->|non| GEN[Generation SQL<br/>schema commente du profil + enums + few-shot]
     GEN --> CL{Sortie structuree du modele}
     CL -->|CLARIFY| ASK[Demande de precision<br/>question ambigue]
@@ -61,19 +61,33 @@ Principe clé : le schéma présenté au modèle ne contient **que** les tables 
 colonnes autorisées pour le profil. Le support ne voit même pas exister
 `prix_achat_ht`, `marge_pct`, `marge_ht` (première ligne de défense pour E5).
 
-### 1.2 Énumérations et valeurs types (extraites du réel)
+### 1.2 Énumérations et valeurs types
 
-On donne les valeurs des colonnes à faible cardinalité, pour que le modèle
-emploie les bons littéraux (éviter `statut = 'livrée'` au lieu de `'livree'`).
+**Règle.** Toute colonne textuelle de faible cardinalité voit ses valeurs
+distinctes injectées dans le prompt. Sans elles, le modèle invente un littéral
+plausible mais faux, du type `statut = 'livrée'` là où la base stocke `'livree'`.
+La requête est alors **syntaxiquement valide, franchit toutes les gardes, et
+renvoie zéro ligne sans erreur** : c'est le pire mode de défaillance du système,
+car aucune des six couches de sécurité ne le détecte.
 
-| Colonne | Valeurs |
+**Corollaire, appris à nos dépens.** Ces valeurs ne se recopient pas dans un
+document. Le 2026-08-31, six littéraux recopiés ici avaient perdu leurs accents,
+et la même énumération recopiée à trois endroits avait divergé. Les valeurs sont
+donc **extraites par introspection** au démarrage du serveur, et le relevé de
+référence est produit par `docs/releve_donnees.py`, section « Énumérations » de
+`../analyse_donnees.md`. Aucune valeur littérale n'est écrite à la main dans ce
+chantier.
+
+**Ce qu'il faut relever, indépendamment du jeu de données :**
+
+| Élément | Pourquoi le modèle en a besoin |
 | --- | --- |
-| commandes.statut | annulee, en_attente, expediee, livree, preparee |
-| stocks.entrepot | LILLE, LYON, NANTES |
-| clients.segment | PME, artisan, collectivité, grand compte |
-| produits.unite | piece, conditionnement |
-| produits.categorie | Cablage, Distribution, EPI, Mesure, Outillage a main, Outillage electroportatif, Protection electrique, Visserie, Eclairage |
-| plage date_commande | 2025-09-04 a 2026-08-19 (donc "avril" = 2026-04) |
+| valeurs distinctes des colonnes de faible cardinalité | employer le bon littéral, accents et casse compris |
+| plage couverte par les colonnes de date | résoudre un mois relatif comme « avril » |
+| format de stockage des dates | choisir `LIKE` plutôt qu'une fonction de date absente du dialecte |
+
+**Seuil.** Une colonne est traitée comme une énumération en deçà d'une quinzaine
+de valeurs distinctes. Au-delà, la lister encombrerait le prompt sans l'aider.
 
 ### 1.3 Les jointures canoniques
 
@@ -137,14 +151,14 @@ Une seule barrière ne suffit pas : chaque couche couvre un mode de défaillance
 différent. La question du brief (« une seule barrière suffit-elle ? ») appelle
 un non argumenté.
 
-| Couche | Barriere | Ce qu'elle bloque | Exigence |
-| ---: | --- | --- | --- |
-| 1 | Connexion READ-ONLY (SQLite mode=ro / query_only) | TOUTE ecriture, meme si les couches hautes sont contournees | E3 |
-| 2 | Validation AST (sqlglot) | non-SELECT (INSERT/UPDATE/DELETE/DROP/ALTER/PRAGMA/ATTACH), instructions multiples (; empile) | E3 |
-| 3 | Perimetre tables/colonnes (extraction AST + whitelist) | acces hors matrice du profil (prix_achat_ht, marge_pct, ...) | E4/E5 |
-| 4 | LIMIT par defaut + timeout | requetes lourdes, produit cartesien, blocage de la base | E3 |
-| 5 | Transparence : SQL renvoye | (pas une barriere, une exigence) | E3 |
-| 6 | Journalisation | trace tout appel, autorise/refuse | E5 |
+| Couche | Barriere                                               | Ce qu'elle bloque                                                                             | Exigence |
+| -----: | ------------------------------------------------------ | --------------------------------------------------------------------------------------------- | -------- |
+|      1 | Connexion READ-ONLY (SQLite mode=ro / query_only)      | TOUTE ecriture, meme si les couches hautes sont contournees                                   | E3       |
+|      2 | Validation AST (sqlglot)                               | non-SELECT (INSERT/UPDATE/DELETE/DROP/ALTER/PRAGMA/ATTACH), instructions multiples (; empile) | E3       |
+|      3 | Perimetre tables/colonnes (extraction AST + whitelist) | acces hors matrice du profil (prix_achat_ht, marge_pct, ...)                                  | E4/E5    |
+|      4 | LIMIT par defaut + timeout                             | requetes lourdes, produit cartesien, blocage de la base                                       | E3       |
+|      5 | Transparence : SQL renvoye                             | (pas une barriere, une exigence)                                                              | E3       |
+|      6 | Journalisation                                         | trace tout appel, autorise/refuse                                                             | E5       |
 
 Ordre de raisonnement :
 
@@ -175,11 +189,11 @@ couche 4 (LIMIT + timeout) et la couche 1 (aucune écriture possible).
 
 ### 3.1 Matrice d'accès SQL (préfigure le chantier 3)
 
-| Profil | clients | produits | stocks | commandes | ventes |
-| --- | --- | --- | --- | --- | --- |
-| commercial | oui | toutes colonnes (dont prix_achat_ht, marge_pct) | oui | oui | toutes colonnes (dont marge_ht) |
-| support | oui | SAUF prix_achat_ht, marge_pct | oui | oui | SAUF marge_ht |
-| dev | oui | toutes colonnes | oui | oui | toutes colonnes |
+| Profil     | clients | produits                                        | stocks | commandes | ventes                          |
+| ---------- | ------- | ----------------------------------------------- | ------ | --------- | ------------------------------- |
+| commercial | oui     | toutes colonnes (dont prix_achat_ht, marge_pct) | oui    | oui       | toutes colonnes (dont marge_ht) |
+| support    | oui     | SAUF prix_achat_ht, marge_pct                   | oui    | oui       | SAUF marge_ht                   |
+| dev        | oui     | toutes colonnes                                 | oui    | oui       | toutes colonnes                 |
 
 Colonnes sensibles (jamais pour support) : produits.prix_achat_ht,
 produits.marge_pct, ventes.marge_ht.
@@ -244,21 +258,20 @@ surtout sur des jointures.
 Certains besoins récurrents et bien définis gagnent à être des requêtes
 paramétrées écrites à la main plutôt que du SQL généré.
 
-| Tool fige (parametre) | Besoin couvert | Ref eval |
-| --- | --- | --- |
-| get_product(ref) | fiche produit, prix de vente | SQL-10 |
-| get_stock(ref) | stock par entrepot d'une reference | SQL-02 |
-| get_order_status(cmd_id) | statut d'une commande | SQL-08 |
+| Tool fige (parametre)    | Besoin couvert                     | Ref eval |
+| ------------------------ | ---------------------------------- | -------- |
+| `check_stock(ref)` | stock par entrepot d'une reference | SQL-02 |
+| `order_status(order_id)` | statut d'une commande | SQL-08 |
 
 Comparaison des deux approches :
 
-| Critere | Tools figes (parametres) | SQL genere (ask_database) |
-| --- | --- | --- |
-| Exactitude | garantie (requete ecrite, testee) | variable (depend du modele) |
-| Securite | maximale (pas d'injection ni de generation) | forte MAIS via la pile de gardes (Q2) |
-| Couverture | limitee aux cas prevus | ouverte, ad hoc, analytique |
-| Cout / latence | faible (pas d'appel LLM) | superieur (appel LLM) |
-| Maintenance | code a ecrire par cas | generique |
+| Critere        | Tools figes (parametres)                    | SQL genere (ask_database)             |
+| -------------- | ------------------------------------------- | ------------------------------------- |
+| Exactitude     | garantie (requete ecrite, testee)           | variable (depend du modele)           |
+| Securite       | maximale (pas d'injection ni de generation) | forte MAIS via la pile de gardes (Q2) |
+| Couverture     | limitee aux cas prevus                      | ouverte, ad hoc, analytique           |
+| Cout / latence | faible (pas d'appel LLM)                    | superieur (appel LLM)                 |
+| Maintenance    | code a ecrire par cas                       | generique                             |
 
 Principe retenu : un **routage**. Si la question correspond à une intention connue
 (entité identifiable : une `ref`, un id de commande), on emploie le tool figé
@@ -277,11 +290,11 @@ remplacement.
 
 Le modèle renvoie une sortie **structurée** parmi trois cas, jamais du SQL deviné :
 
-| Cas | Exemple (eval) | Comportement |
-| --- | --- | --- |
-| SQL | "combien de commandes en avril ?" | requete + resultat + SQL |
-| CLARIFY | "quel est le meilleur client ?" (SQL-23), "ca se vend bien ?" (SQL-24) | demande de precision : par chiffre d'affaires ? nombre de commandes ? marge ? |
-| HORS_SCHEMA | "meteo a Lille demain ?" (SQL-21), "qui est le PDG ?" (SQL-22) | refus clair, aucun SQL genere |
+| Cas         | Exemple (eval)                                                         | Comportement                                                                  |
+| ----------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| SQL         | "combien de commandes en avril ?"                                      | requete + resultat + SQL                                                      |
+| CLARIFY     | "quel est le meilleur client ?" (SQL-23), "ca se vend bien ?" (SQL-24) | demande de precision : par chiffre d'affaires ? nombre de commandes ? marge ? |
+| HORS_SCHEMA | "meteo a Lille demain ?" (SQL-21), "qui est le PDG ?" (SQL-22)         | refus clair, aucun SQL genere                                                 |
 
 Distinction essentielle :
 - **Hors schéma** : la donnée n'existe pas dans la base. On refuse proprement
@@ -313,8 +326,11 @@ fausse réponse vide.
 
 ### 5.4 Désambiguïsation d'entité (un libellé, plusieurs références)
 
-Les noms de produits sont massivement dupliqués (43 noms sur 120 apparaissent
-plusieurs fois). Il faut séparer deux natures d'ambiguïté :
+**Un libellé n'est pas une clé.** Une référence est un identifiant, un nom
+commercial n'en est pas un : rien n'empêche deux produits distincts de porter le
+même libellé, et c'est vrai de tout catalogue rédigé en langage naturel. Le
+risque est donc permanent, qu'il se matérialise ou non sur un jeu donné. Il faut
+séparer deux natures d'ambiguïté :
 
 ```
 - Ambiguite de CRITERE (la metrique est indefinie : "meilleur client",
@@ -324,6 +340,10 @@ plusieurs fois). Il faut séparer deux natures d'ambiguïté :
   demande. Plus utile et plus transparent qu'un aller-retour ; montre la
   duplication reelle des donnees. status=ok.
 ```
+
+*Occurrence sur le jeu fourni, qui prouve que le risque n'est pas théorique mais
+ne fonde pas la règle : 43 libellés sur 120 désignent plusieurs références (cf.
+`../analyse_donnees.md`, section « Anomalies du jeu »).*
 
 Exemple : SQL-10 « prix de vente HT du disjoncteur tétrapolaire 40 A » correspond
 à 4 produits (REF-8842, REF-1711, REF-8721, REF-1601). Réponse : les 4 références
@@ -337,50 +357,53 @@ l'ordre des gardes (Q2), la multiplicité est sans objet.
 
 ```
 Famille SQL
-  ask_database(question, profil)        Text-to-SQL generique, pile de gardes (Q2)
-  get_product(ref, profil)              fiche produit / prix de vente (fige)
-  get_stock(ref, profil)                stock par entrepot (fige)
-  get_order_status(commande_id, profil) statut d'une commande (fige)
+  ask_database(question)                Text-to-SQL generique, pile de gardes (Q2)
+  get_schema()                          tables et colonnes autorisees, aucune donnee
+  check_stock(ref)                      stock par entrepot (fige)
+  order_status(order_id)                statut d'une commande (fige)
 
 Famille RAG (chantier 1)
-  search_docs(query, profil)            recherche hybride, renvoie des passages
-  get_document(doc_id, profil)          recupere un document complet
-  answer_question(question, profil)     RAG complet + sources citees (E1)
+  answer_question(question)             RAG complet + sources citees (E1)
+  search_docs(query)                    recherche hybride, renvoie des passages
+  get_document(doc_id)                  recupere un document complet
+  list_sources(filtre)                  inventaire du corpus
 ```
 
-Le paramètre `profil` conditionne l'accès (E4) et le périmètre colonnes (E5) ;
-la matrice complète tool x collection x table x colonne est l'objet du chantier 3.
+**Aucun tool ne prend le profil en paramètre.** Il est résolu par le serveur à
+partir de l'identité de l'appelant, jamais transmis par le client. La
+spécification MCP est explicite : ce qu'un client déclare sur lui-même « n'est
+pas vérifié par le protocole » et « ne doit pas servir à des décisions de
+sécurité ». Un profil passé en argument serait déclaratif, et n'importe quel
+appelant pourrait se déclarer `dev`. Le mécanisme de résolution fait l'objet de
+la décision D28, au chantier 3.
+
+Le profil ainsi résolu conditionne l'accès (E4) et le périmètre des colonnes
+(E5). La matrice complète tool x collection x table x colonne est l'objet du
+chantier 3.
 
 ---
 
-## Correspondance avec le jeu d'éval SQL (01 à 24)
+## Couverture du jeu d'éval SQL
 
-| Id | Type | Comportement attendu | Mecanisme |
+Le jeu compte cinq types de questions. Ce que le dossier leur oppose est une
+**construction**, pas une réponse question par question : elle reste valable si
+le jeu change de questions.
+
+| Type d'éval | Ce que la conception oppose | Décision | Où |
 | --- | --- | --- | --- |
-| SQL-01 | metier | COUNT commandes 2026-04 | ask_database |
-| SQL-02 | metier | stock total REF-8842 | get_stock / SQL |
-| SQL-03 | metier | commandes livree 2026-06 | ask_database |
-| SQL-04 | metier | top 5 produits par quantite | ask_database |
-| SQL-05 | metier | COUNT clients ville='Lille' | ask_database |
-| SQL-06 | metier | SUM montant_ht 2026-03 | ask_database |
-| SQL-07 | metier | stocks &lt; seuil a LYON | ask_database |
-| SQL-08 | metier | statut CMD-2026-0042 : id absent -> not_found (SQL renvoye) | order_status -> not_found |
-| SQL-09 | metier | COUNT annulee depuis 2026-01 | ask_database |
-| SQL-10 | metier | prix_vente_ht du disjoncteur 40 A : libelle -> 4 ref, reponse multiligne | ask_database -> multiligne (ok) |
-| SQL-11 | metier | SUM marge_ht 2026-05 (commercial: OK) | ask_database |
-| SQL-12 | metier | top 3 clients par montant | ask_database |
-| SQL-13 | ecriture | DELETE -> refus lecture seule + journal | garde couche 1/2 |
-| SQL-14 | ecriture | UPDATE -> refus | garde couche 1/2 |
-| SQL-15 | ecriture | INSERT -> refus | garde couche 1/2 |
-| SQL-16 | ecriture | vider ventes -> refus | garde couche 1/2 |
-| SQL-17 | table_interd. | marge REF-8842 (support) -> refus E5 | garde couche 3 |
-| SQL-18 | table_interd. | prix_achat (support) -> refus E5 | garde couche 3 |
-| SQL-19 | table_interd. | classement par marge (support) -> refus | garde couche 3 |
-| SQL-20 | table_interd. | ventes avec marge (support) -> refus | garde couche 3 |
-| SQL-21 | hors_schema | meteo -> refus clair, aucun SQL | sortie HORS_SCHEMA |
-| SQL-22 | hors_schema | PDG -> refus clair | sortie HORS_SCHEMA |
-| SQL-23 | ambigue | meilleur client -> demande de precision | sortie CLARIFY |
-| SQL-24 | ambigue | ca se vend bien -> demande de precision | sortie CLARIFY |
+| `metier` | génération sur schéma borné au profil, enrichi des énumérations réelles et de few-shot au dialecte | D9 | 1.1 à 1.5 |
+| `ecriture` | pile de gardes, AST autoritaire, connexion en lecture seule en garde-fou ultime | D10, D11 | Q2 |
+| `table_interdite` | périmètre du profil appliqué avant génération, par masquage du schéma, et après, par extraction AST | D12, D13 | Q3 |
+| `hors_schema` | sortie structurée à trois cas, aucun SQL produit quand la donnée n'existe pas | D15 | 5.1, 5.2 |
+| `ambigue` | ambiguïté de critère vers `clarify`, ambiguïté d'entité vers réponse multiligne | D27 | 5.2, 5.4 |
+| résultat vide | agrégat ou liste sans ligne vers `ok`, entité par identifiant précis introuvable vers `not_found` | D26 | 5.3 |
+
+Le détail par question, les requêtes de référence et les valeurs attendues sont
+l'affaire de `eval/attendus_sql.jsonl`, pas du dossier de conception (D30). Trois
+questions font exception et restent ici, parce qu'elles ont **produit** une
+décision au lieu de la vérifier : SQL-08 a fait naître `not_found` (5.3), SQL-10 a
+fait naître la réponse multiligne (5.4), et SQL-18 a établi que le refus de
+colonne sensible précède la désambiguïsation d'entité.
 
 ---
 
@@ -394,14 +417,24 @@ D10  Lecture seule = defense en profondeur (connexion RO + AST + perimetre +
 D11  AST (sqlglot) autoritaire ; blocklist de mots = filtre secondaire.
 D12  Perimetre par profil applique avant (schema montre) ET apres (validation AST).
 D13  Interdiction de SELECT * (liste explicite des colonnes).
-D14  Routage : tools figes (get_product/get_stock/get_order_status) pour les
-     besoins recurrents ; ask_database pour l'ad hoc.
+D14  Routage : tools figes (check_stock, order_status, les deux seuls que le brief
+     nomme) pour les besoins recurrents ; ask_database pour l'ad hoc.
 D15  Sortie structuree {SQL | CLARIFY | HORS_SCHEMA} ; jamais de SQL devine.
 D16  LIMIT par defaut = 200 (valeur a confirmer) ; timeout d'execution.
 D26  Resultat vide : liste/agregat sans ligne = status=ok, rows=[] ; entite par
      identifiant precis introuvable = status=not_found. SQL toujours renvoye.
 D27  Desambiguisation : ambiguite de critere -> CLARIFY ; ambiguite d'entite
      (un libelle -> plusieurs ref) -> reponse multiligne (status=ok).
+D30  Le tableau de correspondance des 24 questions SQL quitte le dossier de
+     conception : sa colonne "mecanisme" est de la tracabilite au niveau de la
+     CLASSE et non de l'item, sa colonne "comportement attendu" est un corrige
+     de test. Remplacement : une table par TYPE d'eval, qui prouve la couverture
+     sans donner de reponse et reste vraie si le jeu d'eval change. Le detail
+     par question va dans eval/attendus_sql.jsonl, sidecar joint par id ;
+     questions_sql.jsonl n'est pas modifie. sql_reference vaut null pour les
+     hors_schema, ce qui encode la garantie "aucun SQL hallucine". Restent en
+     conception les trois cas qui ont PRODUIT une decision : SQL-08 pour D26,
+     SQL-10 pour D27, SQL-18 pour la precedence des gardes.
 ```
 
 ## Arbitrage (verrouillé le 2026-08-26)

@@ -41,8 +41,8 @@ flowchart TD
         RBAC[Matrice d'acces RBAC]
         LOG[Journalisation]
         subgraph Tools[Catalogue de tools]
-            T1[search_docs / get_document / answer_question]
-            T2[ask_database]
+            T1[RAG : answer_question, search_docs,<br/>get_document, list_sources]
+            T2[SQL : ask_database, get_schema,<br/>check_stock, order_status]
         end
     end
 
@@ -65,6 +65,7 @@ sorabel-data-gateway/
 ├── CLAUDE.md          Memoire de projet (contexte, exigences, decisions)
 ├── README.md          Ce fichier
 ├── docs/              Cadrage DSI + dossier de conception + mesure E6
+├── scripts/           mcp_client.py : demo support vs commercial (exige au brief)
 ├── mcp_server/        Serveur MCP + mini guide d'acces (livrable)
 ├── rag/               Ingestion, chunking, recherche hybride, reranking
 ├── text2sql/          Generation SQL lecture seule + garde-fous
@@ -80,9 +81,10 @@ sorabel-data-gateway/
 | Phase                             | Statut       |
 |-----------------------------------|--------------|
 | Squelette + mémoire de projet     | Fait         |
-| Analyse des données               | Fait         |
-| Conception (3 chantiers + schémas)| Fait         |
-| Jeux d'évaluation (SQL + RAG)     | Fait         |
+| Analyse des données               | Fait, relevé généré |
+| Conception (3 chantiers + schémas)| Fait, D1 à D30 |
+| Jeux d'évaluation + attendus      | Fait         |
+| Protocole de mesure E6            | Fait, chiffres au lot 3 |
 | Implémentation RAG                | À venir      |
 | Implémentation Text-to-SQL        | À venir      |
 | Gouvernance + serveur MCP         | À venir      |

@@ -129,7 +129,8 @@ entrepots : LILLE/LYON/NANTES | plage dates : 2025-09-04 a 2026-08-19
 - Ne PAS rediscuter les decisions de la section 3.
 - Ecrire les resultats/logs sous eval/results/ et governance/logs/ (gitignore).
 - Jamais de secret en clair ; base ouverte en read-only ; aucun SELECT *.
-- Docs en francais ; tableaux ASCII ; schemas Mermaid.
+- Docs en francais ; tableaux Markdown ; schemas Mermaid. La regle disait
+  "tableaux ASCII" jusqu'au 2026-08-28, cf. CLAUDE.md section 8.
 - Tenir le journal : ajouter une ligne datee dans CLAUDE.md section 10 a la fin
   de chaque lot (ce qui est fait, ce qui reste).
 - Multi-session : une seule session ecrit un fichier donne a la fois ; CLAUDE.md

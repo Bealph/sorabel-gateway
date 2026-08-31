@@ -1,7 +1,7 @@
 # Dossier de conception — Sorabel Data Gateway
 
 Vue d'ensemble puis trois chantiers, chacun traité par questions avec ses schémas
-(tableaux ASCII + Mermaid). État : conception terminée.
+(tableaux Markdown + schémas Mermaid). État : conception terminée.
 
 ## Documents
 
@@ -18,14 +18,16 @@ Modele de donnees Document/Chunk : dans 01_flux_chunks.md (section 2.4).
 Voir aussi : ../analyse_donnees.md (donnees) et ../mesure_e6.md (protocole E6).
 Vues rendues : ../schemas.html (8 schemas rendus : flux complet, architecture,
 modele Document/Chunk, et 5 sequences ; ouvrable au navigateur, Mermaid embarque
-donc hors ligne).
+donc hors ligne). Cette page est en retard sur les .md : elle sera regeneree
+apres la reprise conception/releve.
 Visualiser les diagrammes Mermaid des .md :
 - Le plus simple : ouvrir ../schemas.html dans un navigateur (aucune installation).
-- Dans VSCode : installer l'extension bierner.markdown-mermaid, puis Ctrl+Shift+V
-  (Open Preview). Le projet la recommande via .vscode/extensions.json.
+- Dans VSCode : Ctrl+Shift+V. Le rendu Mermaid est NATIF depuis la version
+  1.121, via l'extension livree mermaid-markdown-features. N'installer AUCUNE
+  extension Mermaid : elle ferait doublon et le diagramme resterait vide.
 - Sur GitHub : Mermaid est rendu nativement dans les .md.
-Les tableaux ASCII sont volontairement en texte monospace et s'affichent
-identiquement partout.
+Les tableaux sont en Markdown depuis le 2026-08-28 : ils se rendent comme de
+vraies tables dans la prévisualisation et sur GitHub.
 
 ## Carte de couverture des exigences DSI
 

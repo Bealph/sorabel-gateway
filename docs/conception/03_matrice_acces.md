@@ -15,16 +15,16 @@
 
 Réconciliation des noms du brief et du chantier 2 :
 
-| Nom retenu | Ancien nom (chantier 2) | Famille |
-| --- | --- | --- |
-| answer_question | answer_question | RAG (haut niveau) |
-| search_docs | search_docs | RAG (brique) |
-| get_document | get_document | RAG (brique) |
-| list_sources | (nouveau) | RAG (brique / decouverte) |
-| ask_database | ask_database | SQL (generatif) |
-| get_schema | (nouveau) | SQL (aide) |
-| check_stock | get_stock | SQL (fige) |
-| order_status | get_order_status | SQL (fige) |
+| Nom retenu      | Ancien nom (chantier 2) | Famille                   |
+| --------------- | ----------------------- | ------------------------- |
+| answer_question | answer_question         | RAG (haut niveau)         |
+| search_docs     | search_docs             | RAG (brique)              |
+| get_document    | get_document            | RAG (brique)              |
+| list_sources    | (nouveau)               | RAG (brique / decouverte) |
+| ask_database    | ask_database            | SQL (generatif)           |
+| get_schema      | (nouveau)               | SQL (aide)                |
+| check_stock     | get_stock               | SQL (fige)                |
+| order_status    | get_order_status        | SQL (fige)                |
 
 Note : get_product (chantier 2) est absorbe par ask_database + get_schema ; on
 le reintroduira comme fige seulement si un besoin recurrent le justifie.
@@ -49,11 +49,11 @@ list_sources      Brique : liste les sources disponibles (references, types,
 
 ### 1.2 À quels clients
 
-| Client | Usage |
-| --- | --- |
-| Bot Slack support | answer_question : veut une reponse SAV prete, avec sources |
-| Poste commercial | answer_question : idem, cote commercial |
-| IDE developpeurs | briques (search_docs, get_document, list_sources) : veut chercher SANS generer, composer sa propre logique |
+| Client            | Usage                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| Bot Slack support | answer_question : veut une reponse SAV prete, avec sources                                                 |
+| Poste commercial  | answer_question : idem, cote commercial                                                                    |
+| IDE developpeurs  | briques (search_docs, get_document, list_sources) : veut chercher SANS generer, composer sa propre logique |
 
 Raison : le haut niveau sert les clients qui veulent une réponse clé en main ;
 les briques servent les clients qui pilotent le pipeline (l'IDE qui « cherche
@@ -68,12 +68,12 @@ fonctionnent séparément).
 La description MCP de chaque tool doit dire QUAND l'employer, l'entité attendue,
 et ce qu'il renvoie ou non. C'est ce qui guide le LLM appelant.
 
-| Tool | Description orientee "quand l'utiliser" |
-| --- | --- |
+| Tool         | Description orientee "quand l'utiliser"                                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ask_database | "Repond a une question metier analytique ou ad hoc en generant du SQL lecture seule (filtre, agregat, jointure). A utiliser quand aucun tool fige ne couvre le besoin." |
-| get_schema | "Retourne les tables et colonnes AUTORISEES pour ce client. Ne renvoie aucune donnee. A appeler pour cadrer une question avant ask_database." |
-| check_stock | "Retourne le stock par entrepot d'UNE reference precise (ex. REF-8842). A utiliser des qu'on dispose de la reference exacte." |
-| order_status | "Retourne le statut d'UNE commande identifiee (ex. CMD-2026-0042)." |
+| get_schema   | "Retourne les tables et colonnes AUTORISEES pour ce client. Ne renvoie aucune donnee. A appeler pour cadrer une question avant ask_database."                           |
+| check_stock  | "Retourne le stock par entrepot d'UNE reference precise (ex. REF-8842). A utiliser des qu'on dispose de la reference exacte."                                           |
+| order_status | "Retourne le statut d'UNE commande identifiee (ex. CMD-2026-0042)."                                                                                                     |
 
 Arbre de décision suggéré (donné au client dans le mini guide d'accès) :
 
@@ -101,9 +101,8 @@ lookups exacts et le repli vers `ask_database` pour le reste.
 
 | Niveau | Responsabilite |
 | --- | --- |
-| Entree serveur | Authentifier le client -> resoudre le profil. Verifier |
-| (gateway) | l'autorisation au niveau TOOL (ce profil peut-il appeler ce tool ?). Refus uniforme avant toute logique metier. Journalisation centrale. |
-| Dans chaque tool | Appliquer le perimetre RESSOURCE que seul le tool connait : collections autorisees (RAG), tables/colonnes (SQL, cf. pile de gardes chantier 2). Ex. quelles colonnes le SQL genere touche reellement. |
+| Entree serveur (gateway) | Authentifier le client, resoudre le profil, verifier l'autorisation au niveau TOOL : ce profil peut-il appeler ce tool ? Refus uniforme avant toute logique metier. Journalisation centrale. |
+| Dans chaque tool | Appliquer le perimetre RESSOURCE que seul le tool connait : collections autorisees (RAG), tables et colonnes (SQL, cf. pile de gardes du chantier 2). Lui seul sait quelles colonnes le SQL genere touche reellement. |
 
 Pourquoi les deux : la gateway offre un point de contrôle uniforme et empêche
 même l'appel d'un tool interdit (E4) ; mais elle ne peut pas savoir quelles
@@ -129,38 +128,38 @@ flowchart TD
 
 ### 3.2 Matrice client x tool
 
-| Tool | support | commercial | dev/IDE | Note |
-| --- | :---: | :---: | :---: | --- |
-| answer_question | oui | oui | oui | |
-| search_docs | - | - | oui | brique RAG |
-| get_document | - | - | oui | brique RAG |
-| list_sources | - | - | oui | brique RAG |
-| ask_database | oui | oui | oui | support : colonnes sensibles bloquees |
-| get_schema | oui | oui | oui | support : schema filtre au profil |
-| check_stock | oui | oui | oui | |
-| order_status | oui | oui | oui | |
+| Tool            | support | commercial | dev/IDE | Note                                  |
+| --------------- | :-----: | :--------: | :-----: | ------------------------------------- |
+| answer_question |   oui   |    oui     |   oui   |                                       |
+| search_docs     |    -    |     -      |   oui   | brique RAG                            |
+| get_document    |    -    |     -      |   oui   | brique RAG                            |
+| list_sources    |    -    |     -      |   oui   | brique RAG                            |
+| ask_database    |   oui   |    oui     |   oui   | support : colonnes sensibles bloquees |
+| get_schema      |   oui   |    oui     |   oui   | support : schema filtre au profil     |
+| check_stock     |   oui   |    oui     |   oui   |                                       |
+| order_status    |   oui   |    oui     |   oui   |                                       |
 
 Le refus au niveau tool (E4) est démontré par les briques RAG, réservées à
 dev/IDE : un support qui appelle `search_docs` est refusé.
 
 ### 3.3 Matrice client x collection (RAG)
 
-| Collection | support | commercial | dev/IDE | Note |
-| --- | :---: | :---: | :---: | --- |
-| fiches | oui | oui | oui | |
-| notices | oui | oui | oui | |
-| sav | oui | oui | oui | |
-| notes | - | oui | oui | sensibles : politique-tarifaire, reunion-achat. Jamais pour le support |
+| Collection | support | commercial | dev/IDE | Note                                                                   |
+| ---------- | :-----: | :--------: | :-----: | ---------------------------------------------------------------------- |
+| fiches     |   oui   |    oui     |   oui   |                                                                        |
+| notices    |   oui   |    oui     |   oui   |                                                                        |
+| sav        |   oui   |    oui     |   oui   |                                                                        |
+| notes      |    -    |    oui     |   oui   | sensibles : politique-tarifaire, reunion-achat. Jamais pour le support |
 
 ### 3.4 Matrice client x table / colonnes (SQL) — rappel chantier 2
 
-| Table | support | colonnes bloquees (support) | commercial / dev |
-| --- | --- | --- | --- |
-| clients | oui | - | toutes |
-| produits | oui | prix_achat_ht, marge_pct | toutes |
-| stocks | oui | - | toutes |
-| commandes | oui | - | toutes |
-| ventes | oui | marge_ht | toutes |
+| Table     | support | colonnes bloquees (support) | commercial / dev |
+| --------- | ------- | --------------------------- | ---------------- |
+| clients   | oui     | -                           | toutes           |
+| produits  | oui     | prix_achat_ht, marge_pct    | toutes           |
+| stocks    | oui     | -                           | toutes           |
+| commandes | oui     | -                           | toutes           |
+| ventes    | oui     | marge_ht                    | toutes           |
 
 ### 3.5 Source de vérité : configuration déclarative
 
@@ -202,15 +201,20 @@ profils:
 
 Codes normalisés :
 
-| Code | Cas |
-| --- | --- |
-| UNAUTHORIZED_TOOL | tool non autorise pour le profil (E4) |
-| UNAUTHORIZED_COLLECTION | collection RAG interdite (ex. notes/support) |
-| FORBIDDEN_COLUMN | colonne sensible demandee (ex. marge/support) |
-| READ_ONLY_VIOLATION | SQL en ecriture (E3) |
-| OUT_OF_SCHEMA | question hors schema SQL |
-| OUT_OF_CORPUS | question non couverte par le corpus (E1) |
-| AMBIGUOUS | critere ambigu, precision requise |
+| Code | Cas | Accompagne |
+| --- | --- | --- |
+| `UNAUTHORIZED_TOOL` | tool non autorise pour le profil (E4) | `refused` |
+| `UNAUTHORIZED_COLLECTION` | collection RAG interdite au profil | `refused` |
+| `FORBIDDEN_COLUMN` | colonne sensible demandee (E5) | `refused` |
+| `READ_ONLY_VIOLATION` | SQL en ecriture (E3) | `refused` |
+| `OUT_OF_SCHEMA` | question hors du schema SQL | `out_of_schema` |
+| `OUT_OF_CORPUS` | question non couverte par le corpus (E1) | `out_of_corpus` |
+| `NOT_FOUND` | entite par identifiant precis introuvable (D26) | `not_found` |
+| `AMBIGUOUS` | critere ambigu, precision requise (D27) | `clarify` |
+
+Les quatre premiers accompagnent `status = refused`. Les quatre suivants
+accompagnent un statut non-`ok` qui n'est pas un refus : le code permet au client
+de reagir sans avoir a interpreter le message.
 
 ### 4.2 Journalisation : tout appel, autorisé ou refusé (E5)
 
@@ -251,15 +255,15 @@ Principe : la sortie de chaque tool est **typée par `status`**. Le client ne
 traite comme réponse QUE `status == "ok"` ; tout le reste est un signal de
 contrôle à restituer honnêtement.
 
-| status | Cas | Ce que le client fait |
-| --- | --- | --- |
-| ok | reponse valide | afficher answer/rows + sources |
-| out_of_corpus | RAG ne couvre pas (E1) | dire "non trouve dans la doc", ne rien inventer |
-| out_of_schema | SQL hors donnees (E3) | dire "hors des donnees dispo" |
-| not_found | entite par identifiant precis introuvable (SQL valide) | dire "identifiant valide mais aucune donnee", pas une fausse reponse vide |
-| clarify | question ambigue (critere) | demander la precision (options) |
-| refused | non autorise / colonne / RO | message d'acces refuse, pas de nouvelle tentative aveugle |
-| error | panne technique | erreur technique, reessayer |
+| status        | Cas                                                    | Ce que le client fait                                                     |
+| ------------- | ------------------------------------------------------ | ------------------------------------------------------------------------- |
+| ok            | reponse valide                                         | afficher answer/rows + sources                                            |
+| out_of_corpus | RAG ne couvre pas (E1)                                 | dire "non trouve dans la doc", ne rien inventer                           |
+| out_of_schema | SQL hors donnees (E3)                                  | dire "hors des donnees dispo"                                             |
+| not_found     | entite par identifiant precis introuvable (SQL valide) | dire "identifiant valide mais aucune donnee", pas une fausse reponse vide |
+| clarify       | question ambigue (critere)                             | demander la precision (options)                                           |
+| refused       | non autorise / colonne / RO                            | message d'acces refuse, pas de nouvelle tentative aveugle                 |
+| error         | panne technique                                        | erreur technique, reessayer                                               |
 
 Recommandation MCP : renvoyer les refus de politique et les cas "pas de
 résultat" (hors corpus/schéma) comme un résultat de tool normal portant un
@@ -279,12 +283,10 @@ deviennent pas de fausses réponses.
 
 | Test d'acceptation | Mecanisme |
 | --- | --- |
-| profil autorise -> acces borne aux tools / | matrice + double application |
-| collections / tables prevus | (gateway + tool) |
+| profil autorise -> acces borne aux tools, collections et tables prevus | matrice + double application (gateway + tool) |
 | appel non autorise -> refus clair + journal | contrat de refus + JSONL |
-| search_docs puis get_document (sans generer) | briques RAG (dev/IDE) |
-| session de demo -> journal = tous les appels | journalisation autorises + |
-| (autorises + refuses) | refuses |
+| search_docs puis get_document, sans generer | briques RAG reservees dev/IDE |
+| session de demo -> le journal contient tous les appels, autorises et refuses | journalisation des deux issues |
 
 ---
 
@@ -304,6 +306,25 @@ D23  Contrat de refus type {status, code, message, detail} ; codes normalises.
 D24  Journalisation JSONL de tout appel (autorise + refuse), sans valeurs
      sensibles, avec SQL genere et ressources touchees.
 D25  Sortie typee par status ; le client ne rend "reponse" que status=ok.
+D28  Identite du client MCP resolue par le TRANSPORT, jamais par un argument de
+     tool. Une seule fonction resoudre_profil(contexte) -> Profil, appelee a
+     l'entree de la gateway avant tout dispatch ; tout l'aval ignore le
+     transport. Normatif : stdio, profil fixe au lancement par SORABEL_PROFIL,
+     valide contre les cles de la matrice au demarrage, refus de demarrer si
+     absent ou inconnu, immuable pour la vie du processus. Extension documentee :
+     HTTP + Authorization Bearer, table jeton -> profil hors depot, 401 sinon.
+     Le nom de client declare et le client_id du journal sont DECLARATIFS :
+     journalisation uniquement, jamais autorisation. Detail et limites en Q6.
+D29  Domicile des releves, selon qui les lit. (a) La conception ne garde que la
+     regle, plus des illustrations etiquetees comme telles. (b) Trace generee et
+     versionnee par docs/releve_donnees.py : bloc dans analyse_donnees.md,
+     indispensable car data/ est exclu du depot. (c) Ce que le CODE consomme
+     (schema, enumerations, predicats de jointure) est obtenu par introspection
+     au demarrage, jamais recopie : les quatre chemins de jointure sont d'ailleurs
+     declares comme cles etrangeres dans la base, donc introspectables. Le releve
+     ne decrit que structure et agregats, jamais de lignes, et ne porte aucune
+     notion d'autorisation : les colonnes sensibles restent dans la seule matrice
+     (D21), et le schema montre au modele vaut introspection INTER matrice[profil].
 ```
 
 ## Arbitrages (verrouillés le 2026-08-27)
@@ -320,13 +341,87 @@ P7  Collection notes -> COMMERCIAL + DEV, jamais support ; pas de 4e profil.
     default permet d'ajouter plus tard un profil achat/direction sans refonte.
 ```
 
-## Point ouvert (implémentation)
+## Q6. D'où vient l'identité du client ? (P8, verrouillé le 2026-08-31)
 
-```
-P8  Mecanisme d'identite du client MCP (jeton, en-tete, id de session) : a
-    definir en phase de developpement. L'autorisation ne vaut que si l'identite
-    est fiable.
-```
+Toute la matrice repose sur une question qu'elle ne pose pas : **comment le
+serveur sait-il à qui il parle ?** Sans réponse, E4 est un vœu.
+
+### 6.1 Ce que le protocole MCP fournit, et ce qu'il ne fournit pas
+
+MCP définit deux transports. En **stdio**, le client lance le serveur comme
+sous-processus et dialogue par les flux standards ; la spécification d'
+autorisation exclut explicitement ce transport et renvoie à l'environnement du
+processus. En **HTTP streamable**, le serveur est un service et la spécification
+le traite en *Resource Server* OAuth 2.1 : en-tête `Authorization: Bearer`,
+métadonnées de ressource protégée, validation de l'audience du jeton, `401` avec
+`WWW-Authenticate`, jeton interdit en paramètre d'URL.
+
+Deux points sont décisifs et souvent mal compris :
+
+- ce qu'un client **déclare** sur lui-même n'est pas vérifié par le protocole,
+  et ne doit pas servir à décider. Cela vaut pour le nom du client transmis à la
+  connexion comme pour un en-tête quelconque ;
+- MCP ne définit **aucune** notion de rôle, de profil ni de RBAC. L'autorisation
+  applicative est entièrement à la charge du serveur, ce qui est cohérent avec
+  nos décisions D20 et D21.
+
+### 6.2 Sources d'information, et leur valeur
+
+| Source | Transport | Fiabilité | Autorise ? |
+| --- | --- | --- | --- |
+| paramètre de tool | les deux | rempli par le LLM appelant | **jamais** |
+| nom du client déclaré à la connexion | les deux | auto-déclaré, non vérifié | non, journal seulement |
+| identifiant de session | HTTP | corrèle des requêtes, ne prouve rien | non, seul |
+| variables d'environnement du processus | stdio | fixées par celui qui lance | oui, si le lanceur est l'ancre de confiance |
+| en-tête `Authorization` | HTTP | vaut ce que vaut la validation du jeton | oui |
+
+### 6.3 Le piège que nous avions dans le dossier
+
+Le catalogue du chantier 2 faisait figurer `profil` comme **paramètre** de chaque
+tool. Un paramètre est rempli par le client : le bot support n'avait qu'à
+demander `profil = "commercial"` pour lire les marges. E4 devenait décorative.
+Corrigé le 2026-08-31 ; les chantiers 4 et 5 étaient déjà justes et font foi.
+
+### 6.4 Décision
+
+Une seule fonction du serveur connaît le transport :
+`resoudre_profil(contexte) -> Profil`, appelée à l'entrée de la gateway avant
+tout dispatch. Tout l'aval reçoit un profil et ignore d'où il vient, ce qui rend
+le changement de transport indolore.
+
+**Implémentation normative, stdio.** Le profil est fixé au lancement par la
+variable d'environnement `SORABEL_PROFIL`, validée au démarrage contre les clés
+de la matrice. Absente ou inconnue, le serveur **refuse de démarrer** : le
+deny-by-default s'applique au lancement, pas au premier appel. Le profil est
+ensuite immuable pour la vie du processus.
+
+**Extension documentée, non requise, HTTP.** `Authorization: Bearer` et une table
+jeton vers profil chargée hors du dépôt, `401` sinon. Un seul processus sert
+alors les trois profils.
+
+### 6.5 Ce que cette solution ne protège pas
+
+À dire en soutenance, pas à sous-entendre.
+
+- Elle authentifie un **contexte de lancement**, pas une personne. Qui peut
+  éditer la configuration du client peut s'attribuer n'importe quel profil.
+- Aucun secret côté serveur en variante stdio : l'ancre de confiance est le
+  compte système et les droits sur le fichier de configuration.
+- Ni expiration, ni révocation, ni rotation. Retirer un accès se fait en
+  modifiant la configuration du poste client.
+- **Imputabilité au profil, pas à l'individu.** Le journal répond à « quel
+  profil a demandé cette marge », jamais à « qui ». E5 est satisfaite au sens du
+  brief, tout appel est journalisé, mais ce n'est pas une piste d'audit
+  nominative. Le `client_id` du journal est déclaratif, donc falsifiable.
+
+### 6.6 Ce qu'il faudrait en production
+
+Transport HTTP, serveur en *Resource Server* OAuth 2.1 : jetons émis par
+l'annuaire de l'entreprise, **audience liée au serveur** pour qu'un jeton volé
+ailleurs ne soit pas rejouable ici, validation à chaque requête, jetons courts
+avec rotation et révocation. Le profil se dérive alors d'une revendication du
+jeton validé, jamais d'une table statique, et le sujet nominatif entre au journal
+pour rendre l'imputabilité réelle.
 
 ## Auto-critique (risques et parades)
 
@@ -339,6 +434,6 @@ P8  Mecanisme d'identite du client MCP (jeton, en-tete, id de session) : a
   pas explicitement autorise est refuse).
 - Briques trop restreintes : si le commercial a besoin de list_sources, ouvrir au
   cas par cas (P6).
-- Identite falsifiable : l'autorisation ne vaut que si l'identite du client est
-  fiable (P8) ; a cadrer a l'implementation.
+- Identite falsifiable : traite en Q6. L'autorisation vaut ce que vaut le
+  contexte de lancement, ce qui est assume et documente, pas ignore.
 ```

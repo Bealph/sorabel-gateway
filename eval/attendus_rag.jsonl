@@ -1,0 +1,30 @@
+{"id": "RAG-01", "type": "reference_exacte", "gold_ref": "REF-8842", "source": "fixture"}
+{"id": "RAG-02", "type": "reference_exacte", "gold_ref": "REF-8842", "source": "fixture"}
+{"id": "RAG-03", "type": "reference_exacte", "gold_ref": "REF-5313", "source": "fixture"}
+{"id": "RAG-04", "type": "reference_exacte", "gold_ref": "REF-8836", "source": "fixture"}
+{"id": "RAG-05", "type": "reference_exacte", "gold_ref": "REF-5719", "source": "fixture"}
+{"id": "RAG-06", "type": "reference_exacte", "gold_ref": "REF-5603", "source": "fixture"}
+{"id": "RAG-07", "type": "reference_exacte", "gold_ref": "REF-4581", "source": "fixture"}
+{"id": "RAG-08", "type": "reference_exacte", "gold_ref": "REF-9382", "source": "fixture"}
+{"id": "RAG-09", "type": "couverte", "gold_ref": "REF-8842", "source": "fixture"}
+{"id": "RAG-10", "type": "couverte", "gold_doc_id": null, "attendu_type": "procedure_sav", "source": "a annoter (P4)"}
+{"id": "RAG-11", "type": "couverte", "gold_doc_id": null, "attendu_type": "procedure_sav", "source": "a annoter (P4)"}
+{"id": "RAG-12", "type": "couverte", "gold_doc_id": null, "attendu_type": "procedure_sav", "source": "a annoter (P4)"}
+{"id": "RAG-13", "type": "couverte", "gold_doc_id": null, "attendu_type": "notice", "source": "a annoter (P4)"}
+{"id": "RAG-14", "type": "couverte", "gold_doc_id": null, "attendu_type": "notice", "source": "a annoter (P4)"}
+{"id": "RAG-15", "type": "couverte", "gold_doc_id": null, "attendu_type": "fiche_technique", "source": "a annoter (P4)"}
+{"id": "RAG-16", "type": "couverte", "gold_doc_id": null, "attendu_type": "fiche_technique", "source": "a annoter (P4)"}
+{"id": "RAG-17", "type": "couverte", "gold_doc_id": null, "attendu_type": "procedure_sav", "source": "a annoter (P4)"}
+{"id": "RAG-18", "type": "couverte", "gold_doc_id": null, "attendu_type": "procedure_sav", "source": "a annoter (P4)"}
+{"id": "RAG-19", "type": "couverte", "gold_doc_id": null, "attendu_type": "fiche_technique", "source": "a annoter (P4)"}
+{"id": "RAG-20", "type": "couverte", "gold_doc_id": null, "attendu_type": "notice", "source": "a annoter (P4)"}
+{"id": "RAG-21", "type": "couverte", "gold_doc_id": null, "attendu_type": "procedure_sav", "source": "a annoter (P4)"}
+{"id": "RAG-22", "type": "couverte", "gold_doc_id": null, "attendu_type": "fiche_technique", "source": "a annoter (P4)"}
+{"id": "RAG-23", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-24", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-25", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-26", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-27", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-28", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-29", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}
+{"id": "RAG-30", "type": "hors_corpus", "attendu": "abstention", "status": "out_of_corpus"}

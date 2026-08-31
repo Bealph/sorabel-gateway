@@ -23,35 +23,32 @@ et une gestion explicite des versions pour ne jamais les confondre.
 
 Chaque source est convertie vers un même enregistrement :
 
-| Champ | Description |  |  |  |
-| --- | --- | --- | --- | --- |
-| doc_id | identifiant unique = {doc_type}_{ref | slug}_v{version} |  |  |
-| ref | reference produit (REF-8842) si applicable, sinon null |  |  |  |
-| doc_type | fiche_technique | notice | procedure_sav | note_interne |
-| title | titre du document |  |  |  |
-| version | 1.0 / 2.1 / ... |  |  |  |
-| date | AAAA-MM-JJ |  |  |  |
-| version_group | cle de regroupement des versions d'un meme document logique |  |  |  |
-| is_latest | vrai si version la plus recente du groupe |  |  |  |
-| lang | fr |  |  |  |
-| source_path | chemin d'origine (tracabilite) |  |  |  |
-| url | lien interne cliquable (citation E1) |  |  |  |
-| text | contenu normalise (texte propre, structure par sections) |  |  |  |
-| sections[] | liste de sections (titre + texte) pour le chunking |  |  |  |
+| Champ | Description |
+| --- | --- |
+| `doc_id` | identifiant unique, `{doc_type}_{ref ou slug}_v{version}` |
+| `ref` | reference produit si applicable, sinon nul |
+| `doc_type` | `fiche_technique`, `notice`, `procedure_sav` ou `note_interne` |
+| `title` | titre du document |
+| `version` | numero de version, par exemple 1.0 ou 2.1 |
+| `date` | AAAA-MM-JJ |
+| `version_group` | cle de regroupement des versions d'un meme document logique |
+| `is_latest` | vrai si version la plus recente du groupe |
+| `lang` | langue du document |
+| `source_path` | chemin d'origine, pour la tracabilite |
+| `url` | lien interne cliquable, pour la citation (E1) |
+| `text` | contenu normalise, texte propre structure par sections |
+| `sections[]` | liste de sections (titre + texte), entree du chunking |
 
 ### 1.3 Extraction spécifique par format
 
 | Format | Traitement |
 | --- | --- |
 | PDF (fiches, notices) | Extraction texte (PyMuPDF / pdfplumber) en respectant l'ordre de lecture. Tables eventuelles : extraction dediee (pdfplumber) puis linearisation en « cle : valeur » ou tableau Markdown, pour preserver le sens a l'embedding. Le bloc d'entete (titre, ref, version, date) est parse en metadonnees ET conserve dans le texte. |
-| HTML (sav) | Parsing (BeautifulSoup). Metadonnees lues dans `<title>` et les balises `<meta version/date/type>`. Titres h1/h2 conserves comme sections. |
+| HTML (sav) | Parsing (BeautifulSoup). Metadonnees lues dans `<title>` et les balises `<meta name="version">`, `<meta name="date">`, `<meta name="type">`, dont la valeur est portee par l'attribut `content`. Titres h1/h2 conserves comme sections. |
 | Markdown (notes) | Frontmatter YAML vers metadonnees (titre, date, auteur, type, version). Corps conserve avec ses titres. |
 
 Normalisation commune : Unicode NFC, espaces normalisés, sections préservées,
 la référence et le titre restent présents dans le texte (utile au lexical).
-
-Normalisation commune : Unicode NFC, espaces normalises, sections preservees,
-la reference et le titre restent presents dans le texte (utile au lexical).
 
 ### 1.4 Traitement des versions (dédoublonnage)
 
@@ -79,21 +76,23 @@ d'historique et impossibilite de repondre sur une version anterieure).
 ### 1.5 Flux d'ingestion
 
 L'ingestion tourne **hors ligne**, une fois, avant toute question. Elle transforme
-400 fichiers hétérogènes en 820 chunks indexés deux fois. À la requête, le moteur
+`F` fichiers hétérogènes en `C` chunks indexés deux fois. À la requête, le moteur
 ne lit plus jamais les fichiers d'origine : il lit les index.
 
 Le schéma suit **les artefacts**, pas les actions : chaque étape affiche ce
-qu'elle reçoit et ce qu'elle produit.
+qu'elle reçoit et ce qu'elle produit. Les cardinalités sont notées `F`, `D`, `G`
+et `C` : elles dépendent du corpus, pas du pipeline. Les valeurs relevées sur le
+jeu fourni figurent dans `../analyse_donnees.md`, bloc généré.
 
 ```mermaid
 flowchart TB
-    A["400 fichiers bruts<br/>150 PDF fiches, 80 PDF notices,<br/>90 HTML procedures, 80 MD notes"]
-    B["Texte + entete extraits<br/>400 objets, un par fichier"]
-    C["Document canonique<br/>400 objets au meme schema"]
-    D["350 groupes de versions<br/>is_latest calcule"]
-    E["820 chunks<br/>metadonnees de citation heritees"]
-    F[("Chroma<br/>820 vecteurs bge-m3")]
-    G[("Index BM25<br/>820 sacs de mots ponderes")]
+    A["F fichiers bruts<br/>PDF, HTML, Markdown"]
+    B["Texte + entete extraits<br/>F objets, un par fichier"]
+    C["Document canonique<br/>D objets au meme schema"]
+    D["G groupes de versions<br/>is_latest calcule"]
+    E["C chunks<br/>metadonnees de citation heritees"]
+    F[("Chroma<br/>C vecteurs bge-m3")]
+    G[("Index BM25<br/>C sacs de mots ponderes")]
 
     A -->|"1. parser selon le format"| B
     B -->|"2. normaliser et sectionner"| C
@@ -109,10 +108,10 @@ Ce que fait chaque étape :
 | --- | --- | --- | --- |
 | 1 | 1 fichier PDF/HTML/MD | parseur dedie au format | texte + entete brut |
 | 2 | texte + entete brut | Unicode NFC, espaces, decoupe en sections | 1 Document canonique |
-| 3 | 400 Documents | cle = (doc_type, ref), tri par version puis date | 350 groupes, is_latest pose |
-| 4 | 1 Document + sa struct. | regle par doc_type | 1 a 4 chunks |
-| 5a | 820 chunks | bge-m3, 1024 dimensions | 820 vecteurs |
-| 5b | 820 chunks | tokenisation + IDF | 820 entrees BM25 |
+| 3 | les `D` Documents | cle = (doc_type, ref), tri par version puis date | `G` groupes, `is_latest` posé |
+| 4 | 1 Document et sa structure | règle propre au `doc_type` | 1 à n chunks |
+| 5a | les `C` chunks | bge-m3 | `C` vecteurs |
+| 5b | les `C` chunks | tokenisation + pondération IDF | `C` entrées BM25 |
 
 **Étape 1, parser.** Trois formats, trois extracteurs. Le PDF donne un flux de
 texte qu'il faut lire dans l'ordre de lecture. Le HTML porte ses métadonnées dans
@@ -136,6 +135,13 @@ privilégiée à la citation.
 de caractères. Une fiche tient sur une page dense : la couper séparerait le
 calibre de la norme. Une notice a quatre sections indépendantes : les fusionner
 diluerait la réponse. Détail en 2.1.
+
+**Hypothèse d'échelle.** Ce pipeline est dimensionné pour un corpus de l'ordre de
+10³ chunks. C'est la condition sous laquelle l'arbitrage P3, un index BM25
+applicatif tenu en mémoire à côté du store vectoriel, reste défendable. Au-delà
+de 10⁵, il faudrait reconsidérer P3 au profit d'un index lexical persistant.
+L'ordre de grandeur est donc une **hypothèse de conception**, à la différence du
+décompte exact, qui est un relevé.
 
 **Étape 5, indexer deux fois.** Le même chunk part dans deux index qui ne savent
 pas faire la même chose. Le vecteur capte le sens, l'index lexical capte les
@@ -285,16 +291,24 @@ de la notice. Un découpage uniforme servirait mal l'une des deux.
 
 Volumes sur l'ensemble du corpus :
 
-| Collection | Fichiers | Groupes | Chunks/doc | Chunks |
-| --- | ---: | ---: | ---: | ---: |
-| fiches | 150 | 120 | 1 | 150 |
-| notices | 80 | 70 | 4 | 320 |
-| sav | 90 | 80 | 3 | 270 |
-| notes | 80 | 80 | 1 | 80 |
-| TOTAL | 400 | 350 |  | 820 |
+La règle de découpage, elle, ne dépend pas du corpus :
 
-Comptes releves sur le corpus reel : les 80 notices ont toutes 4 sections
-numerotees, les 90 procedures SAV ont toutes 3 sections <h2>.
+| Type de document | Chunks produits | Pourquoi |
+| --- | --- | --- |
+| `fiche_technique` | le document entier | une page dense, la couper séparerait le calibre de la norme |
+| `notice` | un par section | les sections sont indépendantes, une question en vise une seule |
+| `procedure_sav` | un par section | idem |
+| `note_interne` | le document entier | trop court pour être découpé |
+
+Les décomptes obtenus en appliquant cette règle au corpus fourni sont un
+**relevé**, pas une propriété du pipeline. Ils figurent dans
+`../analyse_donnees.md`, bloc généré, et sont produits par
+`docs/releve_donnees.py`.
+
+Une réserve à lever au lot 1 : le nombre de sections par notice est aujourd'hui
+déduit d'un comptage de titres numérotés dans le texte extrait, pas d'un parseur
+PDF complet. Tant que l'ingestion n'a pas tourné, le décompte de chunks est une
+**projection**, pas une mesure.
 
 ## Q3. Pourquoi le dense seul rate « REF-8842 », et l'apport de l'hybride + rerank
 
@@ -346,37 +360,40 @@ présélectionné.
 flowchart TB
     Q["Question de l'utilisateur"] --> R{"La question contient-elle<br/>un motif REF-XXXX ?"}
 
-    R -->|oui| EX["Court-circuit exact<br/>filtre sur la metadonnee ref<br/>820 chunks vers 6"]
+    R -->|oui| EX["Court-circuit exact<br/>filtre sur la metadonnee ref<br/>C chunks vers ceux de la reference"]
     R -->|non| SP["Interrogation des deux index<br/>en parallele"]
 
-    SP --> BM["BM25 lexical<br/>820 vers top 50"]
-    SP --> DN["Dense bge-m3, cosinus<br/>820 vers top 50"]
+    SP --> BM["BM25 lexical<br/>C vers top n"]
+    SP --> DN["Dense bge-m3, cosinus<br/>C vers top n"]
 
-    BM --> FU["Fusion RRF, k=60<br/>2 listes de 50 vers 20"]
+    BM --> FU["Fusion RRF, k=60<br/>2 listes de n vers m"]
     DN --> FU
 
-    EX --> RR["Reranking cross-encoder<br/>bge-reranker-v2-m3<br/>20 vers 5 reordonnes"]
+    EX --> RR["Reranking cross-encoder<br/>bge-reranker-v2-m3<br/>m vers k reordonnes"]
     FU --> RR
 
     RR --> SG{"Score du meilleur passage<br/>superieur au seuil tau ?"}
     SG -->|non| AB["Abstention E1<br/>status = out_of_corpus"]
-    SG -->|oui| GE["Generation ancree<br/>sur les 5 passages retenus"]
+    SG -->|oui| GE["Generation ancree<br/>sur les k passages retenus"]
     GE --> OU["Reponse + sources<br/>titre, ref, version, date"]
 ```
 
 L'entonnoir, étage par étage :
 
-| Etage | Entree | Sortie | Cout unitaire | Ce qu'il apporte |
-| --- | ---: | --- | --- | --- |
-| Court-circuit ref | 820 | 6 | negligeable | garantit E2 |
-| BM25 | 820 | 50 | tres faible | termes exacts |
-| Dense | 820 | 50 | faible, precalc. | sens, paraphrases |
-| Fusion RRF | 50 + 50 | 20 | nul | reconcilie les deux |
-| Reranking | 20 | 5 | ELEVE | ordre juste + score |
-| Seuil tau | 5 | 5 ou 0 | nul | abstention E1 |
+| Étage | Entrée | Sortie | Coût unitaire | Ce qu'il apporte |
+| --- | --- | --- | --- | --- |
+| Court-circuit `ref` | `C` chunks | les chunks de la référence | négligeable | garantit E2 |
+| BM25 | `C` | `n` | très faible | termes exacts |
+| Dense | `C` | `n` | faible, vecteurs précalculés | sens, paraphrases |
+| Fusion RRF | `2n` | `m` | nul | réconcilie les deux |
+| Reranking | `m` | `k` | **élevé** | ordre juste + score calibré |
+| Seuil tau | `k` | `k` ou 0 | nul | abstention (E1) |
 
-Les valeurs 50 / 20 / 5 sont des points de depart, a calibrer au lot 3 sur
-eval/questions_rag.jsonl. Elles ne sont pas mesurees a ce stade.
+**Ce qui est de la conception, ici, c'est la décroissance**, pas les nombres :
+`C` >> `n` > `m` > `k`. Chaque étage doit réduire assez pour que le suivant, plus
+coûteux, reste tenable. Les valeurs de départ proposées sont `n` = 50, `m` = 20,
+`k` = 5 ; elles ne sont **pas mesurées** et se calibrent au lot 3 sur
+`eval/questions_rag.jsonl`.
 
 **Le court-circuit exact.** Si la question porte un motif `REF-XXXX`, on ne fait
 pas de recherche : on filtre sur une métadonnée. C'est un `WHERE ref = ...`, pas
@@ -402,7 +419,7 @@ choix robuste (D5).
 **séparément** : ils ne peuvent que comparer deux vecteurs figés. Le
 cross-encoder lit la question et le passage **ensemble**, et note leur pertinence
 réelle. Beaucoup plus juste, beaucoup plus cher : d'où sa place en fin
-d'entonnoir, sur 20 candidats et non sur 820. Il produit en sortie un score
+d'entonnoir, sur `m` candidats et non sur la totalite du corpus. Il produit un score
 calibré, réutilisé à l'étage suivant.
 
 **Le seuil tau.** C'est le score du reranker sur le meilleur passage. En dessous,

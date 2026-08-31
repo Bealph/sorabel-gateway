@@ -75,15 +75,17 @@ erDiagram
 
 Observations utiles au Text-to-SQL :
 
-```
-- Dates au format texte 'YYYY-MM-DD' (ex. commandes 2026-03, 2026-04) :
-  un filtre mensuel se fait par date_commande LIKE '2026-04%'.
-- Entrepots observes : LILLE, LYON (colonne stocks.entrepot).
-- statut de commande : valeurs type 'livree', 'annulee' (a enumerer exhaustivement).
-- Jointures naturelles : ventes -> commandes -> clients, et ventes/stocks -> produits.
-- Colonnes monetaires : prix_vente_ht (public, OK support) vs prix_achat_ht +
-  marge_pct + marge_ht (sensibles, interdits support).
-```
+- Les dates sont stockées en **texte** `AAAA-MM-JJ`. Un filtre mensuel s'écrit
+  donc `date_commande LIKE '2026-04%'`, jamais avec une fonction de date.
+- Les **jointures** ne suivent que quatre chemins : `ventes` vers `commandes`
+  vers `clients`, et `ventes` ou `stocks` vers `produits`. Détail en
+  `conception/02_tools_text2sql.md`.
+- Colonnes monétaires : `prix_vente_ht` est publique, `prix_achat_ht`,
+  `marge_pct` et `ventes.marge_ht` sont sensibles au sens d'E5.
+
+Les valeurs exactes des énumérations, des plages de dates et des volumes ne sont
+pas recopiées ici : elles figurent dans le **bloc généré** en fin de document.
+Une valeur recopiée à la main diverge, c'est arrivé deux fois sur ce document.
 
 Correspondance avec le jeu d'éval SQL :
 
@@ -105,7 +107,7 @@ Quatre familles de documents, chacune avec ses métadonnées de citation (E1).
 | --- | --- | --- | --- |
 | fiches/ | PDF | titre, reference, version, date, fabricant, categorie, prix public HT, references associees | v1.0 et v2.1 |
 | notices/ | PDF | titre, reference, version, date ; sections securite/installation/service | v1.0 et v1.1 |
-| sav/ | HTML | &lt;title>, &lt;meta version>, &lt;meta date>, &lt;meta type=procedure_sav> | v1.0 et v2.0 |
+| sav/ | HTML | `&lt;title>`, puis `&lt;meta name="version">`, `&lt;meta name="date">`, `&lt;meta name="type">`, valeur dans l'attribut `content` | v1.0 et v2.0 |
 | notes/ | MD | frontmatter YAML : titre, date, auteur, type=note_interne, version | version unique |
 
 Sous-types des notes internes (déduits des noms de fichiers) :
@@ -169,7 +171,81 @@ colonnes**. C'est un point de conception à porter au chantier 3.
 - Politique de version au RAG : tout indexer et privilegier le plus recent,
   ou n'indexer que la derniere version ? (impact E2 et E6)
 - Granularite des collections RAG : fiches / notices / sav / notes, ou plus fin ?
-- Enumeration exacte des valeurs de statut et des entrepots (pour bornage SQL).
-- Comptage precis des fichiers du corpus par type (a produire par script au
-  moment de l'ingestion, chantier 1).
 ```
+
+Les deux questions « énumération exacte des valeurs » et « comptage précis des
+fichiers du corpus », ouvertes jusqu'au 2026-08-31, sont **closes** : les deux
+relevés sont produits par `docs/releve_donnees.py` et figurent dans le bloc
+généré ci-dessous. `python docs/releve_donnees.py --verifier` échoue si le bloc
+ne correspond plus aux données.
+
+---
+
+## Relevé du jeu de données
+
+<!-- RELEVE:DEBUT -- genere par docs/releve_donnees.py, ne pas editer a la main -->
+
+> Bloc **généré** le 2026-08-31 par `docs/releve_donnees.py`.
+> Il décrit **ce jeu de données**, pas la conception. Un autre corpus produirait
+> d'autres valeurs sans qu'aucune décision ne change. Ne pas éditer à la main :
+> relancer le script.
+
+### Base SQL
+
+| Table | Lignes | Colonnes |
+| --- | ---: | --- |
+| `clients` | 60 | `id`, `raison_sociale`, `segment`, `ville`, `email` |
+| `commandes` | 340 | `id`, `client_id`, `date_commande`, `statut`, `montant_ht` |
+| `produits` | 120 | `ref`, `nom`, `categorie`, `fabricant`, `unite`, `prix_vente_ht`, `prix_achat_ht` (SENSIBLE, E5), `marge_pct` (SENSIBLE, E5), `actif` |
+| `stocks` | 312 | `id`, `ref`, `entrepot`, `quantite`, `seuil_reappro` |
+| `ventes` | 993 | `id`, `commande_id`, `ref`, `quantite`, `prix_unitaire_ht`, `remise_pct`, `marge_ht` (SENSIBLE, E5) |
+
+### Clés étrangères
+
+| Depuis | Vers |
+| --- | --- |
+| `commandes.client_id` | `clients.id` |
+| `stocks.ref` | `produits.ref` |
+| `ventes.ref` | `produits.ref` |
+| `ventes.commande_id` | `commandes.id` |
+
+### Énumérations
+
+Colonnes textuelles à faible cardinalité. Ce sont les littéraux à fournir au
+modèle de génération SQL (décision D9). **Les accents en font partie.**
+
+| Colonne | Valeurs distinctes | Valeurs |
+| --- | ---: | --- |
+| `clients.segment` | 4 | `PME`, `artisan`, `collectivité`, `grand compte` |
+| `clients.ville` | 15 | `Amiens`, `Angers`, `Arras`, `Dunkerque`, `Lille`, `Lyon`, `Metz`, `Nantes`, `Orléans`, `Reims`, `Rennes`, `Roubaix`, `Tours`, `Valenciennes`, `Villeurbanne` |
+| `commandes.statut` | 5 | `annulee`, `en_attente`, `expediee`, `livree`, `preparee` |
+| `produits.categorie` | 9 | `Câblage`, `Distribution`, `EPI`, `Mesure`, `Outillage à main`, `Outillage électroportatif`, `Protection électrique`, `Visserie`, `Éclairage` |
+| `produits.fabricant` | 11 | `Ampria`, `Cablor`, `Ferrix`, `Filtech`, `Fixor`, `Lumea`, `Metrix Pro`, `Protec+`, `Securo`, `Torqua`, `Voltane` |
+| `produits.unite` | 2 | `conditionnement`, `pièce` |
+| `stocks.entrepot` | 3 | `LILLE`, `LYON`, `NANTES` |
+
+### Plages de dates
+
+| Colonne | De | À |
+| --- | --- | --- |
+| `commandes.date_commande` | 2025-09-04 | 2026-08-19 |
+
+### Corpus documentaire
+
+| Collection | Fichiers | Groupes de versions | Sections par document | Chunks |
+| --- | ---: | ---: | --- | ---: |
+| `fiches` | 150 | 120 | 1 (150 doc) | 150 |
+| `notices` | 80 | 70 | 4 (80 doc) | 320 |
+| `sav` | 90 | 80 | 3 (90 doc) | 270 |
+| `notes` | 80 | 80 | 1 (80 doc) | 80 |
+| **total** | **400** | **350** | | **820** |
+
+### Anomalies du jeu
+
+Elles **illustrent** des décisions, elles ne les fondent pas : les règles
+correspondantes tiennent sur un jeu qui n'aurait aucune de ces anomalies.
+
+- 43 libelles de produits sur 120 designent plusieurs references : un libelle n'est pas une cle (illustre D27).
+- 336 numeros de commande manquent dans des suites par ailleurs continues (2025 : 220 manquants, dont CMD-2025-0006 ; 2026 : 116 manquants, dont CMD-2026-0004) : un identifiant bien forme peut ne designer aucune ligne (illustre D26).
+
+<!-- RELEVE:FIN -->

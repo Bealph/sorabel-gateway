@@ -70,8 +70,10 @@ unique et gouverné.
 | commercial | poste commercial | fiches, notices, SAV | produits, stocks, commandes, ventes |
 | dev | IDE developpeurs | toutes collections | lecture large |
 
-Statut : **PROPOSÉ** (à valider et détailler au chantier 3 : liste exacte des
-tools, collections, tables et colonnes par profil).
+Statut : **VALIDÉ** au chantier 3 le 2026-08-27. La matrice complète, profil par
+tool, collection, table et colonne, est dans `docs/conception/03_matrice_acces.md`.
+Le mécanisme qui résout le profil est la décision D28, section Q6 du même
+document.
 
 ---
 
@@ -81,26 +83,26 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 **PROPOSÉ** (recommandation de l'expert, en attente d'accord) /
 **À TRANCHER** (option ouverte).
 
-| Sujet | Orientation | Statut |  |  |
-| --- | --- | --- | --- | --- |
-| Langage / runtime | Python | PROPOSE |  |  |
-| Framework MCP | FastMCP (SDK Python officiel) | PROPOSE |  |  |
-| Base SQL | SQLite (fichier fourni), acces read-only | PROPOSE |  |  |
-| RAG - embeddings | BAAI/bge-m3 (multilingue, local) | VALIDE |  |  |
-| RAG - recherche | Hybride : BM25 + dense, court-circuit REF | VALIDE |  |  |
-| RAG - fusion | RRF (Reciprocal Rank Fusion, k=60) | VALIDE |  |  |
-| RAG - reranking | Cross-encoder BAAI/bge-reranker-v2-m3 | VALIDE |  |  |
-| RAG - versions | Indexer toutes, is_latest, citer la plus recente ; ancienne sur demande explicite | VALIDE |  |  |
-| Store vectoriel | Chroma (dense) + bm25 applicatif | VALIDE |  |  |
-| RAG - eval E6 | Gold doc annotes pour les "couverte" | VALIDE |  |  |
-| Text-to-SQL - securite | Defense en profondeur : connexion RO + AST (sqlglot) SELECT-only + perimetre profil + LIMIT/timeout + SQL renvoye + log | VALIDE |  |  |
-| Text-to-SQL - catalogue | ask_database (generique) + tools figes get_product/get_stock/get_order_status | VALIDE |  |  |
-| Text-to-SQL - sortie | structuree {SQL | CLARIFY | HORS_SCHEMA} | VALIDE |
-| Text-to-SQL - LLM generation | Local coder instruct (ex. Qwen2.5-Coder), repli mesure sur SQL-01..12 avant API | VALIDE |  |  |
-| Gouvernance / RBAC | Matrice declarative (config), appliquee aux 2 niveaux : gateway (tool) + tool (collection/table/colonne), deny-by-default | VALIDE |  |  |
-| Journalisation | JSONL de tout appel (autorise + refuse), sans valeurs sensibles, avec SQL + code | VALIDE |  |  |
-| Catalogue de tools | 8 tools : answer_question, search_docs, get_document, list_sources, ask_database, get_schema, check_stock, order_status | VALIDE |  |  |
-| Interface graphique | A definir (livrable : lien vers une UI) | A TRANCHER |  |  |
+| Sujet | Orientation | Statut |
+| --- | --- | --- |
+| Langage / runtime | Python | PROPOSE |
+| Framework MCP | FastMCP (SDK Python officiel) | PROPOSE |
+| Base SQL | SQLite (fichier fourni), acces read-only | PROPOSE |
+| RAG - embeddings | BAAI/bge-m3 (multilingue, local) | VALIDE |
+| RAG - recherche | Hybride : BM25 + dense, court-circuit REF | VALIDE |
+| RAG - fusion | RRF (Reciprocal Rank Fusion, k=60) | VALIDE |
+| RAG - reranking | Cross-encoder BAAI/bge-reranker-v2-m3 | VALIDE |
+| RAG - versions | Indexer toutes, is_latest, citer la plus recente ; ancienne sur demande explicite | VALIDE |
+| Store vectoriel | Chroma (dense) + bm25 applicatif | VALIDE |
+| RAG - eval E6 | Gold doc annotes pour les "couverte" | VALIDE |
+| Text-to-SQL - securite | Defense en profondeur : connexion RO + AST (sqlglot) SELECT-only + perimetre profil + LIMIT/timeout + SQL renvoye + log | VALIDE |
+| Text-to-SQL - catalogue | ask_database (generique) + get_schema + figes check_stock / order_status, les deux seuls que le brief nomme | VALIDE |
+| Text-to-SQL - sortie | structuree {SQL \| CLARIFY \| HORS_SCHEMA} | VALIDE |
+| Text-to-SQL - LLM generation | Local coder instruct (ex. Qwen2.5-Coder), repli mesure sur SQL-01..12 avant API | VALIDE |
+| Gouvernance / RBAC | Matrice declarative (config), appliquee aux 2 niveaux : gateway (tool) + tool (collection/table/colonne), deny-by-default | VALIDE |
+| Journalisation | JSONL de tout appel (autorise + refuse), sans valeurs sensibles, avec SQL + code | VALIDE |
+| Catalogue de tools | 8 tools : answer_question, search_docs, get_document, list_sources, ask_database, get_schema, check_stock, order_status | VALIDE |
+| Interface graphique | A definir (livrable : lien vers une UI) | A TRANCHER |
 
 Référence méthodo RBAC/MCP retenue par le pilote :
 https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-guide-for-engineering-teams-fhf
@@ -330,6 +332,69 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             4. syntaxe, contre la version exacte de l'extension (11.12.2)
             La 2e fois, l'extension avait ete installee 25 min AVANT les
             modifications de fichiers : la chronologie a suffi a les disculper.
+2026-08-31  CAUSE REELLE du rendu Mermaid absent, apres plusieurs fausses pistes.
+            Depuis VSCode 1.121, le rendu Mermaid est INTEGRE a l'editeur :
+            extension livree mermaid-markdown-features v10.0.0 (reprise du code
+            de bierner). Ici VSCode 1.135.0. bierner.markdown-mermaid faisait
+            donc DOUBLON avec la native : les deux injectent markdownItPlugins
+            et previewScripts, la native perd, et le bloc s'affiche en cadre
+            VIDE avec ses controles de zoom, sans aucun message d'erreur.
+            Preuve locale : l'extension integree declare exactement les 8
+            proprietes markdown-mermaid.* qui echouaient dans la console avec
+            "Cannot register ... already registered". Cet avertissement etait
+            le vrai signal ; je l'avais ecarte a tort en ne cherchant le doublon
+            que dans les extensions UTILISATEUR, jamais dans les INTEGREES.
+            ACTION : bierner.markdown-mermaid desinstallee. Plus AUCUNE
+            extension Mermaid ne doit etre installee. extensions.json ne
+            recommande plus rien et liste les 4 extensions a ne pas installer.
+            DIAGNOSTIC, ordre revise :
+            1. code --version, puis chercher mermaid dans les extensions
+               INTEGREES (<install>/resources/app/extensions)
+            2. code --list-extensions | grep mermaid  (doit etre vide)
+            3. console : "Cannot register 'markdown-mermaid.*'" = doublon
+            4. seulement ensuite, suspecter les fichiers
+2026-08-31  CLOTURE DE LA CONCEPTION. Travail mene avec deux relecteurs et un
+            agent de recherche sur la specification MCP.
+            (a) REPARATIONS de la migration du 2026-08-28 : 6 tableaux casses,
+            dont les 2 du livrable catalogue, reconstruits ; paragraphe
+            duplique supprime. Deux bugs de mon convertisseur : decoupe des
+            cellules sur un | interne sans tenir compte des bordures, et
+            detection de continuation exigeant 2 espaces d'indentation.
+            (b) 6 LITTERAUX FAUX corriges : les enumerations recopiees avaient
+            perdu leurs accents. "Cablage" au lieu de "Cablage" accentue rend
+            0 ligne, sans erreur, en franchissant les six couches de gardes.
+            C'est la preuve concrete qu'un releve ne se recopie pas.
+            (c) SCRIPT DE RELEVE docs/releve_donnees.py : regenere un bloc
+            balise dans analyse_donnees.md, mode --verifier pour detecter la
+            derive. Les deux questions ouvertes de analyse_donnees section 5
+            sont closes par lui.
+            (d) SEPARATION REGLE / RELEVE : chantier 1 sans aucun volume
+            d'instance (F, D, G, C symboliques, hypothese d'echelle 10^3 posee
+            comme condition de P3) ; chantier 2 section 1.2 sans aucune valeur
+            litterale ; D27 reordonnee, la regle avant le chiffre.
+            (e) D28, P8 FERME. La specification MCP n'autorise que les
+            transports HTTP et renvoie stdio a l'environnement ; ce qu'un
+            client declare de lui-meme n'est pas verifie et ne doit pas servir
+            a decider ; le protocole ne definit aucun profil. Retenu : profil
+            fixe au lancement par SORABEL_PROFIL, valide au demarrage, refus
+            de demarrer sinon. Extension HTTP + Bearer documentee. Limites
+            ecrites : authentifie un contexte de lancement, pas une personne,
+            imputabilite au profil et non a l'individu.
+            DEFAUT CORRIGE AU PASSAGE : le catalogue du chantier 2 faisait de
+            profil un PARAMETRE de tool. Un parametre est rempli par le client :
+            le bot support n'avait qu'a demander profil="commercial". E4 etait
+            decorative. Les chantiers 4 et 5 etaient deja justes.
+            (f) D29 domicile des releves, D30 sortie du tableau des 24
+            questions vers eval/attendus_sql.jsonl (24 attendus, valeurs de
+            controle rejouees contre la base). eval/attendus_rag.jsonl cree en
+            squelette, 13 gold restent a annoter (P4).
+            (g) mesure_e6.md ecrit : protocole complet, gabarit vide assume,
+            faiblesse du jeu enoncee plutot que masquee.
+            (h) ERREUR QUI AURAIT CASSE UN LOADER : le dossier ecrivait les
+            metadonnees SAV <meta version>, la forme reelle est
+            <meta name="version" content="...">. Corrigee dans 2 documents.
+            Reste ouvert : voir docs/RESTE_A_FAIRE.md, 10 items dont 3 non
+            commencables avant le serveur.
 ```
 
 ---
