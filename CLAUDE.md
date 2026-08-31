@@ -395,6 +395,29 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             <meta name="version" content="...">. Corrigee dans 2 documents.
             Reste ouvert : voir docs/RESTE_A_FAIRE.md, 10 items dont 3 non
             commencables avant le serveur.
+2026-08-31  PAUSE, reprise prevue le 2026-09-01 a 9h.
+            ETAT : phase de conception CLOSE. Arbre de travail propre, 7 commits,
+            depot sans remote. Decisions D1 a D30, arbitrages P1 a P8 tous
+            verrouilles, plus aucun point ouvert de conception.
+            OU EN EST LE RESTE : docs/RESTE_A_FAIRE.md, 31 items faits, 3
+            restants (M2 chiffres E6, L1 scripts/mcp_client.py, L3 interface
+            graphique). Les trois demandent que le serveur existe, aucun n'est
+            commencable aujourd'hui.
+            PROCHAINE ETAPE : le developpement. Ouvrir docs/PASSATION_DEV.md,
+            lot 0 (bootstrap, venv, dependances, chargeur de matrice) puis
+            lot 1 (loaders par format vers le Document canonique). Verifier sur
+            les deux versions de REF-8842 avant de generaliser.
+            OUTILLAGE EN PLACE, a relancer apres toute modification :
+              python docs/releve_donnees.py --verifier   (releve a jour ?)
+              python docs/build_schemas.py --verifier    (page de schemas ?)
+            A SAVOIR AVANT DE CODER : le corpus est massivement template, les 80
+            notices partagent un seul corps de texte et les 90 procedures SAV
+            deux. Le socle semantique de E6 vaut 8 questions, pas 14, et
+            RAG-19 est mal etiquetee (hors corpus en realite). Tout est dans
+            docs/mesure_e6.md sections 2 et 7.
+            EN SUSPENS COTE PILOTE : le depot n'a pas de remote ; le brief
+            mentionne github.com/bybysker/sorabel-gateway, appartenance non
+            confirmee.
 ```
 
 ---
