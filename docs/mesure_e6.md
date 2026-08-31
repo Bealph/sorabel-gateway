@@ -44,6 +44,38 @@ différentes qui ne se mesurent pas de la même façon.
 | `couverte` | 14 | `attendu_type`, label **faible** | Recall@k sur gold annoté, sinon `type@k` | E1, la pertinence |
 | `hors_corpus` | 8 | aucun | taux d'abstention | E1, le refus d'inventer |
 
+### Ce que le corpus permet, et ce qu'il ne permet pas
+
+Relevé le 2026-08-31, vérifié par `docs/releve_donnees.py` :
+
+| Collection | Documents | Textes distincts |
+| --- | ---: | ---: |
+| `fiches` | 150 | 120 |
+| `notices` | 80 | **1** |
+| `sav` | 90 | **2** |
+| `notes` | 80 | 54 |
+
+**Les 80 notices partagent un seul et même corps de texte**, seul l'en-tête
+change. Les 90 procédures SAV en partagent un aussi. La conséquence est directe
+et sévère : une question portant sur le **contenu** d'une notice ou d'une
+procédure a 80 ou 90 bonnes réponses. Le Recall@k y vaut 1 pour n'importe quel
+système, dense comme hybride. Ces questions ne mesurent rien.
+
+Après annotation, les 14 questions `couverte` se répartissent ainsi :
+
+| Sort | N | Motif |
+| --- | ---: | --- |
+| exploitables | 8 | le gold est identifiable, la famille ou l'ensemble est fermé |
+| non discriminantes | 4 | la réponse est une constante du corpus, dupliquée à l'identique |
+| non couverte | 1 | RAG-19 : « cuisson » et « plaque » n'apparaissent dans aucun des 400 fichiers, la question est étiquetée `couverte` à tort |
+| déjà dotée d'une référence | 1 | RAG-09, label dur venu de la fixture |
+
+**Le socle sémantique de la mesure est donc de 8 questions, pas de 14.** C'est
+peu, et il faut le dire dans la restitution plutôt que de présenter un gain
+calculé sur 22 questions dont la moitié ne discrimine pas. Les 4 questions non
+discriminantes restent utiles à autre chose : elles vérifient qu'un document du
+**bon type** remonte, ce qui relève d'E1 et non d'E6.
+
 **Le point faible du protocole, énoncé plutôt que caché.** Les 14 questions
 `couverte` ne portent qu'un type attendu, pas un document attendu. Sans
 annotation, le Recall@k n'est calculable que sur les 8 questions
@@ -124,6 +156,11 @@ cela dit des limites.
 - **Elle ne couvre pas les procédures SAV ni les notes par le court-circuit
   `REF`** : ces documents ne portent pas de référence produit en métadonnée. Le
   gain sur `reference_exacte` ne s'étend donc pas à tout le corpus.
+- **Elle ne dira rien de la pertinence sur les notices et les procédures SAV**,
+  puisque leurs documents sont textuellement identiques entre eux. Le contraste
+  entre recherche dense et lexicale ne peut s'y exprimer : les deux moteurs
+  voient le même texte partout. Ce que la mesure établira vaut pour les fiches
+  et les notes.
 
 ## 8. Où vivent les résultats
 

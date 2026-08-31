@@ -240,6 +240,24 @@ modèle de génération SQL (décision D9). **Les accents en font partie.**
 | `notes` | 80 | 80 | 1 (80 doc) | 80 |
 | **total** | **400** | **350** | | **820** |
 
+### Diversité réelle du contenu
+
+Une collection dont tous les documents partagent un seul corps ne permet
+pas de mesurer la pertinence : une question sur ce contenu y a autant de
+bonnes réponses qu'il y a de documents. Cela borne ce que E6 peut établir.
+
+| Collection | Documents | Textes distincts | Gabarits distincts | Plus grand gabarit |
+| --- | ---: | ---: | ---: | ---: |
+| `fiches` | 150 | 120 | 19 | 16 |
+| `notices` | 80 | 1 | 1 | 80 |
+| `sav` | 90 | 2 | 1 | 90 |
+| `notes` | 80 | 54 | 54 | 5 |
+
+« Textes distincts » compte les corps différents une fois références et
+dates neutralisées. « Gabarits » neutralise en plus les valeurs chiffrées :
+l'écart entre les deux colonnes dit si la variation est de fond ou seulement
+numérique.
+
 ### Anomalies du jeu
 
 Elles **illustrent** des décisions, elles ne les fondent pas : les règles

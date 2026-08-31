@@ -176,7 +176,7 @@ pas : personne ne retape un accent à la main.
 | --- | --- | --- | --- | --- | --- |
 | M1 | Rédiger le protocole E6 : jeu, métriques, baseline contre avancé, procédure de rejeu. Le fichier fait 9 lignes et annonce lui-même « à produire » | `docs/mesure_e6.md` | Conception | Fait, protocole complet, gabarit vide assumé | **Bloque M2** : sans protocole écrit avant, la mesure n'est pas reproductible |
 | M2 | Remplir le tableau de résultats chiffrés | `docs/mesure_e6.md` et `eval/results/` | Développement | À faire | Exigence E6, soutenance |
-| M3 | Créer `gold_rag.jsonl` : annoter le ou les documents attendus pour les 14 questions « couverte » | `eval/gold_rag.jsonl`, à créer | Conception | Fait en squelette, `eval/attendus_rag.jsonl`, 13 gold restent à annoter | **Bloque M2** : sans gold, pas de Recall@k sur les couvertes |
+| M3 | Créer `gold_rag.jsonl` : annoter le ou les documents attendus pour les 14 questions « couverte » | `eval/gold_rag.jsonl`, à créer | Conception | Fait, 13 gold annotes, 8 exploitables, limites du corpus documentees | **Bloque M2** : sans gold, pas de Recall@k sur les couvertes |
 | M4 | Créer `eval/results/` avec un `.gitkeep` ; le `.gitignore` exclut déjà son contenu (`*.json`, `*.csv`) | `eval/results/`, `.gitignore` | Développement | Fait | Rien, deux minutes, mais le lot 1 y écrit |
 | M5 | Décider où vivent les résultats attendus des 24 questions SQL, que `questions_sql.jsonl` ne porte pas | `eval/attendus_sql.jsonl`, à créer | Conception | Fait, D30 : sidecar `eval/attendus_sql.jsonl`, 24 attendus rejoués | Lot 4 : sans attendu, aucun test SQL n'est automatisable |
 

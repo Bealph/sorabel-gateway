@@ -126,6 +126,45 @@ def releve_corpus() -> dict:
     return out
 
 
+def templatage() -> list[str]:
+    """Combien de corps de texte DISTINCTS chaque collection contient-elle ?
+
+    Un corpus ou 80 documents partagent le meme corps ne permet pas de mesurer
+    la pertinence : toute question sur ce contenu a 80 bonnes reponses. C'est
+    une propriete du jeu qui borne la mesure E6, il faut la relever.
+    """
+    import hashlib
+    out = []
+    for coll, ext in (("fiches", ".pdf"), ("notices", ".pdf"),
+                      ("sav", ".html"), ("notes", ".md")):
+        d = CORPUS / coll
+        if not d.is_dir():
+            continue
+        sigs: dict[str, int] = {}
+        gabs: dict[str, int] = {}
+        for f in sorted(p for p in d.iterdir() if p.suffix == ext):
+            if ext == ".pdf":
+                lignes = re.findall(r"\(([^()]*)\)\s*Tj", texte_pdf(f))
+                corps = [l for l in lignes
+                         if not re.search(r"R.f.rence produit|FICHE |NOTICE |Version", l)]
+                t = "|".join(corps)
+            else:
+                t = f.read_text(encoding="utf-8", errors="ignore")
+                t = re.sub(r"<title>.*?</title>|<h1>.*?</h1>|<meta[^>]*>|^---.*?^---",
+                           "", t, flags=re.S | re.M)
+            brut = re.sub(r"REF-\d{4}|\d{4}-\d{2}-\d{2}", "", t)
+            # variante ou l'on neutralise aussi les VALEURS : ce qui reste est le gabarit
+            gab = re.sub(r"[\d.,]+\s*(?:V|A|W|kA|mm|EUR|%)?", "", brut)
+            for cle, d in (("brut", sigs), ("gabarit", gabs)):
+                v = brut if cle == "brut" else gab
+                h = hashlib.md5(v.encode("utf-8", "ignore")).hexdigest()
+                d[h] = d.get(h, 0) + 1
+        tot = sum(sigs.values())
+        if tot:
+            out.append((coll, tot, len(sigs), len(gabs), max(gabs.values())))
+    return out
+
+
 def pieges(cx: sqlite3.Connection) -> list[str]:
     """Anomalies du jeu qui illustrent des decisions, sans les fonder."""
     p = []
@@ -158,6 +197,7 @@ def rendu() -> str:
     cx = sqlite3.connect(f"file:{BASE}?mode=ro", uri=True)
     sql, corp, anomalies = releve_sql(cx), releve_corpus(), pieges(cx)
     cx.close()
+    tmpl = templatage()
 
     L = [DEBUT, "",
          f"> Bloc **généré** le {date.today().isoformat()} par `docs/releve_donnees.py`.",
@@ -194,6 +234,22 @@ def rendu() -> str:
         L.append(f"| `{coll}` | {d['fichiers']} | {d['groupes']} | {sec} | {d['chunks']} |")
         tf += d["fichiers"]; tg += d["groupes"]; tc += d["chunks"]
     L.append(f"| **total** | **{tf}** | **{tg}** | | **{tc}** |")
+
+    if tmpl:
+        L += ["", "### Diversité réelle du contenu", "",
+              "Une collection dont tous les documents partagent un seul corps ne permet",
+              "pas de mesurer la pertinence : une question sur ce contenu y a autant de",
+              "bonnes réponses qu'il y a de documents. Cela borne ce que E6 peut établir.",
+              "", 
+              "| Collection | Documents | Textes distincts | Gabarits distincts | Plus grand gabarit |",
+              "| --- | ---: | ---: | ---: | ---: |"]
+        for coll, tot, n, ng, gros in tmpl:
+            L.append(f"| `{coll}` | {tot} | {n} | {ng} | {gros} |")
+        L += ["",
+              "« Textes distincts » compte les corps différents une fois références et",
+              "dates neutralisées. « Gabarits » neutralise en plus les valeurs chiffrées :",
+              "l'écart entre les deux colonnes dit si la variation est de fond ou seulement",
+              "numérique."]
 
     if anomalies:
         L += ["", "### Anomalies du jeu", "",
