@@ -249,3 +249,22 @@ correspondantes tiennent sur un jeu qui n'aurait aucune de ces anomalies.
 - 336 numeros de commande manquent dans des suites par ailleurs continues (2025 : 220 manquants, dont CMD-2025-0006 ; 2026 : 116 manquants, dont CMD-2026-0004) : un identifiant bien forme peut ne designer aucune ligne (illustre D26).
 
 <!-- RELEVE:FIN -->
+
+---
+
+## Ressources annoncées par le brief, ce qu'elles sont réellement
+
+Vérifié le 2026-08-31 dans le HTML du brief officiel.
+
+| Libellé dans le brief | Cible réelle |
+| --- | --- |
+| `eval/questions_rag.jsonl` | une **capture d'écran PNG**, pas un fichier |
+| `eval/questions_sql.jsonl` | une **capture d'écran PNG**, pas un fichier |
+| « Matrice d'accès » | un **lien vers l'article RBAC/MCP de dev.to**, pas une matrice fournie |
+| « Repository » | `https://github.com/bybysker/sorabel-gateway` |
+
+Deux conséquences. La reconstitution des jeux d'évaluation n'était pas un choix
+mais la seule voie possible : aucun fichier n'est distribué. Et la matrice
+d'accès du chantier 3 est bien une **production attendue**, pas la reprise d'un
+document fourni : le libellé désignait la ressource méthodologique, pas un
+livrable.

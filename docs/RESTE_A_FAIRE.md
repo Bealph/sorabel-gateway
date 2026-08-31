@@ -101,7 +101,7 @@ plage `date_commande` (`2025-09-04` à `2026-08-19`).
 | --- | --- | --- | --- | --- | --- |
 | C1 | Ancienne nomenclature `get_product` / `get_stock` / `get_order_status`. 13 occurrences relevées à 15h05, **1 subsiste** au moment d'écrire | `docs/conception/02_tools_text2sql.md` l.360 | Conception | Fait, 0 occurrence restante hors table de réconciliation | Lot 4, nom des tools figés |
 | C2 | `NOT_FOUND` absent du tableau des codes normalisés, qui en liste 7 | `docs/conception/03_matrice_acces.md` §4.1, l.204 à l.212 | Conception | Fait, plus une colonne « Accompagne » distinguant refus et non-refus | Lot 5, contrat de refus, et test SQL-08 |
-| C3 | Note de relecture devenue fausse : elle demande de corriger un diagramme déjà corrigé | `docs/soutenance_schemas.md` l.185 à l.187 | Conception | À faire | Rien, mais induit en erreur |
+| C3 | Note de relecture devenue fausse : elle demande de corriger un diagramme déjà corrigé | `docs/soutenance_schemas.md` l.185 à l.187 | Conception | Fait, note de relecture supprimee avec la refonte de 03 | Rien, mais induit en erreur |
 
 ### C1, état exact
 
@@ -210,9 +210,9 @@ pilote, pas une évidence.
 | Id | Travail | Fichier concerné | Phase | État | Bloque quoi |
 | --- | --- | --- | --- | --- | --- |
 | L1 | Client de démonstration en ligne de commande, montrant deux profils sur le même serveur | `scripts/mcp_client.py`, à créer | Développement | À faire | Démonstration de E4 en soutenance |
-| L2 | Mini guide d'accès, attaché au serveur | `mcp_server/GUIDE_ACCES.md`, à créer | Conception | À faire | Livrable, et lisibilité du catalogue |
+| L2 | Mini guide d'accès, attaché au serveur | `mcp_server/GUIDE_ACCES.md`, à créer | Conception | Fait, mcp_server/GUIDE_ACCES.md, 444 lignes | Livrable, et lisibilité du catalogue |
 | L3 | Interface graphique et son lien | à définir | Développement | À faire | Livrable, statut « À TRANCHER » depuis l'origine |
-| L4 | Mettre le README au niveau du catalogue arrêté | `README.md` | Conception | À faire | Vitrine du projet |
+| L4 | Mettre le README au niveau du catalogue arrêté | `README.md` | Conception | Fait, catalogue a 8 tools, scripts/ ajoute, avancement a jour | Vitrine du projet |
 
 ### Pourquoi L1 et L3 ne sont pas commençables
 
@@ -246,7 +246,7 @@ exige. Le tableau « État d'avancement » reste juste.
 | Id | Travail | Fichier concerné | Phase | État | Bloque quoi |
 | --- | --- | --- | --- | --- | --- |
 | O1 | P8, mécanisme d'identité du client MCP : jeton, en-tête, ou identifiant de session | `docs/conception/03_matrice_acces.md` l.324 et l.341 | Conception | Fait, D28 et section Q6 du chantier 3 | **E4 en entier**, lot 5, et la fin de L2 |
-| O2 | Vérifier si le brief fournit une ressource « Matrice d'accès » officielle | `docs/cadrage_dsi.md` | Conception | À faire | Risque de refaire un travail déjà fourni |
+| O2 | Vérifier si le brief fournit une ressource « Matrice d'accès » officielle | `docs/cadrage_dsi.md` | Conception | Fait, tranche : aucune matrice n'est fournie | Risque de refaire un travail déjà fourni |
 
 ### O1, l'enjeu
 
@@ -280,9 +280,12 @@ Six écarts non listés dans l'inventaire de départ, tous constatés par lectur
 | D1 | Le document annonce « tableaux ASCII », convention abandonnée le 2026-08-28 | `docs/conception/README.md` l.4 et l.27 | Conception | Fait | Cohérence des conventions |
 | D2 | Recommande d'installer `bierner.markdown-mermaid`, extension désinstallée le 2026-08-31 et désormais listée comme indésirable | `docs/conception/README.md` l.24 et l.25 | Conception | Fait | **Casse le rendu Mermaid** de qui suit le conseil |
 | D3 | « Docs en francais ; tableaux ASCII » dans les conventions de développement | `docs/PASSATION_DEV.md` l.132 | Conception | Fait | Le lot 0 repartirait sur l'ancienne convention |
-| D4 | Voir L4 : schéma à 4 tools, structure sans `scripts/` | `README.md` | Conception | À faire | Doublon assumé de L4, traiter ensemble |
-| D5 | Fichier non versionné, jamais commité, statut de livrable à décider | `docs/soutenance_schemas.md` | Conception | À faire | Perte du travail si l'arbre est nettoyé |
-| D6 | La matrice d'accès §4 porte encore « Statut : PROPOSÉ, à valider au chantier 3 », alors que le chantier 3 est clos depuis le 2026-08-27 | `CLAUDE.md` §4 | Conception | À faire | Fait douter d'une décision déjà prise |
+| D4 | Voir L4 : schéma à 4 tools, structure sans `scripts/` | `README.md` | Conception | Fait avec L4 | Doublon assumé de L4, traiter ensemble |
+| D5 | Fichier non versionné, jamais commité, statut de livrable à décider | `docs/soutenance_schemas.md` | Conception | Fait, versionne au commit 8c0b2c5 | Perte du travail si l'arbre est nettoyé |
+| D6 | La matrice d'accès §4 porte encore « Statut : PROPOSÉ, à valider au chantier 3 », alors que le chantier 3 est clos depuis le 2026-08-27 | `CLAUDE.md` §4 | Conception | Fait, statut passe a VALIDE au chantier 3 | Fait douter d'une décision déjà prise |
+| D7 | `schemas.html` en retard sur les `.md` : 11 schémas contre 17, contenus divergents | `docs/schemas.html` | Conception | Fait, page régénérée et générateur restauré | Le dossier montrait des schémas périmés |
+| D8 | Correspondance collection vers `doc_type` ecrite nulle part : la matrice dit `fiches`, le chantier 1 dit `fiche_technique` | `docs/conception/03_matrice_acces.md` | Conception | Fait, table de correspondance ajoutee en 3.3 | La matrice etait inapplicable telle quelle |
+| D9 | Le statut `error` n'avait aucun code normalise, la table en listait huit pour sept statuts | `docs/conception/03_matrice_acces.md` | Conception | Fait, `INTERNAL_ERROR` ajoute | Un client ne pouvait pas distinguer une panne |
 
 ### D2, la vraie règle
 

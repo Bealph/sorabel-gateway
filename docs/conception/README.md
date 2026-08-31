@@ -16,10 +16,10 @@ Vue d'ensemble puis trois chantiers, chacun traité par questions avec ses sché
 
 Modele de donnees Document/Chunk : dans 01_flux_chunks.md (section 2.4).
 Voir aussi : ../analyse_donnees.md (donnees) et ../mesure_e6.md (protocole E6).
-Vues rendues : ../schemas.html (8 schemas rendus : flux complet, architecture,
-modele Document/Chunk, et 5 sequences ; ouvrable au navigateur, Mermaid embarque
-donc hors ligne). Cette page est en retard sur les .md : elle sera regeneree
-apres la reprise conception/releve.
+Vues rendues : ../schemas.html, **17 schemas**, page autonome a ouvrir dans un
+navigateur (Mermaid embarque, aucune installation). Elle est GENEREE par
+`python docs/build_schemas.py` depuis les blocs mermaid des .md, et ne peut donc
+plus etre en retard sur eux. `--verifier` signale une page perimee.
 Visualiser les diagrammes Mermaid des .md :
 - Le plus simple : ouvrir ../schemas.html dans un navigateur (aucune installation).
 - Dans VSCode : Ctrl+Shift+V. Le rendu Mermaid est NATIF depuis la version

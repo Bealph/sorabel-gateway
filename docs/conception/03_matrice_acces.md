@@ -144,6 +144,22 @@ dev/IDE : un support qui appelle `search_docs` est refusé.
 
 ### 3.3 Matrice client x collection (RAG)
 
+Une **collection** est un axe de gouvernance ; un `doc_type` est une propriété du
+document, portée par chaque chunk (chantier 1, section 2.2). Les deux se
+correspondent un pour un, et c'est ce champ qui rend la matrice applicable au
+moment de la recherche :
+
+| Collection (matrice) | `doc_type` (métadonnée du chunk) | Dossier du corpus |
+| --- | --- | --- |
+| `fiches` | `fiche_technique` | `data/corpus/fiches/` |
+| `notices` | `notice` | `data/corpus/notices/` |
+| `sav` | `procedure_sav` | `data/corpus/sav/` |
+| `notes` | `note_interne` | `data/corpus/notes/` |
+
+Le filtrage s'applique donc sur `doc_type`, pas sur un chemin de fichier : un
+document déplacé reste gouverné.
+
+
 | Collection | support | commercial | dev/IDE | Note                                                                   |
 | ---------- | :-----: | :--------: | :-----: | ---------------------------------------------------------------------- |
 | fiches     |   oui   |    oui     |   oui   |                                                                        |
@@ -211,8 +227,9 @@ Codes normalisés :
 | `OUT_OF_CORPUS` | question non couverte par le corpus (E1) | `out_of_corpus` |
 | `NOT_FOUND` | entite par identifiant precis introuvable (D26) | `not_found` |
 | `AMBIGUOUS` | critere ambigu, precision requise (D27) | `clarify` |
+| `INTERNAL_ERROR` | panne technique du serveur, aucune conclusion metier a en tirer | `error` |
 
-Les quatre premiers accompagnent `status = refused`. Les quatre suivants
+Les quatre premiers accompagnent `status = refused`. Les cinq suivants
 accompagnent un statut non-`ok` qui n'est pas un refus : le code permet au client
 de reagir sans avoir a interpreter le message.
 
