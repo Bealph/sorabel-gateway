@@ -87,13 +87,13 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | --- | --- | --- |
 | Langage / runtime | Python | PROPOSE |
 | Framework MCP | FastMCP (SDK Python officiel) | PROPOSE |
-| Base SQL | SQLite (fichier fourni), acces read-only | PROPOSE |
+| Base SQL | SQLite (fichier fourni), acces read-only au niveau du pilote | VALIDE |
 | RAG - embeddings | BAAI/bge-m3 (multilingue, local) | VALIDE |
 | RAG - recherche | Hybride : BM25 + dense, court-circuit REF | VALIDE |
 | RAG - fusion | RRF (Reciprocal Rank Fusion, k=60) | VALIDE |
 | RAG - reranking | Cross-encoder BAAI/bge-reranker-v2-m3 | VALIDE |
 | RAG - versions | Indexer toutes, is_latest, citer la plus recente ; ancienne sur demande explicite | VALIDE |
-| Store vectoriel | Chroma (dense) + bm25 applicatif | VALIDE |
+| Store vectoriel | Chroma (dense) + bm25 applicatif separe. Motif : filtrage par metadonnee AVANT la recherche | VALIDE |
 | RAG - eval E6 | Gold doc annotes pour les "couverte" | VALIDE |
 | Text-to-SQL - securite | Defense en profondeur : connexion RO + AST (sqlglot) SELECT-only + perimetre profil + LIMIT/timeout + SQL renvoye + log | VALIDE |
 | Text-to-SQL - catalogue | ask_database (generique) + get_schema + figes check_stock / order_status, les deux seuls que le brief nomme | VALIDE |
@@ -418,6 +418,27 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             EN SUSPENS COTE PILOTE : le depot n'a pas de remote ; le brief
             mentionne github.com/bybysker/sorabel-gateway, appartenance non
             confirmee.
+2026-09-01  Chantier 6 : choix des bases de donnees. Le sujet n'avait jamais
+            ete traite pour lui-meme, il etait disperse en arbitrages.
+            CONSTAT DE DEPART : il n'y a pas une base mais TROIS besoins de
+            natures opposees (metier en lecture seule, index reconstructible,
+            journal en ajout), plus une configuration qui ne doit surtout pas
+            devenir une base (la matrice, D21).
+            D31 metier : relationnel impose par les jointures et par E3 (SQL
+            analysable par AST). SQLite confirme, ligne passee de PROPOSE a
+            VALIDE. PostgreSQL ecarte MALGRE un vrai atout, ses roles natifs
+            qui permettraient un GRANT par colonne : il encoderait la matrice
+            une seconde fois, contre D21. Nuance a retenir : dupliquer un
+            INVARIANT (aucune ecriture) est sain, dupliquer une CONFIGURATION
+            qui change (les droits par profil) cree la derive.
+            D32 index : Chroma + BM25 applicatif confirme, mais le MOTIF DE P3
+            ETAIT FAUX. Il invoquait la simplicite ; le critere decisif est le
+            filtrage par metadonnee AVANT la recherche, sans lequel E2 et E4 ne
+            tiennent pas. FAISS n'est pas ecarte pour sa complexite mais parce
+            qu'il ne filtre pas. Qdrant ecarte car son hybride natif brouille la
+            baseline E6. sqlite-vec nomme et non retenu, par prudence assumee.
+            D33 journal : fichier JSONL en ajout, pas de base. Une ligne
+            complete par appel resiste a un arret brutal et se lit sans outil.
 ```
 
 ---

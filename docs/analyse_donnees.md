@@ -185,7 +185,7 @@ ne correspond plus aux données.
 
 <!-- RELEVE:DEBUT -- genere par docs/releve_donnees.py, ne pas editer a la main -->
 
-> Bloc **généré** le 2026-08-31 par `docs/releve_donnees.py`.
+> Bloc **généré** le 2026-09-01 par `docs/releve_donnees.py`.
 > Il décrit **ce jeu de données**, pas la conception. Un autre corpus produirait
 > d'autres valeurs sans qu'aucune décision ne change. Ne pas éditer à la main :
 > relancer le script.

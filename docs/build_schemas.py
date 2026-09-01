@@ -32,6 +32,8 @@ CIBLE = DOCS / "schemas.html"
 MANIFESTE = [
     ("conception/00_architecture.md", 0, "Architecture globale", "structurelle",
      "Un serveur MCP unique, ouvert sur ses composants, avec ingestion hors ligne."),
+    ("conception/06_choix_stockage.md", 0, "Les quatre supports de stockage", "chantier 6",
+     "Une base relationnelle lue seulement, deux index reconstructibles, un fichier d'ajout."),
     ("analyse_donnees.md", 0, "Modele relationnel de la base metier", "donnees",
      "Six tables, cles etrangeres, et les trois colonnes sensibles interdites au support."),
     ("conception/01_flux_chunks.md", 0, "Flux d'ingestion, par artefacts", "chantier 1",

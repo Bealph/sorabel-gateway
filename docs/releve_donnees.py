@@ -274,7 +274,11 @@ def main() -> int:
         sortie, ancien = src.rstrip() + "\n\n---\n\n## Relevé du jeu de données\n\n" + neuf + "\n", ""
 
     if "--verifier" in sys.argv:
-        if ancien.strip() == neuf.strip():
+        # La date de generation ne doit PAS declencher l'alerte : sinon le
+        # controle echoue chaque lendemain sans qu'aucune donnee ait bouge,
+        # et une alerte qui se declenche pour rien finit par etre ignoree.
+        sans_date = lambda t: re.sub(r"le \d{4}-\d{2}-\d{2}", "le DATE", t)
+        if sans_date(ancien.strip()) == sans_date(neuf.strip()):
             print("releve a jour")
             return 0
         print("RELEVE PERIME : relancer python docs/releve_donnees.py", file=sys.stderr)
