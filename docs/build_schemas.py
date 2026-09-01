@@ -25,8 +25,33 @@ from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
 DOCS = RACINE / "docs"
-VENDOR = DOCS / "vendor" / "mermaid.min.js"
 CIBLE = DOCS / "schemas.html"
+
+# La bibliotheque Mermaid n'est stockee qu'UNE fois : a l'interieur de la page
+# elle-meme. Elle y etait deja, et en garder une seconde copie dans docs/vendor/
+# doublait le poids du depot (3,2 Mo x 2) sans rien apporter.
+# Le generateur la relit donc dans la page courante avant de la reecrire.
+
+
+def lire_bundle() -> str:
+    """Extrait la bibliotheque Mermaid embarquee dans la page existante."""
+    if not CIBLE.exists():
+        raise SystemExit(
+            f"ERREUR : {CIBLE.name} est absent, or il porte la bibliotheque Mermaid.\n"
+            f"         Recuperez-le : git checkout -- docs/schemas.html")
+    s = CIBLE.read_text(encoding="utf-8")
+    try:
+        i = s.rindex("</footer>")
+        a = s.index("<script>", i) + len("<script>")
+        b = s.index("</script>", a)
+    except ValueError:
+        raise SystemExit(
+            f"ERREUR : bibliotheque Mermaid introuvable dans {CIBLE.name}.\n"
+            f"         La page est corrompue. Recuperez-la : git checkout -- docs/schemas.html")
+    bundle = s[a:b].strip()
+    if len(bundle) < 500_000:
+        raise SystemExit(f"ERREUR : bibliotheque suspecte, {len(bundle)} octets seulement.")
+    return bundle + "\n"
 
 # (fichier source, index du bloc dans ce fichier, titre, etiquette, legende)
 MANIFESTE = [
@@ -192,7 +217,7 @@ def rendu() -> str:
             f"  </section>\n\n"
         )
     p.append(PIED)
-    p.append(VENDOR.read_text(encoding="utf-8"))
+    p.append(lire_bundle())
     p.append(RUN)
     return "".join(p)
 
@@ -202,9 +227,6 @@ def sans_date(s: str) -> str:
 
 
 def main() -> int:
-    if not VENDOR.exists():
-        print(f"ERREUR : bibliotheque Mermaid absente ({VENDOR})", file=sys.stderr)
-        return 2
     neuf = rendu()
     if "--verifier" in sys.argv:
         ancien = CIBLE.read_text(encoding="utf-8") if CIBLE.exists() else ""

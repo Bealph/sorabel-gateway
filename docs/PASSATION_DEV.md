@@ -56,7 +56,11 @@ valider, puis passer au suivant.
   produits.marge_pct, ventes.marge_ht.
 ```
 
-Reste ouvert (à trancher en dev) : P8, mécanisme d'identité du client MCP.
+Plus aucun point de conception n'est ouvert. P8, le mécanisme d'identité du
+client MCP, est fermé depuis le 2026-08-31 par la décision **D28** : le profil est
+fixé au lancement par la variable `SORABEL_PROFIL`, validée au démarrage, et
+n'est **jamais** un paramètre de tool. Détail et limites en section Q6 du
+chantier 3.
 
 ## 4. Environnement
 
@@ -79,11 +83,12 @@ Reste ouvert (à trancher en dev) : P8, mécanisme d'identité du client MCP.
 | ---: | --- | --- |
 | 0 | Bootstrap | venv, deps installees, arbo de code, chargeur de config + matrice YAML |
 | 1 | Ingestion RAG (doc 01) | loaders PDF/HTML/MD -> Document canonique + versions/is_latest + chunking ; index Chroma + BM25 construits |
-| 2 | Recherche RAG (doc 01) | hybride + RRF + court-circuit REF + rerank + seuil + citations ; tool answer_question |
-| 3 | Mesure E6 (doc 01 Q5, mesure_e6.md) | baseline dense vs avance sur questions_rag ; Recall@k + MRR ; gold couverte annotes ; resultats dans eval/results/ |
+| 2a | Recherche RAG, dense de base (doc 01) | dense seul + citations + refus hors corpus. Jalon impose par le brief, et baseline de E6 : a conserver telle quelle |
+| 2b | Recherche RAG, avancee (doc 01) | hybride + RRF + court-circuit REF + rerank + seuil ; tool answer_question |
+| 3 | Mesure E6 (doc 01 Q5, mesure_e6.md) | comparer 2a et 2b ; Recall@k + MRR ; gold DEJA annotes dans eval/attendus_rag.jsonl ; resultats dans eval/results/. ATTENTION : le socle semantique vaut 8 questions, pas 14, cf. mesure_e6.md section 2 |
 | 4 | Text-to-SQL (doc 02) | connexion RO, get_schema, generation + validation AST + perimetre + LIMIT + sortie typee ; figes check_stock/order_status |
-| 5 | Gouvernance + serveur MCP (docs 03, 05) | matrice gateway+tool, journal JSONL, catalogue expose (FastMCP), refus types |
-| 6 | Interface + mini guide | UI du produit + mini guide d'acces ; preparation soutenance |
+| 5 | Gouvernance + serveur MCP (docs 03, 05, 06) | matrice gateway+tool, journal JSONL, catalogue expose, refus types ; scripts/mcp_client.py demontrant DEUX profils, exige nommement par le brief |
+| 6 | Interface graphique | UI du produit et son lien ; preparation soutenance. Le mini guide d'acces est DEJA ecrit : mcp_server/GUIDE_ACCES.md |
 
 Ne pas commencer un lot avant que le precedent passe ses criteres.
 

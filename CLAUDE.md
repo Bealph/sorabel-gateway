@@ -439,6 +439,34 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             baseline E6. sqlite-vec nomme et non retenu, par prudence assumee.
             D33 journal : fichier JSONL en ajout, pas de base. Une ligne
             complete par appel resiste a un arret brutal et se lit sans outil.
+2026-09-01  MENAGE. Critere retenu : retirer ce qui est devenu FAUX ou
+            REDONDANT, pas ce qui est vieux.
+            (a) docs/soutenance_schemas.md -> docs/archive/. Il decrivait le
+            dossier du 2026-08-28 : 19 fiches pour 18 schemas, et il citait
+            820 chunks / 400 fichiers / 350 groupes, precisement les valeurs
+            retirees de la conception. Archive et non supprime, sa structure
+            en trois rubriques valant d'etre reprise. Avertissement en tete,
+            et docs/archive/README.md pose la regle : un document arrive ici
+            quand le maintenir couterait plus que le refaire, il n'en ressort
+            pas, on le reecrit.
+            (b) docs/vendor/mermaid.min.js supprime. La bibliotheque etait
+            stockee DEUX fois, 3,2 Mo dans vendor et les memes octets dans
+            schemas.html. build_schemas.py la relit desormais dans la page
+            avant de la reecrire, avec un message d'erreur qui dit comment
+            recuperer si la page manque. Cycle verifie stable : deux
+            generations successives donnent une page identique.
+            NOTE : le blob reste dans l'historique git, seule une reecriture
+            l'oterait. Ce n'est pas juge necessaire.
+            (c) RESTE_A_FAIRE.md reduit de 23 Ko a 1,8 Ko : les 31 lignes
+            closes sont dans l'historique git, ou chaque commit porte son
+            raisonnement. Une liste de travail n'est pas un compte rendu.
+            (d) PASSATION_DEV.md corrige : P8 n'est plus "ouvert" (D28), le
+            lot 2 est scinde en 2a dense de base et 2b avance comme le brief
+            l'ordonne, le lot 3 signale que le socle E6 vaut 8 questions et
+            non 14, le lot 5 nomme scripts/mcp_client.py, et le lot 6 ne
+            reclame plus le mini guide, qui est ecrit.
+            (e) DEFAUT TROUVE AU PASSAGE : le chantier 6 n'etait reference
+            nulle part, l'index du dossier ne le listait pas. Corrige.
 ```
 
 ---

@@ -1,3 +1,16 @@
+> **ARCHIVE, NE PLUS MAINTENIR.** Ce document decrit le dossier de conception
+> tel qu'il etait le **2026-08-28**. Il a ete archive le 2026-09-01 parce qu'il
+> a derive : il compte 19 fiches quand le dossier expose 18 schemas, il cite des
+> volumes (`820 chunks`, `400 fichiers`, `350 groupes`) que la conception a
+> volontairement retires depuis, et il ignore le chantier 6 ainsi que les
+> decisions D28 a D33.
+>
+> Il reste ici parce que sa structure, une fiche par schema en trois rubriques,
+> vaut d'etre reprise. **Ne pas s'y fier pour un chiffre.** La source a jour est
+> le dossier `docs/conception/`, et le rendu des schemas est `docs/schemas.html`.
+
+---
+
 # Le mécanisme de chaque schéma, étape par étape
 
 > Un bloc par diagramme du dossier. Chaque étape numérotée correspond à un nœud
