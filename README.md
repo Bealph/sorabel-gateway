@@ -11,15 +11,6 @@ Point d'accès unique aux données de **Sorabel**, distributeur B2B de matériel
 - Données en place : base SQL générée par `scripts/seed.py`, corpus de ~400 documents, Chroma prête via docker compose (index encore vide)
 - Client MCP de test jouable avec les deux profils (`scripts/mcp_client.py`)
 
-## Contrat d'intégration
-
-La note de cadrage de la DSI (`docs/cadrage_dsi.md`) fait foi : exigences E1–E6,
-matrice d'accès, et **contrat d'intégration** — commande de lancement du serveur
-(`python -m mcp_server.server`, profil via `SORABEL_PROFILE`, journal via
-`GATEWAY_JOURNAL`), catalogue de tools, enveloppe de réponse JSON
-`{status, payload, message}` et format du journal. La suite `tests/acceptance/`
-consomme la gateway en boîte noire, exactement comme un client interne :
-elle est rouge tant que le serveur et ses tools ne tiennent pas ce contrat.
 
 ## Stack
 
