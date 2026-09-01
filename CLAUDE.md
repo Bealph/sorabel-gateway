@@ -119,17 +119,28 @@ sorabel-data-gateway/
 ├── pyproject.toml        # metadata + dependances (a valider en phase dev)
 ├── docs/
 │   ├── cadrage_dsi.md     # note de cadrage DSI (contexte + exigences)
-│   ├── conception/        # 3 chantiers : flux+chunks / tools+text2sql / matrice
-│   └── mesure_e6.md       # protocole + resultats du gain RAG (a produire)
-├── mcp_server/           # serveur MCP + mini guide d'acces (livrable)
+│   ├── analyse_donnees.md # le jeu de donnees ; bloc de releve GENERE
+│   ├── conception/        # 6 chantiers, 00 a 06, plus leur index
+│   ├── mesure_e6.md       # protocole de mesure du gain RAG, chiffres au lot 3
+│   ├── PASSATION_DEV.md   # POINT D'ENTREE DEV : lots, criteres, garde-fous
+│   ├── RESTE_A_FAIRE.md   # ce qui reste, l'historique est dans git
+│   ├── releve_donnees.py  # GENERE le bloc de releve de analyse_donnees.md
+│   ├── build_schemas.py   # GENERE schemas.html depuis les blocs mermaid des .md
+│   ├── schemas.html       # 18 schemas rendus. NE PAS editer, regenerer.
+│   │                      # Porte la bibliotheque Mermaid, stockee une seule fois
+│   └── archive/           # documents qu'on ne maintient plus, avertis en tete
+├── scripts/              # mcp_client.py : demo support vs commercial (a creer)
+├── mcp_server/           # serveur MCP + GUIDE_ACCES.md (mini guide, livrable)
 ├── rag/                  # ingestion, chunking, hybride, reranking
 ├── text2sql/             # generation SQL lecture seule + garde-fous
 ├── governance/           # matrice d'acces (RBAC) + journalisation
 ├── eval/
-│   ├── questions_sql.jsonl    # jeu d'eval SQL (a deposer/reconstruire)
-│   ├── questions_rag.jsonl    # jeu d'eval RAG (a deposer/reconstruire)
-│   └── results/               # sorties d'evaluation
-└── data/                 # corpus documentaire + base SQL
+│   ├── questions_sql.jsonl    # fixture SQL, 24 questions. NE PAS modifier.
+│   ├── questions_rag.jsonl    # fixture RAG, 30 questions. NE PAS modifier.
+│   ├── attendus_sql.jsonl     # attendus par question, oracle des tests (D30)
+│   ├── attendus_rag.jsonl     # gold des "couverte" (P4), 13 annotes
+│   └── results/               # sorties d'evaluation, datees
+└── data/                 # corpus + base SQL, NON versionnes (.gitignore)
 ```
 
 ---
