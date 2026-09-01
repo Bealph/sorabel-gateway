@@ -1,7 +1,7 @@
 # Sorabel Data Gateway, reste à faire
 
 > Liste de référence des travaux restants. Elle a compté 34 items le 2026-08-31 ;
-> 31 sont faits. **Le détail de ce qui a été fait n'est plus ici** : il est dans
+> 31 sont faits. Le chantier 7 en a ajouté 4, dont 3 liés à Slack et au déploiement. **Le détail de ce qui a été fait n'est plus ici** : il est dans
 > l'historique git, où chaque commit porte son raisonnement. Garder les lignes
 > closes aurait fait de ce fichier un compte rendu, alors que c'est une liste de
 > travail.
@@ -13,10 +13,15 @@
 | M2 | Remplir le tableau de résultats chiffrés | `docs/mesure_e6.md` et `eval/results/` | Développement | le serveur n'existe pas encore |
 | L1 | Client de démonstration en ligne de commande, montrant deux profils sur le même serveur | `scripts/mcp_client.py`, à créer | Développement | le serveur n'existe pas encore |
 | L3 | Interface graphique et son lien | à définir | Développement | le serveur n'existe pas encore |
+| A1 | Application Slack : hébergement, vérification de signature, réponse différée en deux messages (D34) | `slack_app/`, à créer | Développement | le serveur n'existe pas encore |
+| A2 | Format de restitution des sources dans un message Slack : E1 exige des sources citées, un message mal conçu les rend illisibles | à définir | Développement | dépend de A1 |
+| A3 | Chaîne de déploiement Azure éprouvée à vide, avant qu'elle porte quelque chose (parade au report de risque de D37) | à définir | Développement | commençable dès maintenant |
+| A4 | Coût mensuel réel, établi avec la calculatrice Azure et les volumes du projet | `07_cible_deploiement.md` | Conception | aucun blocage |
 
-## Aucun n'est commençable aujourd'hui
+## Presque aucun n'est commençable aujourd'hui
 
-Les trois demandent que le serveur MCP réponde. Ce ne sont pas des travaux en
+Deux exceptions, ajoutées par le chantier 7 : **A3**, éprouver la chaîne de
+déploiement à vide, et **A4**, chiffrer le coût. Les autres demandent que le serveur MCP réponde. Ce ne sont pas des travaux en
 retard, ce sont des travaux **pas encore commençables**. Les inscrire au même
 niveau que des corrections documentaires serait une erreur de lecture.
 

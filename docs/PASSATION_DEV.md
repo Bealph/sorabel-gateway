@@ -88,9 +88,20 @@ chantier 3.
 | 3 | Mesure E6 (doc 01 Q5, mesure_e6.md) | comparer 2a et 2b ; Recall@k + MRR ; gold DEJA annotes dans eval/attendus_rag.jsonl ; resultats dans eval/results/. ATTENTION : le socle semantique vaut 8 questions, pas 14, cf. mesure_e6.md section 2 |
 | 4 | Text-to-SQL (doc 02) | connexion RO, get_schema, generation + validation AST + perimetre + LIMIT + sortie typee ; figes check_stock/order_status |
 | 5 | Gouvernance + serveur MCP (docs 03, 05, 06) | matrice gateway+tool, journal JSONL, catalogue expose, refus types ; scripts/mcp_client.py demontrant DEUX profils, exige nommement par le brief |
-| 6 | Interface graphique | UI du produit et son lien ; preparation soutenance. Le mini guide d'acces est DEJA ecrit : mcp_server/GUIDE_ACCES.md |
+| 6 | Interface + application Slack (doc 07) | UI du produit et son lien sur Azure ; application Slack : signature verifiee, accuse de reception puis reponse differee (D34) ; preparation soutenance. Le mini guide est DEJA ecrit : mcp_server/GUIDE_ACCES.md |
 
 Ne pas commencer un lot avant que le precedent passe ses criteres.
+
+**Ou tourne quoi (D37, chantier 7).** Les lots 0 a 4 se font et se valident en
+LOCAL. Le deploiement Azure intervient au lot 5, l'interface et l'application
+Slack au lot 6. Deboguer la pile de gardes a travers une couche d'hebergement
+coute plusieurs fois plus cher, et E6 se mesure plus surement a modele fige.
+Exception recommandee : eprouver la chaine de deploiement a vide des maintenant,
+pour ne pas decouvrir un obstacle Azure au dernier lot.
+
+**Tout artefact persistant s'ecrit sous `SORABEL_DATA_DIR` (D35).** Le stockage
+de conteneur est ephemere par defaut : un index ecrit ailleurs disparait au
+redemarrage, sans message d'erreur.
 
 ## 6. Définition de « fini » (tests d'acceptation = objectif)
 

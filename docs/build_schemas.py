@@ -81,6 +81,8 @@ MANIFESTE = [
      "Ce que le mini guide d'acces donne au client pour choisir le bon tool."),
     ("conception/03_matrice_acces.md", 1, "Matrice appliquee aux deux niveaux", "E4 - E5",
      "Tool a l'entree, ressources dans le tool, journal dans tous les cas."),
+    ("conception/07_cible_deploiement.md", 0, "Architecture cible sur Azure", "chantier 7",
+     "Quatre unites deployees. Le bot Slack est entre l'utilisateur et la Gateway."),
     ("conception/04_sequences.md", 0, "Question documentaire : reponse ou abstention", "E1 - E2",
      "answer_question : hybride, reranking, seuil, sources citees ou abstention."),
     ("conception/04_sequences.md", 1, "Text-to-SQL autorise : gardes lecture seule", "E3",

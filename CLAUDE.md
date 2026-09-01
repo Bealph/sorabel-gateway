@@ -102,7 +102,10 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Gouvernance / RBAC | Matrice declarative (config), appliquee aux 2 niveaux : gateway (tool) + tool (collection/table/colonne), deny-by-default | VALIDE |
 | Journalisation | JSONL de tout appel (autorise + refuse), sans valeurs sensibles, avec SQL + code | VALIDE |
 | Catalogue de tools | 8 tools : answer_question, search_docs, get_document, list_sources, ask_database, get_schema, check_stock, order_status | VALIDE |
-| Interface graphique | A definir (livrable : lien vers une UI) | A TRANCHER |
+| Interface graphique | Deployee sur Azure, cible du livrable "lien vers une UI" | VALIDE |
+| Cible de deploiement | Azure. Strategie INCREMENTALE : lots 0 a 4 en local, deploiement au lot 5 (D37) | VALIDE |
+| Persistance des artefacts | Chemin unique SORABEL_DATA_DIR. Le stockage de conteneur est ephemere par defaut (D35) | VALIDE |
+| Client Slack | APPLICATION a part entiere, reponse differee, identite Slack au journal seulement (D34) | VALIDE |
 
 Référence méthodo RBAC/MCP retenue par le pilote :
 https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-guide-for-engineering-teams-fhf
@@ -478,6 +481,49 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             reclame plus le mini guide, qui est ecrit.
             (e) DEFAUT TROUVE AU PASSAGE : le chantier 6 n'etait reference
             nulle part, l'index du dossier ne le listait pas. Corrige.
+2026-09-01  Chantier 7 : cible de deploiement Azure. Le pilote deploie sur Azure
+            parce que le brief exige un lien vers une interface. NUANCE A TENIR
+            EN SOUTENANCE : le brief impose un DEPLOIEMENT, pas Azure.
+            Tout ce qui suit est adosse a la documentation officielle, verifiee
+            le 2026-09-01, sources listees en fin de chantier 7.
+            CE QUI NE BOUGE PAS, contre mon attente initiale : P2 tient, bge-m3
+            et bge-reranker-v2-m3 sont au catalogue Azure AI Foundry en GA, donc
+            AUCUN modele a remplacer. P5 tient dans son principe. D31 et D32
+            tiennent, le type de stockage ne change pas.
+            D28 TIENT, et Entra ID s'est revele le maillon FAIBLE, a l'inverse
+            de ce que j'anticipais : la spec MCP exige les indicateurs de
+            ressource RFC 8707, Entra ID lie l'audience par son propre modele de
+            portees et aucune source officielle ne revendique la conformite ; le
+            support des metadonnees de ressource protegee est en PREVERSION ; et
+            Entra ID ne gere pas l'enregistrement dynamique de client. Faisable,
+            mais comme chantier distinct, pas comme acquis.
+            D34 SLACK. Trou revele par le pilote : Slack n'apparaissait que comme
+            une ETIQUETTE, 9 mentions toutes decoratives. C'est une APPLICATION a
+            heberger, avec trois contraintes ignorees : le budget de 3 secondes
+            de Slack impose une reponse DIFFEREE en deux messages, un point
+            d'entree public, et la verification de signature. En echange, Slack
+            apporte ce que D28 declarait manquer : une identite d'utilisateur.
+            Elle va au JOURNAL, marquee attestee par le bot et non verifiee, et
+            n'entre jamais dans une decision d'autorisation.
+            D35 PERSISTANCE, seule decision reellement nouvelle. Le stockage de
+            conteneur est ephemere par defaut : un index ecrit ailleurs que sous
+            un volume monte disparait au redemarrage SANS erreur. Tout artefact
+            passe par SORABEL_DATA_DIR. Vertu secondaire : explicite en local.
+            D36 DIMENSIONNEMENT. Ligne de partage nette : les deux modeles
+            critiques pour E6, embeddings et reranker, tiennent sur PROCESSEUR a
+            cette echelle, donc la mesure du gain ne depend d'aucun accelerateur.
+            Seule la generation SQL exige un GPU ou une API. Le GPU serverless
+            existe sur Container Apps et Microsoft documente Ollama dessus.
+            Ordre d'essai conforme au repli deja prevu par P5.
+            D37 STRATEGIE INCREMENTALE. Lots 0 a 4 en local, deploiement au lot 5,
+            interface et Slack au lot 6. Defaut assume : le risque de
+            deploiement est reporte a la fin. Parade inscrite au backlog :
+            eprouver la chaine de deploiement a vide des maintenant.
+            AZURE AI SEARCH ECARTE pour le meme motif que Qdrant : son hybride
+            natif rend la baseline dense moins nette a isoler, or E6 en depend.
+            AUCUN COUT CHIFFRE. Le palier gratuit Container Apps est confirme,
+            mais les tarifs des modeles n'ont pas pu etre lus sur les pages
+            officielles, dynamiques. A etablir a la calculatrice (item A4).
 ```
 
 ---

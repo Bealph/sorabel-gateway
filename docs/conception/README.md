@@ -14,6 +14,7 @@ Vue d'ensemble puis trois chantiers, chacun traité par questions avec ses sché
 | 04_sequences.md | Diagrammes de sequence (vue comportement.) : answer_question, ask_database, refus E4 E5, ecriture E3 | Fait |
 | 05_catalogue_tools.md | Catalogue MCP consolide : nom, entrees, sorties, garanties, acces par profil | Fait |
 | 06_choix_stockage.md | Chantier 6 : les trois besoins de stockage, le type retenu pour chacun, les candidats ecartes et leur motif | Fait |
+| 07_cible_deploiement.md | Chantier 7 : cible Azure, persistance des artefacts, Slack comme application a part, dimensionnement de la pile | Fait |
 
 Modele de donnees Document/Chunk : dans 01_flux_chunks.md (section 2.4).
 Voir aussi : ../analyse_donnees.md (donnees) et ../mesure_e6.md (protocole E6).

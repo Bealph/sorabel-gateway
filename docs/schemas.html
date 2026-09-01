@@ -40,7 +40,7 @@
 <body>
 <header>
   <h1>Sorabel Data Gateway — Vues schématisées</h1>
-  <p>18 schémas, extraits des fichiers du dossier de conception le 2026-09-01.</p>
+  <p>19 schémas, extraits des fichiers du dossier de conception le 2026-09-01.</p>
 </header>
 <div id="alerte">
   <b>Les schémas ne s'affichent pas ?</b> Cette page a besoin d'exécuter du JavaScript.
@@ -48,7 +48,7 @@
   Ouvrez <code>docs/schemas.html</code> dans un navigateur. Ce message disparaît dès que
   le rendu fonctionne.
 </div>
-<nav><ol><li><a href="#s1">Architecture globale</a></li><li><a href="#s2">Les quatre supports de stockage</a></li><li><a href="#s3">Modele relationnel de la base metier</a></li><li><a href="#s4">Flux d'ingestion, par artefacts</a></li><li><a href="#s5">Modele de donnees Document / Chunk</a></li><li><a href="#s6">Le modele sur un cas reel</a></li><li><a href="#s7">Flux de recherche, l'entonnoir</a></li><li><a href="#s8">Chemin Text-to-SQL</a></li><li><a href="#s9">Jointures canoniques</a></li><li><a href="#s10">Pile de gardes lecture seule</a></li><li><a href="#s11">Schema montre a chaque profil</a></li><li><a href="#s12">Arbre de decision des tools SQL</a></li><li><a href="#s13">Matrice appliquee aux deux niveaux</a></li><li><a href="#s14">Question documentaire : reponse ou abstention</a></li><li><a href="#s15">Text-to-SQL autorise : gardes lecture seule</a></li><li><a href="#s16">Colonne sensible pour le support : refus</a></li><li><a href="#s17">Appel non autorise au niveau tool</a></li><li><a href="#s18">Tentative d'ecriture : lecture seule</a></li></ol></nav>
+<nav><ol><li><a href="#s1">Architecture globale</a></li><li><a href="#s2">Les quatre supports de stockage</a></li><li><a href="#s3">Modele relationnel de la base metier</a></li><li><a href="#s4">Flux d'ingestion, par artefacts</a></li><li><a href="#s5">Modele de donnees Document / Chunk</a></li><li><a href="#s6">Le modele sur un cas reel</a></li><li><a href="#s7">Flux de recherche, l'entonnoir</a></li><li><a href="#s8">Chemin Text-to-SQL</a></li><li><a href="#s9">Jointures canoniques</a></li><li><a href="#s10">Pile de gardes lecture seule</a></li><li><a href="#s11">Schema montre a chaque profil</a></li><li><a href="#s12">Arbre de decision des tools SQL</a></li><li><a href="#s13">Matrice appliquee aux deux niveaux</a></li><li><a href="#s14">Architecture cible sur Azure</a></li><li><a href="#s15">Question documentaire : reponse ou abstention</a></li><li><a href="#s16">Text-to-SQL autorise : gardes lecture seule</a></li><li><a href="#s17">Colonne sensible pour le support : refus</a></li><li><a href="#s18">Appel non autorise au niveau tool</a></li><li><a href="#s19">Tentative d'ecriture : lecture seule</a></li></ol></nav>
 <main>
   <section id="s1">
     <h2>1. Architecture globale <span class="tag">structurelle</span></h2>
@@ -397,7 +397,35 @@ flowchart TD
   </section>
 
   <section id="s14">
-    <h2>14. Question documentaire : reponse ou abstention <span class="tag">E1 - E2</span></h2>
+    <h2>14. Architecture cible sur Azure <span class="tag">chantier 7</span></h2>
+    <p class="cap">Quatre unites deployees. Le bot Slack est entre l'utilisateur et la Gateway.</p>
+    <pre class="mermaid">
+flowchart TB
+    subgraph EXT["Hors du perimetre Azure"]
+        SLACK["Slack&lt;br/&gt;l'utilisateur support y pose sa question"]
+        IDE["IDE des devs&lt;br/&gt;client MCP direct"]
+    end
+
+    subgraph AZ["Azure"]
+        BOT["Application Slack&lt;br/&gt;accuse reception, puis repond"]
+        UI["Interface graphique&lt;br/&gt;le lien exige par le brief"]
+        GW["Serveur MCP&lt;br/&gt;catalogue, matrice, journal"]
+        MOD["Modeles&lt;br/&gt;embeddings, reranking, generation"]
+        VOL[("Stockage persistant&lt;br/&gt;SORABEL_DATA_DIR")]
+    end
+
+    SLACK --&gt;|"evenement signe"| BOT
+    BOT --&gt;|"appel MCP, profil support"| GW
+    IDE --&gt;|"appel MCP, profil dev"| GW
+    UI --&gt; GW
+    GW --&gt; MOD
+    GW --&gt;|"lit et ecrit"| VOL
+    </pre>
+    <p class="src">source : docs/conception/07_cible_deploiement.md, diagramme 1</p>
+  </section>
+
+  <section id="s15">
+    <h2>15. Question documentaire : reponse ou abstention <span class="tag">E1 - E2</span></h2>
     <p class="cap">answer_question : hybride, reranking, seuil, sources citees ou abstention.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -427,8 +455,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 1</p>
   </section>
 
-  <section id="s15">
-    <h2>15. Text-to-SQL autorise : gardes lecture seule <span class="tag">E3</span></h2>
+  <section id="s16">
+    <h2>16. Text-to-SQL autorise : gardes lecture seule <span class="tag">E3</span></h2>
     <p class="cap">ask_database : generation, AST, perimetre, LIMIT, execution read-only, SQL renvoye.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -456,8 +484,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 2</p>
   </section>
 
-  <section id="s16">
-    <h2>16. Colonne sensible pour le support : refus <span class="tag">E5</span></h2>
+  <section id="s17">
+    <h2>17. Colonne sensible pour le support : refus <span class="tag">E5</span></h2>
     <p class="cap">Le perimetre rattrape meme si le modele produit un SQL touchant une colonne interdite.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -482,8 +510,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 3</p>
   </section>
 
-  <section id="s17">
-    <h2>17. Appel non autorise au niveau tool <span class="tag">E4</span></h2>
+  <section id="s18">
+    <h2>18. Appel non autorise au niveau tool <span class="tag">E4</span></h2>
     <p class="cap">Le refus intervient a l'entree, aucun moteur n'est atteint.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -501,8 +529,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 4</p>
   </section>
 
-  <section id="s18">
-    <h2>18. Tentative d'ecriture : lecture seule <span class="tag">E3</span></h2>
+  <section id="s19">
+    <h2>19. Tentative d'ecriture : lecture seule <span class="tag">E3</span></h2>
     <p class="cap">L'AST rejette le non-SELECT, la connexion read-only reste le garde-fou ultime.</p>
     <pre class="mermaid">
 sequenceDiagram
