@@ -174,6 +174,61 @@ Une authentification Entra ID reste faisable et documentée par Microsoft, mais
 c'est un **chantier distinct**, avec ses réserves à écrire. D28 tient, et le
 transport stdio reste le mode normatif.
 
+**Correction d'une imprécision.** Les métadonnées de ressource protégée sont
+servies par le **serveur MCP** lui-même, qui est le serveur de ressources, non
+par le fournisseur d'identité. La préversion signalée côté Azure concerne la
+fonction d'authentification intégrée d'App Service, qui les produit à votre
+place. Si nous les servons nous-mêmes, cette réserve ne nous lie pas.
+
+### 5.1 bis Et Keycloak ?
+
+La question se pose légitimement : un fournisseur d'identité libre serait-il plus
+conforme à la spécification MCP qu'Entra ID ? La documentation de Keycloak répond
+elle-même, et la réponse est non.
+
+| Critère exigé par la spécification MCP | Entra ID | Keycloak |
+| --- | --- | --- |
+| Indicateurs de ressource, RFC 8707 | non revendiqué | **« Keycloak cannot currently recognize the resource parameter »**, support planifié |
+| Contournement proposé | portée `{App-ID-URI}/.default` | portée, exactement le même palliatif |
+| Métadonnées de serveur d'autorisation, RFC 8414 | oui | oui |
+| Enregistrement dynamique de client | non | oui, et support expérimental du format de métadonnées client plus récent |
+| Coût d'exploitation | service managé, déjà dans le locataire | service **et base de données** à héberger et administrer |
+
+Sur le point qui fâche, les indicateurs de ressource, **les deux en sont au même
+point** et proposent le même contournement par la portée. Keycloak est mieux
+placé sur l'enregistrement de client et possède une page dédiée à MCP, mais il
+introduit une base de données et un service de plus.
+
+**Verdict : non retenu.** Pas parce que Keycloak serait mauvais, mais parce qu'il
+ne résout pas le problème qui motiverait de changer, et qu'il coûte deux
+composants supplémentaires pour trois profils.
+
+### 5.1 ter Ce qu'un fournisseur d'identité ne doit surtout pas absorber
+
+Si un fournisseur d'identité entre un jour dans l'architecture, la frontière avec
+la matrice déclarative doit être tenue, sans quoi on retombe sur le défaut qui a
+fait écarter PostgreSQL au chantier 6.
+
+| Question | Qui répond | Support |
+| --- | --- | --- |
+| Qui appelle, et est-ce prouvé ? | le fournisseur d'identité | jeton validé |
+| À quel profil cet appelant correspond-il ? | une revendication du jeton, ou la configuration de lancement | `SORABEL_PROFIL` aujourd'hui |
+| Ce profil a-t-il le droit d'appeler ce tool, cette collection, cette colonne ? | **la matrice, et elle seule** | `governance/matrice.yaml` |
+
+Les deux premières lignes sont de l'**authentification**, la troisième de
+l'**autorisation applicative**. Keycloak sait faire la troisième, avec son moteur
+de politiques. **Il ne faut pas s'en servir.** Ce serait encoder la matrice une
+seconde fois, ce que D21 interdit, et le fichier YAML cesserait d'être la source
+de vérité unique.
+
+La règle tient en une phrase : un fournisseur d'identité dit **qui**, la matrice
+dit **quoi**. Le fichier YAML ne bouge donc pas, quel que soit le mécanisme
+d'identité retenu.
+
+**Consequence pratique.** Le seul gain réel qu'un fournisseur d'identité
+apporterait sur `SORABEL_PROFIL` n'est pas la conformité, c'est l'**expiration et
+la révocation** : retirer un accès sans éditer la configuration d'un poste.
+
 ### 5.2 Pourquoi ne pas passer à un service d'index managé
 
 Azure AI Search ferait la recherche vectorielle, le lexical et le filtrage, et
@@ -297,4 +352,6 @@ Vérifiées le 2026-09-01.
 - [Déployer un modèle avec Ollama sur GPU serverless](https://learn.microsoft.com/en-us/azure/container-apps/deploy-openai-gpt-oss-ollama)
 - [bge-m3 au catalogue Azure AI Foundry](https://ai.azure.com/catalog/models/baai-bge-m3)
 - [Classement sémantique, Azure AI Search](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview)
+- [Keycloak et MCP, serveur d'autorisation](https://www.keycloak.org/securing-apps/mcp-authz-server)
+- [Spécifications implémentées par Keycloak](https://www.keycloak.org/securing-apps/specifications)
 - [Versions de modèles et retraits](https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirements)

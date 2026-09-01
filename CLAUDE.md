@@ -524,6 +524,30 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             AUCUN COUT CHIFFRE. Le palier gratuit Container Apps est confirme,
             mais les tarifs des modeles n'ont pas pu etre lus sur les pages
             officielles, dynamiques. A etablir a la calculatrice (item A4).
+2026-09-01  KEYCLOAK instruit, non retenu. Question du pilote apres le constat
+            que Entra ID ne satisfait pas litteralement la spec MCP.
+            FAIT DECISIF, source Keycloak elle-meme : "Keycloak cannot currently
+            recognize the resource parameter", le support des indicateurs de
+            ressource RFC 8707 est PLANIFIE, pas livre, et le contournement
+            propose est la portee, EXACTEMENT le meme palliatif qu'Entra ID.
+            Les deux en sont donc au meme point sur le seul critere qui
+            motiverait de changer. Keycloak est mieux place sur l'enregistrement
+            de client et a une page dediee a MCP, mais il ajoute un service ET
+            une base de donnees pour trois profils.
+            FRONTIERE POSEE, section 5.1 ter du chantier 7 : un fournisseur
+            d'identite dit QUI, la matrice dit QUOI. Keycloak sait faire de
+            l'autorisation applicative avec son moteur de politiques : il ne faut
+            PAS s'en servir, ce serait encoder la matrice une seconde fois,
+            contre D21, et governance/matrice.yaml cesserait d'etre la source de
+            verite unique. Le fichier YAML ne bouge donc pas, quel que soit le
+            mecanisme d'identite retenu.
+            Seul gain reel d'un IdP sur SORABEL_PROFIL : l'expiration et la
+            revocation, pas la conformite.
+            IMPRECISION CORRIGEE au passage : les metadonnees de ressource
+            protegee sont servies par le SERVEUR MCP, pas par le fournisseur
+            d'identite. La preversion signalee cote Azure concerne la fonction
+            integree d'App Service qui les produit a votre place ; si nous les
+            servons nous-memes, cette reserve ne nous lie pas.
 ```
 
 ---
