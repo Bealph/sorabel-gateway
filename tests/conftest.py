@@ -1,9 +1,6 @@
 """Outils de la suite d'acceptance : appels boîte noire au serveur MCP (stdio).
 
-La suite joue le rôle d'un client interne : elle lance le serveur selon le
-contrat d'intégration de docs/cadrage_dsi.md (commande, profil et journal via
-variables d'environnement, enveloppe de réponse JSON) et n'importe rien de son
-implémentation.
+La suite joue le rôle d'un client interne
 """
 
 from __future__ import annotations
