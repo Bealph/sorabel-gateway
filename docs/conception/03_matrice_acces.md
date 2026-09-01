@@ -128,6 +128,11 @@ flowchart TD
 
 ### 3.2 Matrice client x tool
 
+> **Les trois tableaux qui suivent sont des VUES.** La source de vérité est
+> `governance/matrice.yaml` (D21). En cas de divergence, c'est le fichier YAML
+> qui fait foi. Une vue toujours à jour, régénérée depuis lui, est dans
+> `governance/matrice_lisible.md`.
+
 | Tool            | support | commercial | dev/IDE | Note                                  |
 | --------------- | :-----: | :--------: | :-----: | ------------------------------------- |
 | answer_question |   oui   |    oui     |   oui   |                                       |
@@ -179,26 +184,24 @@ document déplacé reste gouverné.
 
 ### 3.5 Source de vérité : configuration déclarative
 
-Une seule config gouverne gateway et tools. Exemple :
+Une seule configuration gouverne la gateway et les tools. Elle **existe** :
+c'est `governance/matrice.yaml`, chargé au démarrage.
 
-```yaml
-profils:
-  support:
-    tools: [answer_question, ask_database, get_schema, check_stock, order_status]
-    collections: [fiches, notices, sav]
-    sql:
-      tables: [clients, produits, stocks, commandes, ventes]
-      colonnes_interdites: [produits.prix_achat_ht, produits.marge_pct, ventes.marge_ht]
-  commercial:
-    tools: [answer_question, ask_database, get_schema, check_stock, order_status]
-    collections: [fiches, notices, sav, notes]
-    sql: { tables: [clients, produits, stocks, commandes, ventes], colonnes_interdites: [] }
-  dev:
-    tools: [answer_question, search_docs, get_document, list_sources,
-            ask_database, get_schema, check_stock, order_status]
-    collections: [fiches, notices, sav, notes]
-    sql: { tables: "*", colonnes_interdites: [] }
-```
+Ce document ne la recopie pas. Un exemple illustratif figurait ici jusqu'au
+2026-09-01, et il avait déjà dérivé du fichier réel : il donnait `tables: "*"`
+au profil `dev` là où la matrice énumère les cinq tables, et imbriquait les
+droits SQL sous une clé `sql:` que le fichier n'a pas. C'est précisément le
+défaut que D21 existe pour empêcher.
+
+| Fichier | Rôle |
+| --- | --- |
+| `governance/matrice.yaml` | La source. Catalogue fermé, collections, colonnes sensibles, trois profils, invariants |
+| `governance/verifier_matrice.py` | Contrôle la cohérence, puis régénère la vue. Échoue si un invariant tombe |
+| `governance/matrice_lisible.md` | Vue générée, à titre informatif. Ne pas éditer à la main |
+
+Les invariants ne sont pas des commentaires : le script refuse une matrice qui
+donne une brique RAG au support, qui oublie une colonne sensible, qui cite un
+tool hors catalogue ou une colonne absente de la base.
 
 ---
 

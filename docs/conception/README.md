@@ -15,8 +15,11 @@ Vue d'ensemble puis trois chantiers, chacun traité par questions avec ses sché
 | 05_catalogue_tools.md | Catalogue MCP consolide : nom, entrees, sorties, garanties, acces par profil | Fait |
 | 06_choix_stockage.md | Chantier 6 : les trois besoins de stockage, le type retenu pour chacun, les candidats ecartes et leur motif | Fait |
 | 07_cible_deploiement.md | Chantier 7 : cible Azure, persistance des artefacts, Slack comme application a part, dimensionnement de la pile | Fait |
+| pile_technique.md | Carte transverse : ce qui est retenu, ce qui est ecarte et pourquoi. Vue informative, ne decide rien | Fait |
 
 Modele de donnees Document/Chunk : dans 01_flux_chunks.md (section 2.4).
+Droits d'acces : la source de verite est ../../governance/matrice.yaml ; les
+tableaux de 03 et 05 en sont des VUES.
 Voir aussi : ../analyse_donnees.md (donnees) et ../mesure_e6.md (protocole E6).
 Vues rendues : ../schemas.html, **17 schemas**, page autonome a ouvrir dans un
 navigateur (Mermaid embarque, aucune installation). Elle est GENEREE par
@@ -52,5 +55,8 @@ Catalogue     : 8 tools (answer_question, search_docs, get_document, list_source
                 ask_database, get_schema, check_stock, order_status)
 Gouvernance   : matrice declarative deny-by-default, appliquee gateway + tool
 Journalisation: JSONL, tout appel, sans valeurs sensibles
-Reste ouvert  : P8 (mecanisme d'identite du client MCP), a cadrer au developpement
+Stockage      : SQLite (metier) + Chroma/BM25 (documents) + JSONL (journal)
+Identite      : profil fixe au lancement (D28), P8 ferme
+Deploiement   : Azure, strategie incrementale, deploiement au lot 5 (D37)
+Reste ouvert  : aucun point de conception. Voir ../RESTE_A_FAIRE.md
 ```

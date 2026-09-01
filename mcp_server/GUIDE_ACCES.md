@@ -116,6 +116,11 @@ Politique générale : deny-by-default. Tout ce qui n'est pas explicitement auto
 refusé. La matrice est appliquée à deux niveaux : à la gateway pour le droit d'appeler un
 tool, dans le tool pour le périmètre des ressources réellement touchées.
 
+Les trois tableaux de cette section sont des **vues** de `governance/matrice.yaml`,
+qui est la source de vérité chargée par le serveur au démarrage (D21). Si votre
+serveur se comporte autrement que ce guide ne l'annonce, c'est le fichier YAML de
+votre déploiement qui a raison, pas ce document.
+
 ### 3.1 Tools accessibles
 
 | Tool | `support` | `commercial` | `dev` | Précision |

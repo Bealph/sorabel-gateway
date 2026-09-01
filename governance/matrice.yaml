@@ -1,0 +1,132 @@
+# Matrice d'acces de la Sorabel Data Gateway
+#
+# SOURCE DE VERITE UNIQUE des droits (decision D21). Le serveur la charge au
+# demarrage et l'applique aux DEUX niveaux : a l'entree de la gateway pour le
+# tool, dans chaque tool pour les ressources (D20).
+#
+# Ce que ce fichier N'EST PAS :
+#   - il ne dit pas QUI appelle. L'identite vient du transport (D28), jamais
+#     d'un parametre de tool ni d'un champ declare par le client.
+#   - il n'est pas duplique ailleurs. Les tableaux des chantiers 03 et 05, et du
+#     guide d'acces, en sont des VUES. En cas de divergence, ce fichier gagne.
+#
+# Politique : DENY BY DEFAULT. Ce qui n'est pas explicitement autorise est refuse.
+#
+# Verifier : python governance/verifier_matrice.py
+#            (controle la coherence et regenere governance/matrice_lisible.md)
+
+version: 1
+
+# --- Le catalogue, ferme. Aucun profil ne peut citer un tool absent d'ici. ----
+catalogue:
+  rag:
+    - answer_question   # RAG complet, reponse ancree + sources (E1)
+    - search_docs       # brique : passages classes, aucune generation
+    - get_document      # brique : un document complet
+    - list_sources      # brique : inventaire du corpus
+  sql:
+    - ask_database      # Text-to-SQL generatif, pile de gardes
+    - get_schema        # perimetre autorise, aucune donnee renvoyee
+    - check_stock       # fige, une reference
+    - order_status      # fige, une commande
+
+# --- Collections documentaires. La cle de filtrage est doc_type. -------------
+collections:
+  fiches:   fiche_technique
+  notices:  notice
+  sav:      procedure_sav
+  notes:    note_interne
+
+# --- Colonnes sensibles. Ce n'est pas un releve : c'est l'exigence E5. -------
+# "les colonnes sensibles (prix d'achat, marges) ne sortent jamais pour le
+#  profil support". Tout profil qui ne les interdit pas viole E5.
+colonnes_sensibles:
+  - produits.prix_achat_ht
+  - produits.marge_pct
+  - ventes.marge_ht
+
+# --- Les profils ------------------------------------------------------------
+profils:
+
+  support:
+    description: bot Slack du SAV, client tourne vers l'exterieur
+    tools:
+      - answer_question
+      - ask_database
+      - get_schema
+      - check_stock
+      - order_status
+    collections:
+      - fiches
+      - notices
+      - sav
+    tables:
+      - clients
+      - produits
+      - stocks
+      - commandes
+      - ventes
+    colonnes_interdites:
+      - produits.prix_achat_ht
+      - produits.marge_pct
+      - ventes.marge_ht
+
+  commercial:
+    description: poste commercial
+    tools:
+      - answer_question
+      - ask_database
+      - get_schema
+      - check_stock
+      - order_status
+    collections:
+      - fiches
+      - notices
+      - sav
+      - notes
+    tables:
+      - clients
+      - produits
+      - stocks
+      - commandes
+      - ventes
+    colonnes_interdites: []
+
+  dev:
+    description: IDE des developpeurs, seul profil ayant les briques RAG (D18)
+    tools:
+      - answer_question
+      - search_docs
+      - get_document
+      - list_sources
+      - ask_database
+      - get_schema
+      - check_stock
+      - order_status
+    collections:
+      - fiches
+      - notices
+      - sav
+      - notes
+    tables:
+      - clients
+      - produits
+      - stocks
+      - commandes
+      - ventes
+    colonnes_interdites: []
+
+# --- Invariants verifies par le script --------------------------------------
+# Ils sont ecrits ici pour etre lus, et controles la : un invariant qui ne vit
+# que dans la tete de celui qui a ecrit le fichier n'est pas un invariant.
+invariants:
+  - id: E5_support_sans_colonnes_sensibles
+    enonce: le profil support interdit les trois colonnes sensibles
+  - id: E4_briques_rag_reservees_dev
+    enonce: search_docs, get_document et list_sources n'appartiennent qu'au profil dev
+  - id: E5_notes_interdites_support
+    enonce: la collection notes n'est pas accessible au profil support
+  - id: catalogue_ferme
+    enonce: aucun profil ne cite un tool absent du catalogue
+  - id: schema_reel
+    enonce: toute table et toute colonne citee existe dans la base

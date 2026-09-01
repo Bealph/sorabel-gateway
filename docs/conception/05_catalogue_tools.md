@@ -40,6 +40,9 @@
 
 ## Accès par profil (rappel de la matrice, chantier 3)
 
+> **Vue.** La source de vérité est `governance/matrice.yaml` (D21) ; ce tableau
+> en est une copie de lecture. Vue régénérée : `governance/matrice_lisible.md`.
+
 | Tool | support | commercial | dev/IDE |
 | --- | --- | --- | --- |
 | answer_question | oui | oui | oui |

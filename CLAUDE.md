@@ -99,7 +99,7 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Text-to-SQL - catalogue | ask_database (generique) + get_schema + figes check_stock / order_status, les deux seuls que le brief nomme | VALIDE |
 | Text-to-SQL - sortie | structuree {SQL \| CLARIFY \| HORS_SCHEMA} | VALIDE |
 | Text-to-SQL - LLM generation | Local coder instruct (ex. Qwen2.5-Coder), repli mesure sur SQL-01..12 avant API | VALIDE |
-| Gouvernance / RBAC | Matrice declarative (config), appliquee aux 2 niveaux : gateway (tool) + tool (collection/table/colonne), deny-by-default | VALIDE |
+| Gouvernance / RBAC | Matrice declarative, appliquee aux 2 niveaux : gateway (tool) + tool (collection/table/colonne), deny-by-default. SOURCE UNIQUE : governance/matrice.yaml, controlee par verifier_matrice.py | VALIDE |
 | Journalisation | JSONL de tout appel (autorise + refuse), sans valeurs sensibles, avec SQL + code | VALIDE |
 | Catalogue de tools | 8 tools : answer_question, search_docs, get_document, list_sources, ask_database, get_schema, check_stock, order_status | VALIDE |
 | Interface graphique | Deployee sur Azure, cible du livrable "lien vers une UI" | VALIDE |
@@ -123,7 +123,8 @@ sorabel-data-gateway/
 ├── docs/
 │   ├── cadrage_dsi.md     # note de cadrage DSI (contexte + exigences)
 │   ├── analyse_donnees.md # le jeu de donnees ; bloc de releve GENERE
-│   ├── conception/        # 6 chantiers, 00 a 06, plus leur index
+│   ├── conception/        # 7 chantiers, 00 a 07, index, plus pile_technique.md
+│   │                      # (carte informative du retenu / de l'ecarte)
 │   ├── mesure_e6.md       # protocole de mesure du gain RAG, chiffres au lot 3
 │   ├── PASSATION_DEV.md   # POINT D'ENTREE DEV : lots, criteres, garde-fous
 │   ├── RESTE_A_FAIRE.md   # ce qui reste, l'historique est dans git
@@ -136,7 +137,11 @@ sorabel-data-gateway/
 ├── mcp_server/           # serveur MCP + GUIDE_ACCES.md (mini guide, livrable)
 ├── rag/                  # ingestion, chunking, hybride, reranking
 ├── text2sql/             # generation SQL lecture seule + garde-fous
-├── governance/           # matrice d'acces (RBAC) + journalisation
+├── governance/
+│   ├── matrice.yaml           # SOURCE DE VERITE des droits (D21)
+│   ├── verifier_matrice.py    # controle les invariants, GENERE la vue
+│   ├── matrice_lisible.md      # vue generee. NE PAS editer, regenerer.
+│   └── logs/                  # journal JSONL de tout appel (a creer, lot 0)
 ├── eval/
 │   ├── questions_sql.jsonl    # fixture SQL, 24 questions. NE PAS modifier.
 │   ├── questions_rag.jsonl    # fixture RAG, 30 questions. NE PAS modifier.
@@ -548,6 +553,34 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             d'identite. La preversion signalee cote Azure concerne la fonction
             integree d'App Service qui les produit a votre place ; si nous les
             servons nous-memes, cette reserve ne nous lie pas.
+2026-09-01  MATRICE D'ACCES : la source de verite existe enfin. Elle etait citee
+            par D21 depuis le chantier 3, et le fichier n'existait pas ; la
+            matrice vivait recopiee en clair a TROIS endroits (03 section 3.2,
+            catalogue 05, GUIDE_ACCES section 3). Meme mode de defaillance que
+            les enumerations de la base, qui avaient diverge avec six litteraux
+            faux. Une divergence de droits, elle, ne se voit pas : elle
+            s'exploite.
+            CREES : governance/matrice.yaml (catalogue ferme, collections,
+            colonnes sensibles, 3 profils, invariants ecrits pour etre lus) et
+            governance/verifier_matrice.py, qui joue 19 controles puis GENERE
+            governance/matrice_lisible.md. Le script porte un lecteur YAML de
+            repli, pyyaml n'etant pas encore installe (lot 0 le fera).
+            CONTROLES EPROUVES EN LES FAISANT ECHOUER, un par un : retirer une
+            colonne sensible au support, donner search_docs au support, citer une
+            colonne inexistante. Les trois echouent avec le nom du fautif.
+            Matrice restauree apres chaque essai.
+            DERIVE DEJA PRESENTE, trouvee au passage : l'exemple YAML de 03
+            section 3.5 donnait tables: "*" au profil dev la ou la matrice
+            enumere les cinq tables, et imbriquait les droits sous une cle sql:
+            que le fichier n'a pas. Section reecrite : elle pointe le fichier
+            reel au lieu d'en montrer une copie.
+            Les trois tableaux subsistent, desormais ETIQUETES COMME DES VUES,
+            avec la regle de preseance ecrite au-dessus.
+            AJOUTE : docs/conception/pile_technique.md, carte transverse du
+            retenu et de l'ecarte avec son motif (PostgreSQL, FAISS, Qdrant,
+            sqlite-vec, Azure AI Search, Entra ID, Keycloak), plus les trois
+            motifs recurrents de rejet. Informatif, ne decide rien.
+            VERIFIE : 19 controles matrice, releve a jour, schemas.html a jour.
 ```
 
 ---
