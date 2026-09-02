@@ -7,9 +7,22 @@ explicite au lieu d'etre implicite.
 """
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
+# Pose AVANT tout import de chromadb, qui lit ce reglage a l'import. Chroma tente
+# sinon un envoi reseau a chaque appel, et echoue bruyamment sur stderr. Une
+# gateway gouvernee n'emet rien qu'elle n'ait decide d'emettre.
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+os.environ.setdefault("CHROMA_ANONYMIZED_TELEMETRY", "False")
+
+# La variable ne suffit pas sur chromadb 0.5.x : le client de telemetrie est
+# instancie quand meme, son appel ECHOUE, et l'echec est journalise en erreur a
+# chaque requete. Rien ne part donc sur le reseau, mais le bruit reste, et il
+# n'a rien a faire dans la sortie d'une gateway. On coupe le journal fautif.
+logging.getLogger("chromadb.telemetry").setLevel(logging.CRITICAL)
 
 RACINE = Path(__file__).resolve().parent.parent
 
