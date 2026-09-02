@@ -65,7 +65,7 @@ Arborescence imposée par le dépôt d'exercice, plus ce qu'apporte la conceptio
 ```
 data/
   corpus/             # ~400 documents : fiches/ notices/ (PDF), sav/ (HTML), notes/ (Markdown)
-  sorabel.db          # base SQL (hors git — générée par make seed, schéma dans docs/schema.sql)
+  sorabel.db          # base SQL (hors git : générée par make seed, schéma dans docs/schema.sql)
 docs/
   cadrage_dsi.md      # exigences E1–E6, matrice d'accès, contrat d'intégration
   schema.sql          # schéma commenté de la base (colonnes sensibles signalées)
