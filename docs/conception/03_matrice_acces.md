@@ -470,3 +470,103 @@ pour rendre l'imputabilité réelle.
 - Identite falsifiable : traite en Q6. L'autorisation vaut ce que vaut le
   contexte de lancement, ce qui est assume et documente, pas ignore.
 ```
+
+---
+
+## Q7. Le contrat d'intégration, et deux arbitrages renversés
+
+> Section ajoutée le 2026-09-02, après rapatriement du dépôt d'exercice amont.
+> Elle rend compte d'un écart réel entre ce que nous avions conçu et ce que le
+> contrat impose. Rien n'est réécrit pour faire croire que nous ne nous étions
+> pas trompés : la trace du raisonnement initial se défend mieux qu'un dossier
+> qui n'aurait jamais hésité.
+
+### 7.1 Ce qui fait foi, et dans quel ordre
+
+Le dépôt amont contient `docs/cadrage_dsi.md`, restauré ici, et une suite
+d'acceptance boîte noire, `tests/acceptance/` avec `tests/conftest.py`. Ces deux
+pièces **imposent** le contrat. Notre copie locale de la note de cadrage n'en
+était qu'une paraphrase de 2352 octets, sans la matrice ni le contrat
+d'intégration : c'est pourquoi nos chantiers 1 à 5 ont deviné des détails.
+
+| Rang | Ce qui fait foi | Portée |
+| ---: | --- | --- |
+| 1 | `docs/cadrage_dsi.md` et `tests/conftest.py` | Le contrat. Non négociable |
+| 2 | `governance/matrice.yaml` | La transcription pour le code, contrôlée contre le rang 1 |
+| 3 | Les tableaux de ce chantier, du catalogue 05 et du guide d'accès | Des vues |
+
+`governance/verifier_matrice.py` recopie la matrice du rang 1 dans ses ancres, en
+dur. C'est la **seule recopie assumée** du dépôt, et elle existe précisément pour
+que le rang 2 ne puisse pas s'écarter du rang 1 sans que le contrôle tombe.
+
+### 7.2 D18 et P6 sont RENVERSÉS
+
+Nous avions décidé, en D18 et P6, que les trois briques RAG `search_docs`,
+`get_document` et `list_sources` seraient **réservées au profil dev**. Le
+raisonnement était : un client de bout en bout ne doit pas avoir accès aux étages
+intermédiaires, sinon il recompose sa propre réponse et E1 n'est plus garantie
+par la Gateway.
+
+**Le contrat dit l'inverse.** Le profil `support` a les trois briques, et
+`tests/acceptance/test_rag.py` appelle `search_docs` **en profil support** pour
+vérifier E2 sur `REF-8842`. Notre matrice aurait refusé cet appel et fait tomber
+le test.
+
+Le contrat a raison, et pour une raison que nous n'avions pas vue : le brief
+nomme le bot Slack du support comme le client qui « cherche mal dans les PDF ».
+Lui rendre une recherche correcte, c'est exactement lui donner `search_docs`. La
+garantie E1 ne se protège pas en retirant des tools, elle se protège dans le
+contrat de sortie de `answer_question`, qui est le seul tool à promettre une
+réponse rédigée.
+
+**Ce qui disparaît avec ce renversement** : le profil `dev`. Il n'existe pas au
+contrat. Nos chantiers 1 à 5 le mentionnent ; il faut lire ces mentions comme
+historiques.
+
+**Ce qui survit** : P7. Les notes internes restent fermées au `support`, et le
+cadrage DSI le dit dans les mêmes termes que nous. C'est le seul de nos
+arbitrages de gouvernance que le contrat confirme mot pour mot.
+
+### 7.3 Un retrait que nous n'avions pas vu : la table `ventes`
+
+Le cadrage DSI retire au `support` **la table `ventes` en entier**, pas seulement
+la colonne `marge_ht`. Notre matrice donnait les cinq tables aux trois profils, en
+affirmant que « la restriction porte sur les colonnes, jamais sur les tables ».
+C'était faux.
+
+La conséquence est plus forte, et meilleure : une table absente est un **refus**,
+pas un filtrage de colonnes. `ventes.marge_ht` reste néanmoins listée dans les
+colonnes interdites du `support`, par redondance assumée : c'est un invariant, et
+dupliquer un invariant est sain.
+
+### 7.4 Les autres écarts de contrat
+
+| Sujet | Ce que nous avions conçu | Ce que le contrat impose |
+| --- | --- | --- |
+| Variable de profil | `SORABEL_PROFIL` | `SORABEL_PROFILE`, défaut `support` |
+| Lancement | non spécifié | `python -m mcp_server.server`, transport stdio |
+| Enveloppe | `{status, code, message, detail}` | `{status, payload, message}` |
+| Statuts | `out_of_corpus`, `out_of_schema`, `not_found`, `clarify`, `refused`, `ok`, `error` | `ok`, `refused`, `clarification`, `hors_corpus`, `error` |
+| Journal | `governance/logs/`, clés françaises | chemin par `GATEWAY_JOURNAL`, défaut `logs/journal.jsonl`, clés `timestamp`, `profile`, `tool`, `arguments`, `status`, `message` |
+| Lignes SQL | objets nommés | `{"sql", "columns", "rows": [[…]]}`, lignes positionnelles |
+| Argument de recherche | `q` | `query` |
+| Argument de stock | `ref` | `reference` |
+| Sources d'E1 | `titre`, `ref`, `version`, `date` | `titre`, `reference`, `date` |
+| Livrable E6 | `eval/results/` | `eval/rapport_gain.md`, contrôlé par le test |
+
+**Les codes de refus normalisés du § 4.1 ne sont pas au contrat.** Le contrat
+n'exige qu'un `status` et un `message` explicite. Nos neuf codes restent utiles
+au journal et au diagnostic, mais ils sont **internes** : ils voyagent dans
+`payload`, jamais à la place du `status`. Un client conforme au contrat ne lit
+que `status` et `message`.
+
+### 7.5 Ce que cet épisode enseigne
+
+Le dossier a été conçu contre une paraphrase, et il a bien tenu sur le fond :
+défense en profondeur, matrice déclarative, journalisation de tout appel, mesure
+isolable. Ce sont les **noms** qui ont dérivé, et un droit d'accès sur deux.
+
+La leçon est la même que celle des énumérations recopiées et du motif de P3 :
+**ce qui est reformulé dérive.** La parade est ici la même que partout ailleurs
+dans ce dépôt, et elle est désormais en place : un contrôle exécutable qui
+compare la transcription à la source, et qui échoue en nommant le fautif.

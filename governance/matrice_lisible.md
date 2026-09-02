@@ -8,25 +8,25 @@
 
 ## Quel profil peut appeler quel tool
 
-| Tool | Famille | support | commercial | dev |
-| --- | --- | :---: | :---: | :---: |
-| `answer_question` | RAG | oui | oui | oui |
-| `search_docs` | RAG | **non** | **non** | oui |
-| `get_document` | RAG | **non** | **non** | oui |
-| `list_sources` | RAG | **non** | **non** | oui |
-| `ask_database` | SQL | oui | oui | oui |
-| `get_schema` | SQL | oui | oui | oui |
-| `check_stock` | SQL | oui | oui | oui |
-| `order_status` | SQL | oui | oui | oui |
+| Tool | Famille | support | commercial |
+| --- | --- | :---: | :---: |
+| `answer_question` | RAG | oui | oui |
+| `search_docs` | RAG | oui | oui |
+| `get_document` | RAG | oui | oui |
+| `list_sources` | RAG | oui | oui |
+| `ask_database` | SQL | oui | oui |
+| `get_schema` | SQL | **non** | oui |
+| `check_stock` | SQL | oui | oui |
+| `order_status` | SQL | oui | oui |
 
 ## Quel profil accède à quelle collection documentaire
 
-| Collection | `doc_type` | support | commercial | dev |
-| --- | --- | :---: | :---: | :---: |
-| `fiches` | `fiche_technique` | oui | oui | oui |
-| `notices` | `notice` | oui | oui | oui |
-| `sav` | `procedure_sav` | oui | oui | oui |
-| `notes` | `note_interne` | **non** | oui | oui |
+| Collection | `doc_type` | support | commercial |
+| --- | --- | :---: | :---: |
+| `fiches_techniques` | `fiche_technique` | oui | oui |
+| `notices` | `notice` | oui | oui |
+| `procedures_sav` | `procedure_sav` | oui | oui |
+| `notes_internes` | `note_interne` | **non** | oui |
 
 ## Colonnes SQL retirées, par profil
 
@@ -36,12 +36,12 @@ contrôle de périmètre la rejette après génération. Le périmètre porte su
 un `GROUP BY` ou un `HAVING` : un tri sur une colonne retirée la divulgue
 sans jamais l'afficher.
 
-| Colonne | Classe | support | commercial | dev |
-| --- | --- | :---: | :---: | :---: |
-| `produits.prix_achat_ht` | sensible (E5) | **retirée** | visible | visible |
-| `produits.marge_pct` | sensible (E5) | **retirée** | visible | visible |
-| `ventes.marge_ht` | sensible (E5) | **retirée** | visible | visible |
-| `clients.email` | restreinte | **retirée** | visible | visible |
+| Colonne | Classe | support | commercial |
+| --- | --- | :---: | :---: |
+| `produits.prix_achat_ht` | sensible (E5) | **retirée** | visible |
+| `produits.marge_pct` | sensible (E5) | **retirée** | visible |
+| `ventes.marge_ht` | sensible (E5) | **retirée** | visible |
+| `clients.email` | restreinte | **retirée** | visible |
 
 Les 27 autres colonnes de la base sont classées **publiques** : elles peuvent
 sortir pour n'importe quel profil. La classification est exhaustive, et le
@@ -49,14 +49,22 @@ contrôle échoue sur toute colonne de la base qui n'est classée nulle part.
 
 ## Tables accessibles
 
-Aucune table n'est interdite à aucun profil : la restriction porte sur les
-**colonnes**, jamais sur les tables.
+La restriction porte d'abord sur les **colonnes**, mais le cadrage DSI retire
+aussi une table entière au profil `support` : `ventes`. Une table absente est
+un refus, pas un filtrage.
 
-| Profil | Tables | Rôle |
-| --- | --- | --- |
-| `support` | 5 sur 5 | bot Slack du SAV, client tourne vers l'exterieur |
-| `commercial` | 5 sur 5 | poste commercial |
-| `dev` | 5 sur 5 | IDE des developpeurs, seul profil ayant les briques RAG (D18) |
+| Table | support | commercial |
+| --- | :---: | :---: |
+| `clients` | oui | oui |
+| `commandes` | oui | oui |
+| `produits` | oui | oui |
+| `stocks` | oui | oui |
+| `ventes` | **non** | oui |
+
+| Profil | Rôle |
+| --- | --- |
+| `support` | bot Slack du SAV, client tourne vers l'exterieur |
+| `commercial` | poste commercial |
 
 ## Invariants contrôlés
 
@@ -65,12 +73,13 @@ Les quatre premières se contrôlent contre des **ancres écrites en dur** dans
 le script, hors de ce fichier : un invariant qui se vérifie contre une donnée
 du fichier qu'il contrôle s'annule avec elle.
 
-- **catalogue_exact** : le catalogue est exactement les 8 tools nommes par D17
-- **profils_exacts** : les profils sont exactement support, commercial et dev (P7)
+- **catalogue_exact** : le catalogue est exactement les 8 tools nommes par le cadrage DSI
+- **profils_exacts** : les profils sont exactement support et commercial
+- **contrat_tools_par_profil** : les tools de chaque profil sont exactement ceux de tests/conftest.py
 - **E5_colonnes_sensibles_ancrees** : colonnes_sensibles est exactement les 3 colonnes nommees par E5
 - **E5_support_sans_colonnes_sensibles** : le profil support interdit les colonnes sensibles et restreintes
-- **E4_briques_rag_reservees_dev** : search_docs, get_document et list_sources n'appartiennent qu'au profil dev
-- **E5_notes_interdites_support** : la collection notes n'est pas accessible au profil support
+- **E5_ventes_hors_perimetre_support** : la table ventes n'est pas accessible au profil support
+- **E5_notes_interdites_support** : la collection notes_internes n'est pas accessible au support
 - **classification_exhaustive** : les trois listes de colonnes couvrent exactement le schema de la base
 - **doc_type_reels** : chaque doc_type declare existe dans le corpus, et reciproquement
 - **lexique_complet** : chaque colonne retiree a au moins un terme dans le lexique de refus

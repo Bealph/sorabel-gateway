@@ -62,18 +62,23 @@ unique et gouverné.
 
 ---
 
-## 4. Clients & profils d'accès (matrice : à finaliser en conception, chantier 3)
+## 4. Clients & profils d'accès (matrice imposée par le cadrage DSI)
 
-| Profil | Client type | RAG (collections) | SQL (tables / colonnes) |
-| --- | --- | --- | --- |
-| support | bot Slack SAV | fiches, notices, SAV | metier SANS prix d'achat ni marges (E5) |
-| commercial | poste commercial | fiches, notices, SAV | produits, stocks, commandes, ventes |
-| dev | IDE developpeurs | toutes collections | lecture large |
+| Profil | Client type | Tools | Collections | Tables |
+| --- | --- | --- | --- | --- |
+| support | bot Slack SAV | 7 sur 8, PAS get_schema | fiches_techniques, notices, procedures_sav | clients, produits, stocks, commandes. PAS ventes |
+| commercial | poste commercial | les 8 | les 4, notes_internes comprise | les 5 |
 
-Statut : **VALIDÉ** au chantier 3 le 2026-08-27. La matrice complète, profil par
-tool, collection, table et colonne, est dans `docs/conception/03_matrice_acces.md`.
-Le mécanisme qui résout le profil est la décision D28, section Q6 du même
-document.
+Il n'y a que DEUX profils. Le profil `dev` de nos chantiers 1 a 5 n'existe pas au
+contrat, et les briques RAG sont accessibles au support : D18 et P6 sont
+RENVERSES. Voir chantier 3, section Q7.
+
+Statut : **IMPOSÉ**, et non plus décidé par nous. La matrice fait foi dans
+`docs/cadrage_dsi.md`, restauré depuis le dépôt amont, et la suite d'acceptance
+la contrôle (`tests/conftest.py`, `TOOLS_BY_PROFILE`). Sa transcription pour le
+code est `governance/matrice.yaml`, dont `verifier_matrice.py` vérifie qu'elle
+n'en diverge pas. Le mécanisme qui résout le profil reste D28 : variable
+`SORABEL_PROFILE` au lancement.
 
 ---
 
@@ -683,6 +688,67 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             sur un cas casse avant d'etre cru.
             VERIFIE : 28 controles matrice, releve a jour, schemas a jour,
             20 diagrammes valides, tableaux Markdown coherents.
+2026-09-02  DEPOT AMONT RAPATRIE, et la conception recalee dessus.
+            bybysker/sorabel-gateway est le DEPOT D'EXERCICE fourni : lecture
+            seule pour nous (push false). Fork Bealph/sorabel-gateway cree,
+            deux remotes, origin = le fork, amont = le depot fourni. Fusion des
+            deux historiques sur une branche, trois conflits resolus, rien
+            d'ecrase. NON POUSSE : le fork est PUBLIC, la decision revient au
+            pilote.
+            CE QUE L'AMONT APPORTE, et qui nous manquait : la SUITE
+            D'ACCEPTANCE BOITE NOIRE, tests/acceptance/ + conftest.py. C'est le
+            vrai contrat. Plus scripts/seed.py, scripts/mcp_client.py (deja
+            ecrit, c'etait notre item L1), docs/schema.sql, Makefile,
+            docker-compose.yml, uv.lock, et l'arborescence imposee :
+            ingest/ retrieval/ sql/ mcp_server/ logs/.
+            docs/cadrage_dsi.md RESTAURE depuis le commit de scaffold. L'amont
+            l'avait supprime, mais conftest.py le cite comme imposant la matrice.
+            Notre copie locale n'en etait qu'une PARAPHRASE de 2352 octets, sans
+            la matrice ni le contrat d'integration. La vraie en fait 4814 et
+            porte les deux. C'est la cause racine de tout ce qui suit.
+            NOTRE MATRICE ETAIT FAUSSE sur deux droits :
+            (a) D18 et P6 RENVERSES. Nous reservions les briques RAG au profil
+            dev ; le contrat les donne au SUPPORT, et test_rag.py appelle
+            search_docs EN PROFIL SUPPORT. Notre serveur aurait refuse et le
+            test serait tombe. Le contrat a raison, pour une raison que nous
+            n'avions pas vue : le brief nomme le bot support comme celui qui
+            cherche mal dans les PDF, donc lui rendre une recherche correcte
+            c'est precisement lui donner search_docs. E1 ne se protege pas en
+            retirant des tools, elle se protege dans le contrat de sortie
+            d'answer_question.
+            (b) get_schema N'EST PAS accessible au support. Nous le donnions.
+            (c) la table ventes est retiree AU SUPPORT EN ENTIER, pas seulement
+            sa colonne marge_ht. Nous affirmions que la restriction ne portait
+            jamais sur les tables. C'etait faux.
+            (d) le profil dev N'EXISTE PAS. Deux profils, pas trois.
+            P7 SURVIT, et c'est le seul de nos arbitrages de gouvernance que le
+            cadrage confirme mot pour mot : notes internes fermees au support.
+            AUTRES ECARTS DE CONTRAT, tous consignes au chantier 3 section Q7 :
+            SORABEL_PROFILE et non SORABEL_PROFIL ; enveloppe {status, payload,
+            message} ; statuts ok / refused / clarification / hors_corpus /
+            error ; journal par GATEWAY_JOURNAL vers logs/journal.jsonl, cles
+            timestamp/profile/tool/arguments/status/message ; lignes SQL
+            POSITIONNELLES avec un champ columns ; search_docs(query) et
+            check_stock(reference) ; sources en titre/reference/date ; livrable
+            E6 = eval/rapport_gain.md, dont le test verifie le contenu.
+            Nos neuf codes de refus ne sont PAS au contrat : ils deviennent
+            internes, ils voyagent dans payload, jamais a la place du status.
+            MATRICE v3 : deux profils, noms de collections du cadrage
+            (fiches_techniques, notices, procedures_sav, notes_internes) avec
+            leur doc_type ET leur dossier d'origine. verifier_matrice.py recopie
+            la matrice du contrat dans ses ANCRES en dur : c'est la seule
+            recopie assumee du depot, et elle existe pour que la transcription
+            ne puisse pas deriver de la source sans que le controle tombe.
+            26 controles, EPROUVES par 10 mutations qui echouent toutes, dont
+            donner get_schema au support, donner ventes au support, et remettre
+            un profil dev.
+            BONNE NOUVELLE, deux fois : nos fixtures reconstituees depuis les
+            captures sont IDENTIQUES aux officielles, 30/30 et 24/24, memes ids
+            et memes questions ; et le corpus local est identique au corpus
+            distant, 400 fichiers, au fichier et a l'octet.
+            LECON, la meme que pour les enumerations et le motif de P3 : CE QUI
+            EST REFORMULE DERIVE. Le fond de la conception a tenu, ce sont les
+            noms qui ont bouge, et un droit d'acces sur deux.
 ```
 
 ---

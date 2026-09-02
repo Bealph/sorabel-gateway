@@ -1,27 +1,25 @@
 # Matrice d'acces de la Sorabel Data Gateway
 #
-# SOURCE DE VERITE UNIQUE des droits (decision D21). Le serveur la charge au
-# demarrage et l'applique aux DEUX niveaux : a l'entree de la gateway pour le
-# tool, dans chaque tool pour les ressources (D20).
+# SOURCE DE VERITE UNIQUE des droits (decision D21), pour le CODE. Elle transcrit
+# la matrice imposee par docs/cadrage_dsi.md, qui fait foi et que la suite
+# d'acceptance boite noire controle (tests/conftest.py, TOOLS_BY_PROFILE).
+#
+# En cas de divergence : cadrage_dsi.md gagne sur ce fichier, et ce fichier gagne
+# sur tous les tableaux des chantiers de conception, qui en sont des VUES.
 #
 # Ce que ce fichier N'EST PAS :
-#   - il ne dit pas QUI appelle. L'identite vient du transport (D28), jamais
-#     d'un parametre de tool ni d'un champ declare par le client.
-#   - il n'est pas duplique ailleurs. Les tableaux des chantiers 03 et 05, et du
-#     guide d'acces, en sont des VUES. En cas de divergence, ce fichier gagne.
+#   - il ne dit pas QUI appelle. L'identite vient du lancement, variable
+#     SORABEL_PROFILE, jamais d'un parametre de tool.
 #
-# Politique : DENY BY DEFAULT, sur les QUATRE axes. Un tool, une collection, une
+# Politique : DENY BY DEFAULT sur les quatre axes. Un tool, une collection, une
 # table ou une colonne qui n'est pas explicitement classee ici fait ECHOUER le
-# controle. C'est ce qui distingue ce fichier d'une liste noire : une colonne
-# ajoutee a la base ne devient pas visible par defaut, elle bloque le demarrage
-# tant que personne ne l'a classee.
+# controle. Une colonne ajoutee a la base ne devient pas visible par defaut.
 #
 # Verifier : python governance/verifier_matrice.py
-#            (controle la coherence et regenere governance/matrice_lisible.md)
 
-version: 2
+version: 3
 
-# --- Le catalogue, ferme. Aucun profil ne peut citer un tool absent d'ici. ----
+# --- Le catalogue, ferme. Huit tools, nommes par le cadrage DSI. -------------
 catalogue:
   rag:
     - answer_question   # RAG complet, reponse ancree + sources (E1)
@@ -30,40 +28,47 @@ catalogue:
     - list_sources      # brique : inventaire du corpus
   sql:
     - ask_database      # Text-to-SQL generatif, pile de gardes
-    - get_schema        # perimetre autorise, aucune donnee renvoyee
+    - get_schema        # schema commente, aucune donnee renvoyee
     - check_stock       # fige, une reference
     - order_status      # fige, une commande
 
-# --- Collections documentaires. La cle de filtrage est doc_type. -------------
-# Verifie contre les valeurs reellement presentes dans data/corpus.
+# --- Collections documentaires -----------------------------------------------
+# Le NOM vient du cadrage DSI, c'est le vocabulaire de gouvernance. Le doc_type
+# est la metadonnee portee par chaque chunk, et c'est sur elle que le filtre
+# s'applique. Le dossier n'est que l'origine des fichiers.
 collections:
-  fiches:   fiche_technique
-  notices:  notice
-  sav:      procedure_sav
-  notes:    note_interne
+  fiches_techniques:
+    doc_type: fiche_technique
+    dossier: fiches
+  notices:
+    doc_type: notice
+    dossier: notices
+  procedures_sav:
+    doc_type: procedure_sav
+    dossier: sav
+  notes_internes:
+    doc_type: note_interne
+    dossier: notes
 
-# --- Classification des colonnes. EXHAUSTIVE : les trois listes ci-dessous ----
-# doivent couvrir exactement les colonnes de la base, ni plus ni moins. Le
-# controle echoue sur toute colonne non classee. C'est la reponse au defaut
-# releve le 2026-09-02 : une colonne ajoutee a la base etait visible du support
-# sans qu'aucun controle ne bronche.
+# --- Classification des colonnes, EXHAUSTIVE ---------------------------------
+# Les trois listes doivent couvrir exactement les colonnes de la base.
 
 # E5, litteral du brief : "les colonnes sensibles (prix d'achat, marges) ne
-# sortent jamais pour le profil support". Ce n'est pas un releve, c'est
-# l'exigence. Tout profil qui ne les interdit pas viole E5.
+# sortent jamais pour le profil support".
 colonnes_sensibles:
   - produits.prix_achat_ht
   - produits.marge_pct
   - ventes.marge_ht
 
 # Au-dela du litteral d'E5. Donnee a caractere personnel, sur un profil dont le
-# client est un bot Slack tourne vers l'exterieur (D34). Le brief ne la nomme
-# pas ; la classifier etait neanmoins obligatoire, la classification etant
-# exhaustive. Decision a confirmer par le pilote.
+# client est un bot Slack tourne vers l'exterieur. Le cadrage DSI ne la nomme
+# pas ; la classifier etait obligatoire, la classification etant exhaustive.
+# DECISION A CONFIRMER PAR LE PILOTE, reversible en retirant deux lignes.
 colonnes_restreintes:
   - clients.email
 
-# Tout le reste. Une colonne listee ici peut sortir pour n'importe quel profil.
+# Tout le reste. Une colonne listee ici peut sortir pour n'importe quel profil
+# qui a la table correspondante.
 colonnes_publiques:
   - clients.id
   - clients.raison_sociale
@@ -94,42 +99,45 @@ colonnes_publiques:
   - ventes.remise_pct
 
 # --- Lexique de refus explicite ----------------------------------------------
-# Termes qui DESIGNENT une colonne retiree, en langage naturel. Ils servent au
-# pre-filtre de la couche 0 bis (chantier 2, section 3.2 bis) : une question qui
-# nomme une colonne retiree recoit un refus FORBIDDEN_COLUMN explicite, au lieu
-# d'un HORS_SCHEMA du modele qui ne voit pas la colonne.
+# Termes qui DESIGNENT une ressource retiree, en langage naturel. Ils servent au
+# pre-filtre de la couche 0 bis : une question qui nomme une colonne ou une table
+# retiree recoit un refus explicite, au lieu d'un hors-schema du modele qui ne
+# voit pas la colonne.
 #
-# CE N'EST PAS UNE GARANTIE DE SECURITE. Une liste de mots se contourne, ce
-# document le dit lui-meme (chantier 2, Q2). La securite reste portee par les
-# couches 2 et 3, qui raisonnent sur l'AST. Ce lexique sert a rendre le refus
-# EXPLICITE et IMPUTABLE, donc journalisable et demontrable (E5).
+# CE N'EST PAS UNE GARANTIE DE SECURITE. Une liste de mots se contourne. La
+# securite reste portee par les couches AST. Ce lexique rend le refus EXPLICITE
+# et IMPUTABLE, donc journalisable et demontrable (E5).
 lexique_refus:
   produits.prix_achat_ht: [prix d'achat, prix achat, cout d'achat, achat fournisseur]
   produits.marge_pct: [marge, marges, taux de marge, marge en pourcentage]
   ventes.marge_ht: [marge, marges, marge sur vente, marge en euros]
   clients.email: [email, e-mail, mail, adresse mail, courriel, coordonnees]
 
-# --- Les profils. L'ensemble est ferme : ni plus, ni moins que ces trois. -----
+# --- Les profils. DEUX, imposes par le cadrage DSI et par conftest.py. --------
+# Le profil dev de nos chantiers 1 a 3 N'EXISTE PAS au contrat. Voir la note
+# D18 et P6 RENVERSES, chantier 3.
+
 profils:
 
   support:
     description: bot Slack du SAV, client tourne vers l'exterieur
     tools:
       - answer_question
+      - search_docs
+      - get_document
+      - list_sources
       - ask_database
-      - get_schema
       - check_stock
       - order_status
     collections:
-      - fiches
+      - fiches_techniques
       - notices
-      - sav
+      - procedures_sav
     tables:
       - clients
       - produits
       - stocks
       - commandes
-      - ventes
     colonnes_interdites:
       - produits.prix_achat_ht
       - produits.marge_pct
@@ -140,27 +148,6 @@ profils:
     description: poste commercial
     tools:
       - answer_question
-      - ask_database
-      - get_schema
-      - check_stock
-      - order_status
-    collections:
-      - fiches
-      - notices
-      - sav
-      - notes
-    tables:
-      - clients
-      - produits
-      - stocks
-      - commandes
-      - ventes
-    colonnes_interdites: []
-
-  dev:
-    description: IDE des developpeurs, seul profil ayant les briques RAG (D18)
-    tools:
-      - answer_question
       - search_docs
       - get_document
       - list_sources
@@ -169,10 +156,10 @@ profils:
       - check_stock
       - order_status
     collections:
-      - fiches
+      - fiches_techniques
       - notices
-      - sav
-      - notes
+      - procedures_sav
+      - notes_internes
     tables:
       - clients
       - produits
@@ -182,22 +169,24 @@ profils:
     colonnes_interdites: []
 
 # --- Invariants verifies par le script --------------------------------------
-# Ils sont ecrits ici pour etre LUS. Ils sont controles dans le script, contre
-# des ancres ecrites EN DUR : un invariant qui se verifie contre une donnee du
-# meme fichier ne verifie rien, il s'annule avec elle.
+# Ils sont ecrits ici pour etre LUS. Ils sont controles contre des ancres
+# ecrites EN DUR dans le script : un invariant qui se verifie contre une donnee
+# du meme fichier ne verifie rien, il s'annule avec elle.
 invariants:
   - id: catalogue_exact
-    enonce: le catalogue est exactement les 8 tools nommes par D17
+    enonce: le catalogue est exactement les 8 tools nommes par le cadrage DSI
   - id: profils_exacts
-    enonce: les profils sont exactement support, commercial et dev (P7)
+    enonce: les profils sont exactement support et commercial
+  - id: contrat_tools_par_profil
+    enonce: les tools de chaque profil sont exactement ceux de tests/conftest.py
   - id: E5_colonnes_sensibles_ancrees
     enonce: colonnes_sensibles est exactement les 3 colonnes nommees par E5
   - id: E5_support_sans_colonnes_sensibles
     enonce: le profil support interdit les colonnes sensibles et restreintes
-  - id: E4_briques_rag_reservees_dev
-    enonce: search_docs, get_document et list_sources n'appartiennent qu'au profil dev
+  - id: E5_ventes_hors_perimetre_support
+    enonce: la table ventes n'est pas accessible au profil support
   - id: E5_notes_interdites_support
-    enonce: la collection notes n'est pas accessible au profil support
+    enonce: la collection notes_internes n'est pas accessible au support
   - id: classification_exhaustive
     enonce: les trois listes de colonnes couvrent exactement le schema de la base
   - id: doc_type_reels

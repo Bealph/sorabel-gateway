@@ -46,11 +46,29 @@ TOOLS_ATTENDUS = {
     "answer_question", "search_docs", "get_document", "list_sources",
     "ask_database", "get_schema", "check_stock", "order_status",
 }                                                          # D17, catalogue ferme
-PROFILS_ATTENDUS = {"support", "commercial", "dev"}        # P7, pas de 4e profil
+PROFILS_ATTENDUS = {"support", "commercial"}               # cadrage DSI, deux profils
 SENSIBLES_E5 = {                                           # litteral de E5
     "produits.prix_achat_ht", "produits.marge_pct", "ventes.marge_ht",
 }
-BRIQUES_RAG = {"search_docs", "get_document", "list_sources"}   # D18, dev seul
+
+# La matrice imposee, recopiee du cadrage DSI et de tests/conftest.py. C'est la
+# SEULE recopie assumee du depot, et elle est ici precisement pour que la matrice
+# de production ne puisse pas en diverger sans que le controle tombe.
+TOOLS_PAR_PROFIL = {
+    "support": {
+        "answer_question", "search_docs", "get_document", "list_sources",
+        "ask_database", "check_stock", "order_status",
+    },                                       # pas get_schema
+    "commercial": set(TOOLS_ATTENDUS),       # les huit
+}
+TABLES_PAR_PROFIL = {
+    "support": {"clients", "produits", "stocks", "commandes"},   # pas ventes
+    "commercial": {"clients", "produits", "stocks", "commandes", "ventes"},
+}
+COLLECTIONS_PAR_PROFIL = {
+    "support": {"fiches_techniques", "notices", "procedures_sav"},
+    "commercial": {"fiches_techniques", "notices", "procedures_sav", "notes_internes"},
+}
 
 
 def charger(chemin: Path) -> dict:
@@ -192,14 +210,19 @@ def controler(m: dict, sans_base: bool) -> Controle:
     publiques = set(m.get("colonnes_publiques") or [])
 
     # --- Ancrage : la matrice est comparee a des constantes du script ---------
-    c.compare(tools, TOOLS_ATTENDUS, "catalogue : exactement les 8 tools de D17")
-    c.compare(set(profils), PROFILS_ATTENDUS, "profils : exactement les 3 de P7")
+    c.compare(tools, TOOLS_ATTENDUS, "catalogue : exactement les 8 tools du cadrage DSI")
+    c.compare(set(profils), PROFILS_ATTENDUS, "profils : exactement les 2 du cadrage DSI")
     c.compare(sensibles, SENSIBLES_E5, "colonnes_sensibles : exactement les 3 d'E5")
 
-    # --- Catalogue ferme et collections connues ------------------------------
-    for nom, p in profils.items():
-        c.compare(set(p.get("tools") or []) - TOOLS_ATTENDUS, set(),
-                  f"{nom} : aucun tool hors catalogue")
+    # --- La matrice EST celle du contrat, profil par profil -------------------
+    for nom in sorted(PROFILS_ATTENDUS):
+        p = profils.get(nom, {})
+        c.compare(set(p.get("tools") or []), TOOLS_PAR_PROFIL[nom],
+                  f"{nom} : tools exactement ceux du contrat")
+        c.compare(set(p.get("tables") or []), TABLES_PAR_PROFIL[nom],
+                  f"{nom} : tables exactement celles du contrat")
+        c.compare(set(p.get("collections") or []), COLLECTIONS_PAR_PROFIL[nom],
+                  f"{nom} : collections exactement celles du contrat")
         c.compare(set(p.get("collections") or []) - set(collections), set(),
                   f"{nom} : aucune collection inconnue")
 
@@ -216,18 +239,15 @@ def controler(m: dict, sans_base: bool) -> Controle:
     vides = {col for col, termes in lexique.items() if not termes}
     c.compare(vides, set(), "lexique de refus : aucune entree vide")
 
-    # --- E4 / D18 : les briques RAG n'appartiennent qu'au profil dev ----------
-    for nom in PROFILS_ATTENDUS:
-        p = profils.get(nom, {})
-        possede = BRIQUES_RAG & set(p.get("tools") or [])
-        if nom == "dev":
-            c.compare(possede, BRIQUES_RAG, "dev : possede les 3 briques RAG")
-        else:
-            c.compare(possede, set(), f"{nom} : aucune brique RAG")
+    # D18 et P6 sont RENVERSES par le contrat : le support a les trois briques
+    # RAG. Le controle correspondant a disparu, il est remplace par l'egalite
+    # stricte tools == contrat, ci-dessus, qui est plus forte.
 
-    # --- P7 : notes interdites au support ------------------------------------
-    c.exige("notes" not in set(sup.get("collections") or []),
-            "P7 : la collection notes n'est pas accessible au support")
+    # --- P7 : notes internes interdites au support ---------------------------
+    c.exige("notes_internes" not in set(sup.get("collections") or []),
+            "P7 : la collection notes_internes n'est pas accessible au support")
+    c.exige("ventes" not in set(sup.get("tables") or []),
+            "E5 : la table ventes n'est pas accessible au support")
 
     # --- Coherence avec le schema reel, et classification EXHAUSTIVE ----------
     if not BASE.exists():
@@ -259,14 +279,16 @@ def controler(m: dict, sans_base: bool) -> Controle:
         else:
             c.exige(True, "corpus absent, controle des doc_type saute (--sans-base)")
     else:
-        c.compare({p.name for p in CORPUS.iterdir() if p.is_dir()}, set(collections),
-                  "les dossiers du corpus sont exactement les collections declarees")
+        par_dossier = {v.get("dossier"): (k, v.get("doc_type"))
+                       for k, v in collections.items() if isinstance(v, dict)}
+        c.compare({p.name for p in CORPUS.iterdir() if p.is_dir()}, set(par_dossier),
+                  "les dossiers du corpus sont exactement ceux declares")
         trouves = doc_types_du_corpus()
-        for coll, vus in sorted(trouves.items()):
-            attendu = collections.get(coll)
+        for dossier, vus in sorted(trouves.items()):
+            coll, attendu = par_dossier.get(dossier, (dossier, None))
             c.compare(vus, {attendu} if attendu else set(),
                       f"{coll} : doc_type du corpus conforme a la matrice")
-        non_couvertes = set(collections) - set(trouves)
+        non_couvertes = set(par_dossier) - set(trouves)
         if non_couvertes:
             c.exige(True, f"doc_type non lisible sans dependance pour {sorted(non_couvertes)} "
                           "(PDF), a controler par le loader du lot 1")
@@ -298,7 +320,8 @@ def vue(m: dict) -> str:
     L += ["", "## Quel profil accède à quelle collection documentaire", "",
           "| Collection | `doc_type` | " + " | ".join(noms) + " |",
           "| --- | --- | " + " | ".join([":---:"] * len(noms)) + " |"]
-    for coll, dt in (m["collections"] or {}).items():
+    for coll, meta in (m["collections"] or {}).items():
+        dt = meta.get("doc_type", "?") if isinstance(meta, dict) else meta
         cases = ["oui" if coll in (profils[n].get("collections") or []) else "**non**" for n in noms]
         L.append(f"| `{coll}` | `{dt}` | " + " | ".join(cases) + " |")
 
@@ -322,13 +345,19 @@ def vue(m: dict) -> str:
           "sortir pour n'importe quel profil. La classification est exhaustive, et le",
           "contrôle échoue sur toute colonne de la base qui n'est classée nulle part.", ""]
 
+    toutes_tables = sorted({t for n in noms for t in (profils[n].get("tables") or [])})
     L += ["## Tables accessibles", "",
-          "Aucune table n'est interdite à aucun profil : la restriction porte sur les",
-          "**colonnes**, jamais sur les tables.", "",
-          "| Profil | Tables | Rôle |", "| --- | --- | --- |"]
+          "La restriction porte d'abord sur les **colonnes**, mais le cadrage DSI retire",
+          "aussi une table entière au profil `support` : `ventes`. Une table absente est",
+          "un refus, pas un filtrage.", "",
+          "| Table | " + " | ".join(noms) + " |",
+          "| --- | " + " | ".join([":---:"] * len(noms)) + " |"]
+    for t_ in toutes_tables:
+        cases = ["oui" if t_ in (profils[n].get("tables") or []) else "**non**" for n in noms]
+        L.append(f"| `{t_}` | " + " | ".join(cases) + " |")
+    L += ["", "| Profil | Rôle |", "| --- | --- |"]
     for n in noms:
-        p = profils[n]
-        L.append(f"| `{n}` | {len(p.get('tables') or [])} sur 5 | {p.get('description', '')} |")
+        L.append(f"| `{n}` | {profils[n].get('description', '')} |")
 
     L += ["", "## Invariants contrôlés", "",
           "Ces règles ne sont pas des commentaires : le script échoue si l'une tombe.",
