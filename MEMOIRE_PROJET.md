@@ -891,9 +891,23 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             visible et le moins visuel des trois : la pile de gardes, le prompt
             reellement envoye, le SQL genere, les ressources extraites de l'AST,
             le code de refus et la couche fautive, les temps par etape.
-            Attention a une contrainte de ce poste : le premier appel au modele
-            coute 677 s, donc l'interface doit prechauffer et le DIRE, sans quoi
-            elle paraitra cassee.
+            DEUX POINTS VALIDES PAR LE PILOTE le 2026-09-02 :
+            (a) la page pourra rejouer une question en DESACTIVANT le pre-filtre
+                lexical, pour voir la couche 3 attraper la meme attaque sur
+                l'AST. Cela montre la defense en profondeur au lieu de la
+                raconter, car le pre-filtre agit en 0 s et court-circuite tout.
+                CONTRAINTE ASSOCIEE, non negociable : ce contournement est une
+                capacite de la DEMONSTRATION, jamais une option du serveur. Un
+                interrupteur qui desactive une garde, expose cote serveur ou
+                passe dans un appel de tool, serait le defaut que nous avons
+                corrige sur 'profil' : n'importe quel appelant s'en servirait.
+                Il sera donc un parametre de l'appel DIRECT que la page fait a
+                ServiceSql, absent de toute signature de tool et de toute
+                variable d'environnement du serveur. La page peut le faire
+                parce qu'elle n'est PAS un client MCP.
+            (b) le premier appel au modele coute 677 s sur ce poste : la page
+                prechauffe au lancement et l'AFFICHE, sans quoi elle paraitra
+                cassee. A traiter d'entree.
             ENSUITE, chantier 3 : le serveur MCP. Exposer les 8 tools,
             appliquer la matrice aux DEUX niveaux, journaliser tout appel, et
             faire passer la suite d'acceptance du rouge au vert. C'est le
