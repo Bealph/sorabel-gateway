@@ -884,7 +884,17 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             Chantiers 1 et 2 du brief termines. Suite d'acceptance encore a
             12 echecs, ce qui est ATTENDU : elle parle au serveur MCP, qui est
             le chantier 3.
-            PROCHAINE ETAPE, chantier 3 : le serveur MCP. Exposer les 8 tools,
+            PROCHAINE ETAPE, FIXEE PAR LE PILOTE : une interface de
+            demonstration du chantier Text-to-SQL, avant le serveur MCP.
+            Demande : complete et facile a comprendre, mais affichant le MAXIMUM
+            d'elements techniques. Le chantier 2 est le plus riche en mecanique
+            visible et le moins visuel des trois : la pile de gardes, le prompt
+            reellement envoye, le SQL genere, les ressources extraites de l'AST,
+            le code de refus et la couche fautive, les temps par etape.
+            Attention a une contrainte de ce poste : le premier appel au modele
+            coute 677 s, donc l'interface doit prechauffer et le DIRE, sans quoi
+            elle paraitra cassee.
+            ENSUITE, chantier 3 : le serveur MCP. Exposer les 8 tools,
             appliquer la matrice aux DEUX niveaux, journaliser tout appel, et
             faire passer la suite d'acceptance du rouge au vert. C'est le
             premier moment ou notre metre devient celui de l'evaluateur.
