@@ -19,21 +19,35 @@ from common.matrice import Droits
 from .depot import Depot, Passage
 from .recherche import Chercheur, Config, Resultat
 
-#: Seuil d'abstention de la branche DENSE, calibré le 2026-09-02 sur
-#: `eval/questions_rag.jsonl`, en traitant RAG-19 comme hors corpus, ce que
-#: l'annotation impose et que la vérification confirme.
+#: Seuils d'abstention, calibrés le 2026-09-02 sur `eval/questions_rag.jsonl`,
+#: en traitant RAG-19 comme hors corpus, ce que l'annotation impose.
 #:
-#: | population | plancher | plafond |
-#: | --- | --- | --- |
-#: | `couverte`, 13 questions | 0,8534 | |
-#: | `hors_corpus`, 9 questions | | 0,8519 |
+#: **Il y a DEUX seuils parce qu'il y a deux échelles.** La branche dense score
+#: en cosinus, dans [0, 1] ; la branche avancée score avec les logits du
+#: cross-encoder, non bornés. Un seul seuil pour les deux ne voudrait rien dire.
 #:
-#: La marge est de 0,0015, ce qui est **mince**, et il faut le dire : elle est
-#: entièrement due à RAG-19, dont le score de 0,8519 est le plus haut des hors
-#: corpus. Sans cette question mal étiquetée, la marge serait de 0,0188.
-#: On garde malgré tout le seuil haut : sacrifier E1 pour gagner du rappel est
-#: exactement ce que le protocole de mesure interdit.
+#: | branche | plafond hors corpus | plancher couvertes notables | marge |
+#: | --- | ---: | ---: | ---: |
+#: | dense | 0,8519 | 0,8534 | **0,0015** |
+#: | avancée, reranker | -2,39 | -0,98 | **1,41** |
+#:
+#: Le reranker sépare presque mille fois mieux. C'est son apport RÉEL, et il
+#: n'apparaît pas dans le Recall@k : sur le classement, l'hybride plafonnait
+#: déjà. Sur la DÉCISION D'ABSTENTION, il change tout.
+#:
+#: Prix assumé du seuil avancé : deux questions `couverte` sur treize reçoivent
+#: une abstention à tort, RAG-13 et RAG-16. Ce sont précisément les deux dont la
+#: réponse est une constante du corpus, dupliquée à l'identique dans 80
+#: documents. Abaisser le seuil pour les récupérer ferait répondre deux
+#: questions hors corpus : sacrifier E1 pour gagner du rappel est exactement ce
+#: que le protocole de mesure interdit.
 SEUIL_DENSE = 0.853
+SEUIL_AVANCE = -1.7
+
+
+def seuil_pour(config: Config) -> float:
+    """Le seuil qui correspond à l'échelle de scores de cette configuration."""
+    return SEUIL_AVANCE if config.rerank else SEUIL_DENSE
 
 
 def source(p: Passage) -> dict:
@@ -76,14 +90,16 @@ def composer(passages: list[Passage]) -> str:
 class ServiceRag:
     """Les quatre tools. Une instance par processus, modèles paresseux."""
 
-    def __init__(self, droits: Droits, config: Config, seuil: float = SEUIL_DENSE,
+    def __init__(self, droits: Droits, config: Config, seuil: float | None = None,
                  depot: Depot | None = None) -> None:
         self.droits = droits
         self.depot = depot or Depot()
         self.chercheur = Chercheur(self.depot)
         # Le seuil vit dans la config de recherche : c'est un étage de
-        # l'entonnoir, pas un réglage d'affichage.
-        self.config = Config(**{**config.__dict__, "seuil": seuil})
+        # l'entonnoir, pas un réglage d'affichage. Il est choisi selon l'échelle
+        # de scores de la configuration, jamais fixé une fois pour toutes.
+        self.config = Config(**{**config.__dict__,
+                                "seuil": seuil if seuil is not None else seuil_pour(config)})
 
     @property
     def doc_types(self) -> set[str]:

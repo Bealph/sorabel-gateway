@@ -50,7 +50,20 @@ def construire_dense(chunks: list[Chunk], racine: Path, encodeur: Encodeur) -> i
     if COLLECTION_DENSE in {c.name for c in client.list_collections()}:
         client.delete_collection(COLLECTION_DENSE)
     collection = client.create_collection(
-        COLLECTION_DENSE, metadata={"hnsw:space": "cosine"}
+        COLLECTION_DENSE,
+        metadata={
+            "hnsw:space": "cosine",
+            # HNSW est une recherche APPROCHEE : mesuré le 2026-09-02, la meme
+            # requete rendait des voisins differents d'un processus a l'autre,
+            # alors que le vecteur de requete etait identique au bit pres. Sur un
+            # corpus aussi template, les quasi ex aequo sont innombrables et la
+            # traversee du graphe tranche differemment a chaque fois.
+            # Une mesure qui n'est pas reproductible n'est pas une mesure : on
+            # eleve search_ef bien au-dela de la profondeur demandee, ce qui rend
+            # la recherche quasi exacte a l'echelle de 910 chunks.
+            "hnsw:search_ef": 512,
+            "hnsw:construction_ef": 256,
+        },
     )
 
     vecteurs = encodeur.passages([c.texte for c in chunks])

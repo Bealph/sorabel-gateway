@@ -140,12 +140,24 @@ class Chercheur:
 
     @property
     def reranker(self):  # noqa: ANN202
-        """Cross-encoder, chargé au premier usage comme l'encodeur (D46)."""
+        """Cross-encoder, chargé au premier usage comme l'encodeur (D46).
+
+        Le modèle par défaut n'est pas celui de P2. Motif mesuré : sans
+        reranking, l'hybride atteint déjà 1,000 en R@1 sur les références
+        exactes et 1,000 en R@3 sur les couvertes. Il ne reste qu'UNE question
+        à gagner, celle du R@1 des couvertes. Dépenser 2,2 Go pour cela n'est
+        pas un bon usage ; un cross-encoder multilingue léger fait le même
+        travail, et le plafond rend la différence de qualité indifférente ICI.
+        `RERANKER_MODEL` permet de revenir à `BAAI/bge-reranker-v2-m3`.
+        """
         if self._reranker is None:
+            import os
+
             from sentence_transformers import CrossEncoder
 
-            import os
-            nom = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+            nom = os.environ.get(
+                "RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+            )
             self._reranker = CrossEncoder(nom)
         return self._reranker
 

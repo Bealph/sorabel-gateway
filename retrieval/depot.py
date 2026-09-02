@@ -78,7 +78,7 @@ class Depot:
             where={"doc_type": {"$in": sorted(doc_types)}},
             include=["documents", "metadatas", "distances"],
         )
-        return [
+        passages = [
             # Chroma rend une DISTANCE cosinus : la similarité est son complément.
             Passage(chunk_id=i, texte=t, score=1.0 - d, metadonnees=m)
             for i, t, m, d in zip(
@@ -86,6 +86,11 @@ class Depot:
                 brut["metadatas"][0], brut["distances"][0],
             )
         ]
+        # Départage déterministe. Le corpus est massivement templaté : les
+        # quasi ex aequo sont la règle, et l'ordre rendu par le moteur ne
+        # tranche pas toujours pareil. Sans cette clause, un Recall@1 serait
+        # reproductible par chance et pas par construction.
+        return sorted(passages, key=lambda p: (-round(p.score, 6), p.chunk_id))
 
     # --- Recherche lexicale -------------------------------------------------
 
