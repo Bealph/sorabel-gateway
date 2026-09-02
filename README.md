@@ -124,6 +124,19 @@ uv run python scripts/mcp_client.py --profile support --tool search_docs --args 
 uv run python scripts/mcp_client.py --profile commercial --tool ask_database --args '{"question": "combien de commandes en avril ?"}'
 ```
 
+## Démonstration visuelle
+
+```bash
+uv sync --extra vector --extra demo
+uv run streamlit run scripts/demo_rag.py     # http://localhost:8501
+```
+
+Trois onglets : la même question jouée en recherche dense puis en hybride
+complète, la même question jouée sur les deux profils côte à côte, et le rapport
+de mesure E6 généré. Il n'y a volontairement pas de sélecteur de profil : le
+profil est une propriété du serveur, fixée à son lancement, pas une préférence
+d'affichage.
+
 ## État d'avancement
 
 | Phase                             | Statut       |

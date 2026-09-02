@@ -18,6 +18,9 @@ dependencies = [
 vector = [
     "sentence-transformers>=3,<4",
 ]
+demo = [
+    "streamlit>=1.63.0",
+]
 
 [dependency-groups]
 dev = [
