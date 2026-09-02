@@ -60,21 +60,69 @@ flowchart TD
 
 ## Structure du dépôt
 
+Arborescence imposée par le dépôt d'exercice, plus ce qu'apporte la conception.
+
 ```
-sorabel-data-gateway/
-├── CLAUDE.md          Memoire de projet (contexte, exigences, decisions)
-├── README.md          Ce fichier
-├── docs/              Cadrage DSI + dossier de conception + mesure E6
-├── scripts/           mcp_client.py : demo support vs commercial (exige au brief)
-├── mcp_server/        Serveur MCP + mini guide d'acces (livrable)
-├── rag/               Ingestion, chunking, recherche hybride, reranking
-├── text2sql/          Generation SQL lecture seule + garde-fous
-├── governance/        Matrice d'acces (RBAC) + journalisation
-├── eval/              Jeux d'evaluation SQL et RAG + resultats
-└── data/              Corpus documentaire + base SQL
+data/
+  corpus/             # ~400 documents : fiches/ notices/ (PDF), sav/ (HTML), notes/ (Markdown)
+  sorabel.db          # base SQL (hors git — générée par make seed, schéma dans docs/schema.sql)
+docs/
+  cadrage_dsi.md      # exigences E1–E6, matrice d'accès, contrat d'intégration
+  schema.sql          # schéma commenté de la base (colonnes sensibles signalées)
+eval/
+  questions_rag.jsonl # questions documentaires : couvertes, hors corpus, par référence exacte
+  questions_sql.jsonl # questions métier en langage naturel, dont cas limites
+ingest/               # chaîne d'ingestion du corpus (à concevoir et construire)
+retrieval/            # recherche documentaire (à concevoir et construire)
+sql/                  # accès SQL en langage naturel (à concevoir et construire)
+mcp_server/           # serveur MCP de la gateway (à concevoir et construire)
+scripts/
+  seed.py             # génère et peuple data/sorabel.db
+  mcp_client.py       # client MCP de test (profils support / commercial)
+tests/acceptance/     # suite d'acceptance boîte noire, adossée aux exigences E1–E6
 ```
 
----
+S'y ajoutent, apportes par la phase de conception :
+
+```
+docs/conception/           8 chantiers, index, carte de la pile technique
+docs/REVUE_CONCEPTION.md   revue du 2026-09-02, classee par lot bloque
+docs/PASSATION_DEV.md      point d'entree du developpement
+governance/                matrice.yaml, source de verite des droits, et son verificateur
+eval/attendus_*.jsonl      oracles metier, et cas_mcp.jsonl pour la gouvernance
+```
+
+## Stack
+
+- Python 3.11 (géré avec `uv`)
+- Chroma pour l'index vectoriel (`docker compose`, port 8002)
+- SQLite pour la base (`data/sorabel.db`, générée par le seed, à ouvrir en lecture seule)
+- SDK MCP (`mcp`) pour le serveur et le client stdio
+- `pypdf` / `beautifulsoup4` pour l'extraction du corpus, `rank-bm25` pour la piste lexicale
+- `sentence-transformers` disponible via l'extra `vector` :
+
+```bash
+uv sync                       # cœur + outils de dev
+uv sync --extra vector        # + sentence-transformers
+```
+
+## Démarrage
+
+```bash
+make install      # uv sync
+make seed         # génère data/sorabel.db (déterministe, aligné sur le corpus)
+make up           # docker compose : Chroma sur localhost:8002
+make test         # suite d'acceptance (rouge tant que la gateway n'est pas construite)
+make serve        # serveur MCP stdio (profil via SORABEL_PROFILE)
+make client       # client de test (PROFILE=support|commercial)
+```
+
+Exemples côté client :
+
+```bash
+uv run python scripts/mcp_client.py --profile support --tool search_docs --args '{"query": "REF-8842"}'
+uv run python scripts/mcp_client.py --profile commercial --tool ask_database --args '{"question": "combien de commandes en avril ?"}'
+```
 
 ## État d'avancement
 
@@ -93,12 +141,3 @@ sorabel-data-gateway/
 
 ---
 
-## Démarrage rapide
-
-À compléter en phase de développement (installation, lancement du serveur MCP,
-exécution des tests d'acceptation, reproduction de la mesure E6).
-
----
-
-*Projet de formation : Dev IA agentic. Conception menée avec un assistant IA
-selon une méthode pilote / expert (voir `CLAUDE.md`, §7).*

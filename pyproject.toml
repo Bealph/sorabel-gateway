@@ -1,18 +1,49 @@
 [project]
-name = "sorabel-data-gateway"
+name = "sorabel-gateway"
 version = "0.1.0"
-description = "Serveur MCP gouverne exposant un RAG avance et du Text-to-SQL lecture seule pour Sorabel."
-requires-python = ">=3.11"
+description = "Sorabel Data Gateway — point d'accès unique aux données Sorabel (corpus documentaire + base SQL) via un serveur MCP"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "pydantic>=2.6,<3",
+    "pydantic-settings>=2.2,<3",
+    "python-dotenv>=1.0,<2",
+    "chromadb>=0.5,<0.6",
+    "mcp>=1.2,<2",
+    "pypdf>=4.2,<6",
+    "beautifulsoup4>=4.12,<5",
+    "rank-bm25>=0.2,<0.3",
+]
 
-# Dependances a valider en phase de developpement (voir CLAUDE.md, section 5).
-# dependencies = [
-#   "mcp",              # SDK MCP / FastMCP
-#   "chromadb",         # store vectoriel : chroma, tranche par D32
-#   "rank-bm25",        # recherche lexicale (hybride)
-#   "sentence-transformers",  # embeddings + cross-encoder (reranking)
-#   "sqlglot",          # parsing / validation SQL (garde-fous lecture seule)
-# ]
+[project.optional-dependencies]
+vector = [
+    "sentence-transformers>=3,<4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<0.30",
+    "ruff>=0.6,<0.10",
+    "mypy>=1.10,<2",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ingest*", "retrieval*", "sql*", "mcp_server*"]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
