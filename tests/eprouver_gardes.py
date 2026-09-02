@@ -2,7 +2,6 @@
 requete legitime doit passer. Un controle qui n'a jamais echoue ne prouve rien.
 """
 import sys
-from pathlib import Path
 
 sys.path.insert(0, r"c:\Users\adiallo\Documents\sorabel-data-gateway")
 
@@ -50,6 +49,10 @@ ATTAQUES = [
      "OUT_OF_SCHEMA", "colonne inventee"),
     (COM, S_COM, "SELECT nom FROM fournisseurs",
      "OUT_OF_SCHEMA", "table inventee"),
+    (SUP, S_SUP, "SELECT ref, marge_pct AS m FROM produits ORDER BY m DESC",
+     "FORBIDDEN_COLUMN", "colonne retiree masquee derriere un alias de resultat"),
+    (SUP, S_SUP, "WITH x AS (SELECT ref, marge_pct FROM produits) SELECT ref FROM x",
+     "FORBIDDEN_COLUMN", "colonne retiree dans une CTE"),
 ]
 
 LEGITIMES = [
@@ -63,6 +66,18 @@ LEGITIMES = [
      False, "requete de support parfaitement legitime"),
     (COM, S_COM, "SELECT client_id, SUM(montant_ht) FROM commandes GROUP BY client_id",
      False, "agregat GROUPE : LIMIT injecte, il rend plusieurs lignes"),
+    # Les trois suivantes sont les requetes de REFERENCE de eval/attendus_sql.jsonl.
+    # Le garde les refusait le 2026-09-02, faisant passer pour des erreurs de
+    # modele ce qui etait une erreur de garde : ORDER BY sur un alias de
+    # resultat etait pris pour une colonne inconnue.
+    (COM, S_COM, "SELECT ref, SUM(quantite) AS q FROM ventes GROUP BY ref ORDER BY q DESC LIMIT 5",
+     False, "SQL-04 de l'oracle : ORDER BY sur un alias de resultat"),
+    (COM, S_COM, "SELECT c.raison_sociale, SUM(cm.montant_ht) AS t FROM commandes cm "
+                 "JOIN clients c ON c.id = cm.client_id GROUP BY c.id ORDER BY t DESC LIMIT 3",
+     False, "SQL-12 de l'oracle : jointure et alias de resultat"),
+    (COM, S_COM, "SELECT SUM(v.marge_ht) FROM ventes v JOIN commandes c "
+                 "ON c.id = v.commande_id WHERE c.date_commande LIKE '2026-05%'",
+     True, "SQL-11 de l'oracle : agregat scalaire sur jointure"),
 ]
 
 print("=== ATTAQUES : chacune doit etre refusee avec le bon code\n")

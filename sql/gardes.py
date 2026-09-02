@@ -108,9 +108,34 @@ def _tables_et_alias(arbre: exp.Expression) -> tuple[set[str], dict[str, str]]:
     return tables, alias
 
 
+def _alias_de_resultat(arbre: exp.Expression) -> set[str]:
+    """Les noms introduits par la requête elle-même : alias de projection, CTE.
+
+    `SELECT SUM(quantite) AS q ... ORDER BY q` : ici `q` n'est la colonne
+    d'aucune table, c'est un nom de résultat. Sans cette collecte, le contrôle
+    de périmètre le prenait pour une colonne inconnue et REFUSAIT la requête.
+    Défaut trouvé le 2026-09-02 : il refusait les requêtes de référence de notre
+    propre oracle, et il a fait passer pour des erreurs de modèle ce qui était
+    une erreur de garde.
+
+    Cela n'ouvre aucune porte : la colonne réellement lue apparaît dans
+    l'expression aliasée, comme n'importe quel `exp.Column`, et reste donc
+    soumise au périmètre.
+    """
+    noms: set[str] = set()
+    for noeud in arbre.find_all(exp.Alias):
+        if noeud.alias:
+            noms.add(noeud.alias.lower())
+    for noeud in arbre.find_all(exp.CTE):
+        if noeud.alias:
+            noms.add(noeud.alias.lower())
+    return noms
+
+
 def _colonnes_referencees(arbre: exp.Expression, tables: set[str],
                           alias: dict[str, str], schema: dict[str, Table],
                           complet: dict[str, Table] | None = None,
+                          resultats: set[str] | None = None,
                           ) -> tuple[set[str], set[str]]:
     """Toutes les colonnes citées, qualifiées. Rend (résolues, non résolues).
 
@@ -120,9 +145,12 @@ def _colonnes_referencees(arbre: exp.Expression, tables: set[str],
     """
     resolues: set[str] = set()
     inconnues: set[str] = set()
+    noms_de_resultat = resultats or set()
     for noeud in arbre.find_all(exp.Column):
         col = (noeud.name or "").lower()
         prefixe = (noeud.table or "").lower()
+        if not prefixe and col in noms_de_resultat:
+            continue   # nom introduit par la requête, pas une colonne de table
         if prefixe:
             table = alias.get(prefixe, prefixe)
             resolues.add(f"{table}.{col}")
@@ -191,7 +219,13 @@ def valider(sql: str, droits: Droits, schema: dict[str, Table]) -> Verdict:
 
     # --- Couche 3 : périmètre, sur TOUTE occurrence -------------------------
     tables, alias = _tables_et_alias(arbre)
-    hors = sorted(tables - set(schema))
+    # Une CTE est un nom introduit par la requete, pas une table du schema. La
+    # compter parmi les tables inconnues masquerait le VRAI motif de refus :
+    # `WITH x AS (SELECT marge_pct FROM produits) SELECT ref FROM x` doit se
+    # refuser pour la colonne interdite, pas pour un nom de table `x` inconnu.
+    # Les tables reelles citees DANS la CTE restent controlees, elles.
+    noms_cte = {n.alias.lower() for n in arbre.find_all(exp.CTE) if n.alias}
+    hors = sorted(tables - set(schema) - noms_cte)
     if hors:
         return _refus("OUT_OF_SCHEMA",
                       f"Table(s) hors du perimetre du profil {droits.profil} : "
@@ -199,7 +233,7 @@ def valider(sql: str, droits: Droits, schema: dict[str, Table]) -> Verdict:
                       f"{', '.join(sorted(schema))}.")
 
     resolues, inconnues = _colonnes_referencees(
-        arbre, tables, alias, schema, introspecter())
+        arbre, tables, alias, schema, introspecter(), _alias_de_resultat(arbre))
     interdites = sorted(resolues & set(droits.colonnes_interdites))
     if interdites:
         return _refus("FORBIDDEN_COLUMN",
