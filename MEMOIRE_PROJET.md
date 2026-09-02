@@ -805,6 +805,105 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             repertoire en lecture seule apres l'ingestion, qui est hors ligne et
             faite une fois. Si l'ingestion devenait continue, il faudrait revenir
             au service.
+2026-09-02  CHANTIER 1, RAG AVANCE. Termine, les trois points du brief.
+            INGESTION : python -m ingest, 400 documents, 910 chunks, 350 groupes
+            de versions, 14 controles, index reconstructible en 59 s.
+            LA REGLE QUI PORTE TOUT, et elle est mesuree : chaque chunk est
+            prefixe de titre | reference | version. Sans ce report, les 80
+            notices ont 4 textes distincts au lieu de 320, et les 90 procedures
+            SAV 4 au lieu de 360. Le moteur citerait une notice au hasard parmi
+            80, avec des metadonnees parfaitement formees : E1 formellement
+            satisfaite, citation fausse, rien ne le signale.
+            RECHERCHE : baseline dense a 25/30, systeme complet a 28/30, E1
+            tenue dans LES DEUX cas, aucune reponse hors corpus.
+            ABLATION E6, eval/rapport_gain.md GENERE par
+            python -m retrieval.rapport :
+              reference_exacte R@1  A 0.875  B 0.875  C 1.000  D 1.000
+              couverte R@1          A 0.778  B 0.889  C 1.000  D 1.000
+            Le rapport dit aussi ce que la mesure NE prouve pas : sur 8 a 9
+            questions notables, une bascule vaut 12 points, les intervalles de
+            Wilson se recouvrent et McNemar donne p = 0,5.
+            J'AVAIS MAL EVALUE LE RERANKER : j'ai dit qu'il n'avait presque plus
+            de marge. Vrai du CLASSEMENT, ou l'hybride plafonnait deja. FAUX de
+            l'ABSTENTION : marge de separation 0,0015 en dense contre 1,41 avec
+            le reranker. D'ou DEUX seuils, un par echelle de score.
+            DEFAUT DE REPRODUCTIBILITE trouve et corrige : la meme requete
+            rendait des voisins differents d'un processus a l'autre, alors que le
+            vecteur de requete etait identique au bit pres, verifie par
+            empreinte. Cause : la recherche approchee HNSW sur un corpus ou les
+            quasi ex aequo sont la regle. hnsw:search_ef porte a 512, plus un
+            departage deterministe. Mes deux premieres mesures se contredisaient
+            sans que je sache laquelle croire.
+            D45 Chroma EMBARQUE, D46 chargement paresseux, D47 modele
+            d'embedding. Docker inutilisable ici : VT-x est coupe au firmware.
+            DEMO : uv run streamlit run scripts/demo_rag.py, trois onglets, dont
+            la comparaison des deux profils sur la meme question. PAS de
+            selecteur de profil, c'est une propriete du serveur (D40).
+
+2026-09-02  CHANTIER 2, TEXT-TO-SQL. Construit, mesure, D48 actee.
+            COUCHE 0 : schema introspecte et borne au profil, enumerations
+            relevees dans la base avec leurs accents. Support 4 tables et 21
+            colonnes, commercial 5 et 31.
+            GARDES : 27 cas eprouves, toutes les attaques refusees avec le bon
+            code, dont tri, agregat, dichotomie et sous-requete sur une colonne
+            retiree, ATTACH, PRAGMA, sqlite_master, etoile en sous-requete.
+            D48 : Qwen2.5-Coder-0.5B-Instruct local, 17/24. Securite 8/8,
+            metier 8/12, ambiguite 0/2. Echelon suivant si la qualite doit
+            monter : AZURE AI FOUNDRY, dans le locataire Sorabel, decision du
+            pilote. Pas un cloud tiers : chez Foundry les questions restent
+            chez le client, et D36 l'avait deja documente.
+            LA LIMITE EST MATERIELLE. Le processeur tombe a 801 MHz sur 2304
+            sous charge. Le 7B y produit 0,38 jeton/s contre 3 a 8 attendus, et
+            le meme appel a pris 30 s puis 208 s selon l'echauffement. L'echelle
+            de P5 a ete montee jusqu'en haut : elle sature sur le materiel, pas
+            sur le modele.
+            TROIS DEFAUTS DANS MON PROPRE CODE, trouves en eprouvant :
+            (a) SELECT COUNT(*) etait REFUSE, mon controle de l'etoile attrapant
+                celle de COUNT(*), qui est la requete du test d'acceptance.
+            (b) le garde refusait ORDER BY sur un alias de resultat, donc les
+                requetes de REFERENCE de notre propre oracle. Il faisait passer
+                pour des erreurs de modele une erreur de garde.
+            (c) le defaut du code pointait le 1,5B quand D48 retient le 0,5B.
+            UN COMPTE RENDU FAUX, corrige : j'ai presente une mesure comme celle
+            du 7B alors qu'elle etait celle du 1,5B. Mon patch de main() n'avait
+            rien remplace, j'ai ecrit sans verifier, et le print de confirmation
+            venait de mon script de patch donc il s'affichait de toute facon.
+            LECON A GARDER : ne jamais ecrire un fichier par remplacement sans
+            assertion, et ne jamais croire un message de confirmation qui
+            s'affiche independamment du resultat.
+            D26 ADAPTEE : le contrat DSI enumere cinq statuts et not_found n'en
+            fait pas partie. La distinction passe dans le message et un champ
+            trouve.
+            TROU QUE LES GARDES NE COMBLENT PAS, SQL-22 : 'qui est le PDG de
+            Sorabel ?' rend un SELECT valide sur une table autorisee. Aucune
+            couche ne verifie le SENS. E3 'pas de SQL hallucine' depend donc de
+            la qualite du modele. Chantier 2, section 6.4.
+
+2026-09-02  PAUSE, reprise prevue le 2026-09-03 a 9h.
+            ETAT : arbre propre, tout pousse sur origin (le fork Bealph).
+            Chantiers 1 et 2 du brief termines. Suite d'acceptance encore a
+            12 echecs, ce qui est ATTENDU : elle parle au serveur MCP, qui est
+            le chantier 3.
+            PROCHAINE ETAPE, chantier 3 : le serveur MCP. Exposer les 8 tools,
+            appliquer la matrice aux DEUX niveaux, journaliser tout appel, et
+            faire passer la suite d'acceptance du rouge au vert. C'est le
+            premier moment ou notre metre devient celui de l'evaluateur.
+            A SAVOIR AVANT DE CODER LE SERVEUR :
+              - lancement impose : python -m mcp_server.server, transport stdio
+              - profil par SORABEL_PROFILE, journal par GATEWAY_JOURNAL
+              - enveloppe {status, payload, message}, cinq statuts seulement
+              - 30 s de budget par appel, et un processus serveur NEUF par
+                session de test : le prechauffage du modele est implemente mais
+                INSUFFISANT sur ce poste, mesure a 677 s au premier appel
+              - eval/cas_mcp.jsonl porte 22 cas de gouvernance avec les
+                attentes de JOURNAL
+            OUTILLAGE, a relancer apres toute modification :
+              uv run python governance/verifier_matrice.py --verifier
+              uv run python docs/releve_donnees.py --verifier
+              uv run python docs/build_schemas.py --verifier
+              uv run python tests/eprouver_gardes.py
+              uv run python -m ingest --controles-seuls
+              uv run ruff check .
 ```
 
 ---
