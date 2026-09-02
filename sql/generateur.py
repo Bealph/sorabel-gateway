@@ -109,6 +109,27 @@ class GenerateurLocal:
         modele.eval()
         return tokenizer, modele
 
+    def prechauffer(self) -> None:
+        """Charge le modèle dans un fil d'arrière-plan, sans bloquer l'appelant.
+
+        Mesuré sur ce poste : le premier appel a coûté **677 secondes**, contre
+        12 à 20 pour les suivants. Ce n'est pas la génération, c'est le
+        chargement du modèle sur un processeur bridé à 801 MHz sur 2304.
+
+        La suite d'acceptance lance un processus serveur NEUF par session, avec
+        30 secondes de budget par appel. Payer le chargement au démarrage
+        dépasserait le budget de `initialize()` ; le payer au premier appel
+        dépasse celui de l'appel. Le charger en parallèle du démarrage est la
+        seule option qui ne bloque ni l'un ni l'autre.
+
+        Cela ne suffit pas sur un poste aussi bridé, et il faut le dire : le
+        chargement n'a pas fini quand le test appelle. Sur une machine non
+        bridée, 50 secondes de chargement en tâche de fond suffisent.
+        """
+        import threading
+
+        threading.Thread(target=lambda: self._modele, daemon=True).start()
+
     def _messages(self, question: str, schema: str, jointures: tuple[str, ...]) -> list[dict]:
         contexte = f"{CONSIGNE}\n\nSCHEMA\n{schema}"
         if jointures:

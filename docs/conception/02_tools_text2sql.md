@@ -574,3 +574,124 @@ P5  LLM de generation Text-to-SQL -> LOCAL, modele oriente code (ex.
 - Qualite du SQL dependante du modele (P5) : mesurer le taux de reussite sur
   SQL-01 a 12 ; sinon renforcer few-shot ou changer de modele.
 ```
+
+---
+
+## Q6. Le générateur : l'échelon local, et sa limite mesurée
+
+> Section ajoutée le 2026-09-02, pendant le lot 4. P5 prescrivait « repli mesuré
+> sur SQL-01 à 12 avant API ». La mesure est faite. Elle est ici, avec ce qu'elle
+> autorise à conclure et ce qu'elle n'autorise pas.
+
+### 6.1 D48 : le petit modèle local est retenu, l'échelon suivant est Azure AI Foundry
+
+**Retenu** : `Qwen2.5-Coder-0.5B-Instruct`, servi par `transformers`, sur
+processeur. Rien ne quitte le poste.
+
+**Échelon suivant, si la qualité doit monter** : Azure AI Foundry, dans le
+locataire Sorabel. **Pas** un cloud tiers. La nuance est décisive pour une
+gateway gouvernée : Foundry garde les questions métier et le schéma dans le
+locataire du client, là où un service tiers en fait sortir. C'est d'ailleurs ce
+que D36 avait déjà documenté au chantier 7 ; nous n'inventons rien, nous
+confirmons par la mesure ce que la conception avait prévu.
+
+### 6.2 Ce que la mesure dit
+
+Sur les 24 questions de `eval/questions_sql.jsonl`, oracle
+`eval/attendus_sql.jsonl` :
+
+| Modèle | Moteur | Statut juste | dont `metier` | Latence en régime |
+| --- | --- | ---: | ---: | --- |
+| `Qwen2.5-Coder-0.5B` | `transformers` | **17/24** | 8/12 | 12 à 20 s |
+| `Qwen2.5-Coder-1.5B` | `transformers` | 16/24 | 6/12 | 32 s, max 61 s |
+| `qwen2.5-coder:3b` | Ollama | non mesuré en série | | 21 à 35 s |
+| `qwen2.5-coder:7b` | Ollama | non mesuré en série | | 23 à 208 s |
+
+Détail du 0,5B retenu :
+
+| Population | Résultat | Lecture |
+| --- | ---: | --- |
+| `ecriture` | **4/4** | E3 tenue |
+| `table_interdite` | **4/4** | E5 tenue, et en 0,0 s : le pré-filtre refuse avant toute génération |
+| `metier` | 8/12 | les échecs portent sur les jointures et la sémantique des dates |
+| `hors_schema` | 1/2 | voir 6.4 |
+| `ambigue` | 0/2 | le modèle ne détecte pas l'ambiguïté à cette taille |
+
+**Toutes les questions de sécurité passent.** Les huit échecs sont des échecs de
+qualité de génération, jamais de gouvernance.
+
+### 6.3 Pourquoi l'échelon local s'arrête là, et ce n'est pas le modèle
+
+La qualité suit la taille, sur trois questions témoins :
+
+| | jointure « 5 produits les plus vendus » | ambiguïté « meilleur client » |
+| --- | :---: | :---: |
+| 0,5B | non | non |
+| 3B | oui | non |
+| 7B | oui | **CLARIFY** |
+
+Le 7B est le seul à détecter l'ambiguïté. Il est pourtant inutilisable ici, et la
+raison est **matérielle** :
+
+```
+processeur         i7-10610U, 4 coeurs, 15 W
+frequence max      2304 MHz
+sous charge        801 MHz          <- 35 % de la cadence nominale
+```
+
+Décomposition d'un appel au 7B, chiffres rendus par Ollama :
+
+| Étape | Volume | Durée | Débit |
+| --- | ---: | ---: | ---: |
+| prompt | 1197 jetons | 23 s | 52 j/s |
+| réponse | 24 jetons | 62 s | **0,38 j/s** |
+
+Zéro virgule trente-huit jeton par seconde. Un 7B quantifié en produit trois à
+huit sur un processeur non bridé. Et la même question a pris 30 secondes puis
+208 selon l'échauffement : **la latence n'est pas prévisible**, ce qui disqualifie
+la voie indépendamment de la qualité.
+
+### 6.4 Le trou que les gardes ne peuvent pas combler
+
+`SQL-22`, « qui est le PDG de Sorabel ? », a reçu du 0,5B :
+
+```sql
+SELECT nom FROM produits WHERE ref = 'REF-8842'
+```
+
+Absurde, mais **syntaxiquement valide sur une table autorisée, avec des colonnes
+autorisées**. Aucune des six couches ne peut l'attraper : elles vérifient la
+forme et le périmètre, jamais le sens.
+
+Il faut donc énoncer la limite telle qu'elle est : la promesse d'E3 « refus
+clair, pas de SQL halluciné » **dépend de la qualité du modèle**, pas de la pile
+de gardes. Les gardes protègent la base et les droits ; elles ne protègent pas de
+la bêtise. Le 7B, lui, refuse correctement cette question.
+
+### 6.5 Le premier appel, et pourquoi il n'a pas de bonne solution ici
+
+Mesuré sur le 0,5B : **677 secondes pour la première question**, 528 pour la
+deuxième, puis 12 à 20 pour les vingt-deux suivantes. Ce n'est pas la
+génération, c'est le chargement du modèle sur un processeur bridé.
+
+La suite d'acceptance lance un **processus serveur neuf par session**, avec 30
+secondes de budget par appel. Trois options, et aucune n'est bonne sur ce poste :
+
+| Option | Pourquoi elle ne suffit pas |
+| --- | --- |
+| Charger au démarrage | dépasse le budget de `initialize()`, lui aussi de 30 s |
+| Charger au premier appel (D46) | dépasse le budget de cet appel |
+| **Précharger en tâche de fond** | retenu, mais sur ce poste le chargement n'a pas fini quand le test appelle |
+
+Le préchauffage est donc implémenté et il est **insuffisant ici**. Sur une
+machine non bridée, 50 secondes de chargement en parallèle du démarrage
+suffisent. Ce poste n'est pas représentatif, et c'est à dire plutôt qu'à cacher.
+
+### 6.6 Ce que cette section n'autorise pas à conclure
+
+- Que le 3B et le 7B valent 16 ou 17 sur 24 : ils **n'ont pas** été mesurés en
+  série, seulement sur des questions témoins. Une mesure interrompue par un
+  délai n'est pas une mesure.
+- Que le 0,5B vaut 17/24 sur une autre machine : le score ne dépend pas du
+  matériel, mais la latence oui, et c'est la latence qui décide de la
+  recevabilité.

@@ -1,14 +1,21 @@
 """Génération SQL par un modèle servi par Ollama.
 
-**Pourquoi cette voie, et sur quelle mesure.** Le premier générateur, un
-Qwen2.5-Coder de 0,5 milliard de paramètres servi par `transformers` en float32,
-a rendu 16 réponses justes sur 24. P5 prescrit de monter en gamme si le taux est
-insuffisant : il l'est. La mesure a aussi montré que le **moteur** était en cause
-autant que le modèle, un prompt de 1197 jetons demandant 32 secondes de seul
-prefill. Ollama s'appuie sur `llama.cpp`, qui quantifie et vectorise : le même
-poste peut alors servir un modèle quatorze fois plus gros, plus vite.
+**Cette voie a été mesurée, et elle N'EST PAS retenue par défaut.** Ce module
+reste dans le dépôt parce qu'il est la marche suivante de l'échelle de P5, et
+qu'il faut pouvoir la remonter sans le réécrire.
 
-Le motif « local » de P5 est préservé : rien ne quitte le poste.
+Ce que j'attendais d'Ollama : `llama.cpp` quantifie, donc le même poste devait
+servir un modèle bien plus gros, plus vite. **La mesure l'a démenti**, non pas à
+cause d'Ollama mais à cause du matériel : le processeur de ce poste tombe à
+801 MHz sur 2304 sous charge soutenue, et le 7B produit alors 0,38 jeton par
+seconde. Le même appel a pris 30 secondes puis 208 selon l'échauffement.
+
+Retenu à sa place : le petit modèle local via `transformers` (D48), et Azure AI
+Foundry comme échelon suivant, dans le locataire du client plutôt que chez un
+tiers. Voir chantier 2, section Q6.
+
+Le motif « local » de P5 est préservé dans les deux cas : rien ne quitte le poste
+tant qu'on n'utilise pas un modèle « -cloud ».
 
 **Aucune dépendance ajoutée.** L'API d'Ollama est du JSON sur HTTP, et la
 bibliothèque standard suffit. Ajouter un client pour trois champs serait une
@@ -59,6 +66,27 @@ class GenerateurOllama:
                            f"{sorted(noms) or 'aucun'}. Lancer "
                            f"`ollama pull {self.nom}`.")
         return True, ""
+
+    def prechauffer(self) -> None:
+        """Demande à Ollama de charger le modèle et de le garder en mémoire.
+
+        Même motif que côté `transformers`, en une requête au lieu d'un fil :
+        c'est le service qui garde le modèle résident.
+        """
+        import threading
+
+        def charger() -> None:
+            corps = json.dumps({"model": self.nom, "prompt": "",
+                                "keep_alive": "30m"}).encode("utf-8")
+            requete = urllib.request.Request(
+                f"{self.url}/api/generate", data=corps,
+                headers={"Content-Type": "application/json"})
+            try:
+                urllib.request.urlopen(requete, timeout=self.delai).close()
+            except (urllib.error.URLError, OSError):
+                pass   # le prechauffage est un confort, jamais une condition
+
+        threading.Thread(target=charger, daemon=True).start()
 
     def _messages(self, question: str, schema: str, jointures: tuple[str, ...]) -> list[dict]:
         contexte = f"{CONSIGNE}\n\nSCHEMA\n{schema}"

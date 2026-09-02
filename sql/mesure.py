@@ -125,10 +125,28 @@ def afficher(lignes: list[Ligne]) -> int:
 
 
 def main() -> int:
-    from .generateur import GenerateurLocal
+    """Mesure avec le générateur retenu par défaut, `--ollama` pour la variante.
 
-    generateur = GenerateurLocal()
-    print(f"generateur : {generateur.nom}\n")
+    Les deux restent mesurables : c'est ce qui permet de dire ce que la montée
+    en gamme apporterait, au lieu de l'affirmer.
+    """
+    import sys
+
+    # Le defaut est le generateur RETENU (D48) : petit modele local via
+    # transformers. Ollama reste mesurable avec --ollama, pour que la marche
+    # suivante de l'echelle de P5 puisse etre reprise sans reecrire le harnais.
+    if "--ollama" in sys.argv:
+        from .generateur_ollama import GenerateurOllama
+        generateur = GenerateurOllama()
+        pret, pourquoi = generateur.disponible()
+        if not pret:
+            print(f"ERREUR : {pourquoi}", file=sys.stderr)
+            return 2
+    else:
+        from .generateur import GenerateurLocal
+        generateur = GenerateurLocal()
+    print(f"generateur : {generateur.nom}")
+    print()
     return afficher(jouer(generateur))
 
 
