@@ -1,7 +1,7 @@
-# CLAUDE.md : Sorabel Data Gateway
+# Mémoire de projet : Sorabel Data Gateway
 
-> Fichier de mémoire de projet, lu automatiquement par Claude Code à chaque
-> session ouverte dans ce dossier. C'est la source de vérité qui assure la
+> Fichier de mémoire de projet, relu à l'ouverture de chaque session de
+> travail dans ce dossier. C'est la source de vérité qui assure la
 > continuité entre la phase de conception (Cloud) et la phase de dev (VSCode).
 > **Le tenir à jour à la fin de chaque tâche** (voir §10, Journal).
 
@@ -128,7 +128,7 @@ https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-g
 
 ```
 sorabel-data-gateway/
-├── CLAUDE.md              # ce fichier : memoire de projet
+├── MEMOIRE_PROJET.md      # ce fichier : memoire de projet
 ├── README.md             # vitrine du projet
 ├── .gitignore
 ├── pyproject.toml        # metadata + dependances (a valider en phase dev)
@@ -171,7 +171,7 @@ sorabel-data-gateway/
 
 | # | Règle |
 | ---: | --- |
-| 1 | Travail collaboratif rigoureux et exigeant. Claude = expert, l'utilisateur = pilote qui donne la todolist. Ne rien demarrer sans tache. |
+| 1 | Travail collaboratif rigoureux et exigeant. Un expert technique qui propose, un pilote qui donne la todolist. Ne rien demarrer sans tache. |
 | 2 | Expliquer chaque concept avec peu de mots. |
 | 3 | Brainstormer, benchmarker, proposer, s'auto-critiquer AVANT de produire. |
 | 4 | Conception : tableaux en Markdown lisibles + schemas en Mermaid (mermaid.live). Cette regle disait « tableaux en ASCII » jusqu'au 2026-08-28. |
@@ -231,7 +231,7 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
 ## 10. Journal d'avancement
 
 ```
-2026-08-26  Squelette du projet + CLAUDE.md poses. Acces au dossier connecte OK.
+2026-08-26  Squelette du projet + MEMOIRE_PROJET.md poses. Acces au dossier connecte OK.
 2026-08-26  Donnees deposees et analysees. Base SQL : 6 tables (clients 60,
             produits 120, stocks 312, commandes 340, ventes 993). Corpus :
             fiches (PDF), notices (PDF), sav (HTML), notes (MD), avec versioning.
@@ -753,11 +753,11 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
 
 ---
 
-## 11. Transfert Cloud -> VSCode / Claude Code
+## 11. Continuité entre sessions
 
-- La conception est menée dans Claude (Cowork, Cloud) ; le développement se
-  poursuivra dans **VSCode avec Claude Code**.
+- La conception a été menée dans un environnement séparé de celui du
+  développement, qui se poursuit dans VSCode.
 - La conversation Cloud **ne suit pas** ; **les fichiers de ce dossier sont la
-  seule mémoire**. Ce `CLAUDE.md` rejoue le contexte à chaque ouverture.
+  seule mémoire**. Ce fichier rejoue le contexte à chaque ouverture.
 - Règle : toute décision, tout état d'avancement se consigne ici (§5 et §10),
   jamais uniquement dans le chat.

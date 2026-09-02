@@ -206,7 +206,7 @@ d'écrire le code concerné.
 | Version de la spécification MCP | Citée `2025-06-18` comme la référence actuelle | L'URL canonique sert `2026-07-28`. Ce qui porte D28 tient à l'identique, mais l'enregistrement dynamique de client est passé de `SHOULD` à `MAY` et **déprécié** au profit de CIMD, que le dossier crédite déjà à Keycloak sans le nommer |
 | GPU A100 en Europe de l'Ouest | Annoncé disponible | T4 oui en West Europe et France Central. **A100 absent des deux**, présent seulement à Sweden Central |
 | Procédures SAV | « deux corps de texte » | **Un**. Le relevé compte le littéral `Version 1.0` contre `Version 2.0` |
-| Nombre de schémas | 17 dans l'index de conception, 18 dans `CLAUDE.md` | **19** |
+| Nombre de schémas | 17 dans l'index de conception, 18 dans `MEMOIRE_PROJET.md` | **19** |
 | Décisions couvertes | « D1 à D30 » dans le README, « D1 à D33 » dans le reste à faire | **D1 à D37** |
 | Chantiers | « trois chantiers » dans l'index | 5 documents portent « Chantier N », 8 fichiers numérotés |
 | Guide d'accès, question ouverte 3 | « le client doit tolérer un `error` sans code » | `INTERNAL_ERROR` est défini au chantier 3 |
@@ -214,7 +214,7 @@ d'écrire le code concerné.
 | Guide d'accès, exemple SQL-01 | `SELECT COUNT(*) … LIMIT 200`, résultat `{"n": 128}` | Le `LIMIT` sur un agrégat est ce que l'auto-critique du chantier 2 interdit, et la valeur réelle est **27**. C'est la question du test d'acceptation |
 | En-têtes des chantiers 1, 2, 3 | « PROPOSÉ, à valider par le pilote » | Validés, et le corps des mêmes fichiers le dit |
 | `pyproject.toml` | Store vectoriel « à trancher : chroma / faiss / qdrant » | Tranché par D32 |
-| Création de `governance/logs/` | Lot 0 dans `CLAUDE.md` | Lot 5 dans la passation |
+| Création de `governance/logs/` | Lot 0 dans `MEMOIRE_PROJET.md` | Lot 5 dans la passation |
 | Blocage de l'item M2 | « bloqué par : le serveur n'existe pas » | Le même fichier dit deux paragraphes plus bas qu'il dépend des lots 2a, 2b et 3 |
 
 S'y ajoutent, sans conséquence : une phrase orpheline « Volumes sur l'ensemble du

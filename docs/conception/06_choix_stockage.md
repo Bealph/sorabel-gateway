@@ -90,7 +90,7 @@ concerne un accès en lecture seule à 10³ lignes.
 
 ### 3.3 Décision
 
-**SQLite, ouvert en lecture seule.** La ligne correspondante de `CLAUDE.md` passe
+**SQLite, ouvert en lecture seule.** La ligne correspondante de `MEMOIRE_PROJET.md` passe
 de PROPOSÉ à VALIDÉ.
 
 ## 4. Index documentaire : Chroma, et pourquoi le motif écrit était faux
@@ -198,7 +198,7 @@ D31  Donnees metier : RELATIONNEL, SQLite, ouvert en lecture seule au niveau du
      pilote. Le type est impose par la nature des donnees (jointures) et par E3
      (requete renvoyee et analysable par AST). PostgreSQL ecarte malgre l'atout
      de ses roles natifs : il creerait une seconde source de verite pour les
-     droits, contre D21. Statut de la ligne CLAUDE.md : PROPOSE -> VALIDE.
+     droits, contre D21. Statut de la ligne MEMOIRE_PROJET.md : PROPOSE -> VALIDE.
 D32  Index documentaire : CHROMA pour le dense, index BM25 applicatif separe
      pour le lexical. Critere decisif = filtrage par metadonnee AVANT la
      recherche, sans lequel E2 et E4 ne tiennent pas. FAISS ecarte car il ne

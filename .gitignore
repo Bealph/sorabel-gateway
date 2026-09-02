@@ -48,3 +48,9 @@ eval/results/*.csv
 !.vscode/
 .vscode/*
 !.vscode/extensions.json
+
+# Point de chargement local de la memoire de projet. Le contenu versionne est
+# dans MEMOIRE_PROJET.md : ce fichier n'en est qu'un import, pour ne pas avoir
+# deux copies de la meme verite.
+CLAUDE.md
+.claude/

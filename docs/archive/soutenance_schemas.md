@@ -24,7 +24,7 @@
 
 | Schéma | Source | Exigence |
 | --- | --- | --- |
-| 1 à 3, contexte et architecture | CLAUDE.md, README.md, 00 | E4 |
+| 1 à 3, contexte et architecture | MEMOIRE_PROJET.md, README.md, 00 | E4 |
 | 4, modèle relationnel | analyse_donnees.md | E5 |
 | 5 à 8, ingestion, chunk, recherche | 01 | E1, E2, E6 |
 | 9 à 12, chemin SQL, jointures, gardes, profils | 02 | E3, E5 |
@@ -33,7 +33,7 @@
 
 ---
 
-## 1. Contexte — CLAUDE.md §2
+## 1. Contexte — MEMOIRE_PROJET.md §2
 
 **Répond à** : pourquoi ce projet existe.
 

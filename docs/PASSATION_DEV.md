@@ -1,6 +1,6 @@
 # Passation vers le développement : Sorabel Data Gateway
 
-> Document de démarrage pour la session de développement (VSCode / Claude Code).
+> Document de démarrage pour la session de développement.
 > La conception est terminée et figée. Ce document dit quoi lire, ce qui est
 > décidé (donc à ne pas rediscuter), comment monter l'environnement, dans quel
 > ordre développer, et comment savoir qu'une étape est finie.
@@ -25,7 +25,7 @@ Code          PAS ENCORE ECRIT (rag/ text2sql/ governance/ mcp_server/ vides)
 ## 2. À lire en premier (et rien de plus pour démarrer)
 
 ```
-1. CLAUDE.md                          memoire + decisions + journal
+1. MEMOIRE_PROJET.md                          memoire + decisions + journal
 2. docs/conception/00_architecture.md vue d'ensemble
 3. docs/REVUE_CONCEPTION.md           CE QUI DOIT ETRE FERME AVANT CHAQUE LOT
 4. docs/conception/05_catalogue_tools.md   contrat des 8 tools (entrees/sorties)
@@ -153,10 +153,10 @@ entrepots : LILLE/LYON/NANTES | plage dates : 2025-09-04 a 2026-08-19
 - Ecrire les resultats/logs sous eval/results/ et governance/logs/ (gitignore).
 - Jamais de secret en clair ; base ouverte en read-only ; aucun SELECT *.
 - Docs en francais ; tableaux Markdown ; schemas Mermaid. La regle disait
-  "tableaux ASCII" jusqu'au 2026-08-28, cf. CLAUDE.md section 8.
-- Tenir le journal : ajouter une ligne datee dans CLAUDE.md section 10 a la fin
+  "tableaux ASCII" jusqu'au 2026-08-28, cf. MEMOIRE_PROJET.md section 8.
+- Tenir le journal : ajouter une ligne datee dans MEMOIRE_PROJET.md section 10 a la fin
   de chaque lot (ce qui est fait, ce qui reste).
-- Multi-session : une seule session ecrit un fichier donne a la fois ; CLAUDE.md
+- Multi-session : une seule session ecrit un fichier donne a la fois ; MEMOIRE_PROJET.md
   tranche en cas de doute.
 - Si bloque > 2 essais sur un point : s'arreter, ecrire l'etat dans le journal,
   et demander au pilote plutot que d'insister.
