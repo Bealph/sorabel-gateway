@@ -194,8 +194,19 @@ class ServiceSql:
 
     def _figé(self, sql: str, parametres: tuple, message_absent: str,
               ) -> tuple[str, dict, str]:
-        """Exécute une requête paramétrée et applique D26 : identifiant précis
-        introuvable, c'est `not_found`, jamais un `ok` avec zéro ligne."""
+        """Exécute une requête paramétrée. D26 est portée par le MESSAGE.
+
+        **D26 adaptée au contrat, le 2026-09-02.** Notre conception avait créé
+        un statut `not_found` pour distinguer « identifiant valide, aucune
+        donnée » d'une liste légitimement vide. Le contrat d'intégration de la
+        DSI énumère cinq statuts, et `not_found` n'en fait pas partie :
+        `ok | refused | clarification | hors_corpus | error`.
+
+        Un sixième statut casserait tout client qui aiguille sur `status`. La
+        distinction que D26 voulait est donc portée par le `message`, qui dit
+        explicitement que l'identifiant est bien formé et absent. Le contrat
+        gagne sur notre conception, et la nuance survit là où elle ne casse rien.
+        """
         import sqlite3
 
         from common.config import CONFIG
@@ -215,5 +226,6 @@ class ServiceSql:
         payload = {"sql": sql, "columns": colonnes, "rows": lignes,
                    "parametres": list(parametres)}
         if not lignes:
-            return "not_found", payload, message_absent
+            payload["trouve"] = False
+            return "ok", payload, message_absent
         return "ok", payload, ""
