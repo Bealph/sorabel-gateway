@@ -749,6 +749,36 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             LECON, la meme que pour les enumerations et le motif de P3 : CE QUI
             EST REFORMULE DERIVE. Le fond de la conception a tenu, ce sont les
             noms qui ont bouge, et un droit d'acces sur deux.
+2026-09-02  LOT 0. Environnement monte, suite d'acceptance ROUGE comme attendu,
+            point de depart chiffre etabli : 12 tests, 12 echecs, tous pour la
+            meme raison, "module mcp_server.server introuvable".
+            OBSTACLE, sans rapport avec le projet : Smart App Control est actif
+            sur ce poste (VerifiedAndReputablePolicyState=1). Il bloque le Python
+            que uv telecharge, qui n'est pas signe par un editeur reconnu. Erreur
+            0xC0E90002, sans message, code 127 depuis bash. Le contrat impose
+            Python >=3.11,<3.12 et le poste n'avait que 3.12.
+            RESOLU par un installeur SIGNE, winget Python.Python.3.11 en portee
+            utilisateur, sans elevation. Le reglage de securite n'a pas ete
+            touche : le desactiver est IRREVERSIBLE sans reinstaller Windows.
+            .python-version epingle sur ce Python, et il est gitignore.
+            DONNEES : le seed officiel produit une base IDENTIQUE a celle que
+            nous avions, verifie par empreinte SHA-256 sur toutes les lignes des
+            cinq tables. Les valeurs de controle tiennent : 27 commandes en
+            avril, marge de REF-8842 a 47,3, 43 libelles dupliques, CMD-2026-0042
+            absente. Tous nos oracles restent valides.
+            B2 DE LA REVUE EST FERME, et prouve au lieu d'etre suppose : pyyaml
+            est present dans l'environnement, 6.0.3, tire par chromadb, et
+            verifier_matrice.py --verifier produit LA MEME VUE qu'avec son
+            lecteur de repli. Le garde-fou ne cassera pas.
+            LINT : ruff check passait 9 erreurs sur nos trois scripts, ce qui
+            aurait fait echouer la CI au premier push. Corrige. Piege rencontre
+            au passage : un remplacement par expression reguliere sur du code a
+            renomme une variable de boucle sans renommer son usage, F821. Une
+            substitution aveugle dans du code se relit toujours.
+            RESTE DU LOT 0, non faisable ici : le demon Docker est arrete, donc
+            Chroma sur 8002 n'a pas ete demarre ; et la chaine de deploiement
+            Azure n'a pas ete eprouvee a vide, alors que c'est un critere de fin
+            de lot que la revue a rendu obligatoire.
 ```
 
 ---

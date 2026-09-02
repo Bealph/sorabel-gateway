@@ -22,8 +22,6 @@ Usage : python docs/releve_donnees.py            regenere le bloc
 """
 from __future__ import annotations
 
-import io
-import os
 import re
 import sqlite3
 import sys
@@ -95,6 +93,13 @@ TEXTE_PDF = re.compile(r"\(((?:[^()\\]|\\.)*)\)\s*Tj")
 EXEMPLAIRE = re.compile(r"REF-\d{4}|\d{4}-\d{2}-\d{2}|[Vv]ersion\s*:?\s*\d+\.\d+")
 
 
+def sans_date(texte: str) -> str:
+    """Neutralise la date de generation : sinon le controle echoue chaque
+    lendemain sans qu'aucune donnee ait bouge, et une alerte qui se declenche
+    pour rien finit par etre ignoree."""
+    return re.sub(r"le \d{4}-\d{2}-\d{2}", "le DATE", texte)
+
+
 def texte_pdf(chemin: Path) -> str:
     brut = chemin.read_bytes()
     morceaux = []
@@ -110,7 +115,7 @@ def texte_pdf(chemin: Path) -> str:
 
 def sections_pdf(chemin: Path) -> int:
     lignes = TEXTE_PDF.findall(texte_pdf(chemin))
-    return sum(1 for l in lignes if re.match(r"^\s*\d+\.\s+\S", l))
+    return sum(1 for ligne in lignes if re.match(r"^\s*\d+\.\s+\S", ligne))
 
 
 def releve_corpus() -> dict:
@@ -157,8 +162,8 @@ def templatage() -> list[str]:
         for f in sorted(p for p in d.iterdir() if p.suffix == ext):
             if ext == ".pdf":
                 lignes = TEXTE_PDF.findall(texte_pdf(f))
-                corps = [l for l in lignes
-                         if not re.search(r"R.f.rence produit|FICHE |NOTICE |Version", l)]
+                corps = [ligne for ligne in lignes
+                         if not re.search(r"R.f.rence produit|FICHE |NOTICE |Version", ligne)]
                 t = "|".join(corps)
             else:
                 t = f.read_text(encoding="utf-8", errors="ignore")
@@ -244,7 +249,9 @@ def rendu() -> str:
     for coll, d in corp.items():
         sec = ", ".join(f"{k} ({v} doc)" for k, v in d["sections"].items())
         L.append(f"| `{coll}` | {d['fichiers']} | {d['groupes']} | {sec} | {d['chunks']} |")
-        tf += d["fichiers"]; tg += d["groupes"]; tc += d["chunks"]
+        tf += d["fichiers"]
+        tg += d["groupes"]
+        tc += d["chunks"]
     L.append(f"| **total** | **{tf}** | **{tg}** | | **{tc}** |")
 
     if tmpl:
@@ -289,7 +296,6 @@ def main() -> int:
         # La date de generation ne doit PAS declencher l'alerte : sinon le
         # controle echoue chaque lendemain sans qu'aucune donnee ait bouge,
         # et une alerte qui se declenche pour rien finit par etre ignoree.
-        sans_date = lambda t: re.sub(r"le \d{4}-\d{2}-\d{2}", "le DATE", t)
         if sans_date(ancien.strip()) == sans_date(neuf.strip()):
             print("releve a jour")
             return 0

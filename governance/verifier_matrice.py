@@ -140,6 +140,12 @@ def charger(chemin: Path) -> dict:
     return racine
 
 
+def sans_date(texte: str) -> str:
+    """Neutralise la date de generation, pour que --verifier ne signale pas une
+    derive le lendemain d'une generation correcte."""
+    return re.sub(r"le \d{4}-\d{2}-\d{2}", "le DATE", texte)
+
+
 def normaliser(d: dict) -> dict:
     """Le lecteur de repli cree un dict vide la ou une liste etait attendue."""
     for cle in ("catalogue", "collections", "profils"):
@@ -391,7 +397,6 @@ def main() -> int:
     neuf = vue(m)
     if "--verifier" in sys.argv:
         ancien = VUE.read_text(encoding="utf-8") if VUE.exists() else ""
-        sans_date = lambda t: re.sub(r"le \d{4}-\d{2}-\d{2}", "le DATE", t)
         if sans_date(ancien) == sans_date(neuf):
             print(f"\n{len(c.faits)} controles passes, vue a jour.")
             return 0

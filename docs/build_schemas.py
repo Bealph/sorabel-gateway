@@ -17,7 +17,6 @@ Usage : python docs/build_schemas.py
 """
 from __future__ import annotations
 
-import io
 import re
 import sys
 from datetime import date

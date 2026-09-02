@@ -85,7 +85,7 @@ chantier 3.
 
 | Lot | Objet | Livrable / fin de lot |
 | ---: | --- | --- |
-| 0 | Bootstrap | venv, deps installees, arbo de code, chargeur de config + matrice YAML. `verifier_matrice.py` passe SOUS pyyaml, et la vue est regeneree. **Plus : une page vide deployee sur Azure, joignable par son URL, avec `SORABEL_DATA_DIR` monte, un fichier ecrit puis relu APRES redemarrage.** Ce dernier point valide D35, qui est le piege silencieux du chantier 7 |
+| 0 | Bootstrap. **FAIT le 2026-09-02**, sauf Chroma et la chaine Azure, voir le journal** | venv, deps installees, arbo de code, chargeur de config + matrice YAML. `verifier_matrice.py` passe SOUS pyyaml, et la vue est regeneree. **Plus : une page vide deployee sur Azure, joignable par son URL, avec `SORABEL_DATA_DIR` monte, un fichier ecrit puis relu APRES redemarrage.** Ce dernier point valide D35, qui est le piege silencieux du chantier 7 |
 | 1 | Ingestion RAG (doc 01) | loaders PDF/HTML/MD -> Document canonique + versions/is_latest + chunking ; index Chroma + BM25 construits |
 | 2a | Recherche RAG, dense de base (doc 01) | dense seul + citations + refus hors corpus. Jalon impose par le brief, et baseline de E6 : a conserver telle quelle |
 | 2b | Recherche RAG, avancee (doc 01) | hybride + RRF + court-circuit REF + rerank + seuil ; tool answer_question |
