@@ -10,12 +10,16 @@
 #   - il n'est pas duplique ailleurs. Les tableaux des chantiers 03 et 05, et du
 #     guide d'acces, en sont des VUES. En cas de divergence, ce fichier gagne.
 #
-# Politique : DENY BY DEFAULT. Ce qui n'est pas explicitement autorise est refuse.
+# Politique : DENY BY DEFAULT, sur les QUATRE axes. Un tool, une collection, une
+# table ou une colonne qui n'est pas explicitement classee ici fait ECHOUER le
+# controle. C'est ce qui distingue ce fichier d'une liste noire : une colonne
+# ajoutee a la base ne devient pas visible par defaut, elle bloque le demarrage
+# tant que personne ne l'a classee.
 #
 # Verifier : python governance/verifier_matrice.py
 #            (controle la coherence et regenere governance/matrice_lisible.md)
 
-version: 1
+version: 2
 
 # --- Le catalogue, ferme. Aucun profil ne peut citer un tool absent d'ici. ----
 catalogue:
@@ -31,21 +35,81 @@ catalogue:
     - order_status      # fige, une commande
 
 # --- Collections documentaires. La cle de filtrage est doc_type. -------------
+# Verifie contre les valeurs reellement presentes dans data/corpus.
 collections:
   fiches:   fiche_technique
   notices:  notice
   sav:      procedure_sav
   notes:    note_interne
 
-# --- Colonnes sensibles. Ce n'est pas un releve : c'est l'exigence E5. -------
-# "les colonnes sensibles (prix d'achat, marges) ne sortent jamais pour le
-#  profil support". Tout profil qui ne les interdit pas viole E5.
+# --- Classification des colonnes. EXHAUSTIVE : les trois listes ci-dessous ----
+# doivent couvrir exactement les colonnes de la base, ni plus ni moins. Le
+# controle echoue sur toute colonne non classee. C'est la reponse au defaut
+# releve le 2026-09-02 : une colonne ajoutee a la base etait visible du support
+# sans qu'aucun controle ne bronche.
+
+# E5, litteral du brief : "les colonnes sensibles (prix d'achat, marges) ne
+# sortent jamais pour le profil support". Ce n'est pas un releve, c'est
+# l'exigence. Tout profil qui ne les interdit pas viole E5.
 colonnes_sensibles:
   - produits.prix_achat_ht
   - produits.marge_pct
   - ventes.marge_ht
 
-# --- Les profils ------------------------------------------------------------
+# Au-dela du litteral d'E5. Donnee a caractere personnel, sur un profil dont le
+# client est un bot Slack tourne vers l'exterieur (D34). Le brief ne la nomme
+# pas ; la classifier etait neanmoins obligatoire, la classification etant
+# exhaustive. Decision a confirmer par le pilote.
+colonnes_restreintes:
+  - clients.email
+
+# Tout le reste. Une colonne listee ici peut sortir pour n'importe quel profil.
+colonnes_publiques:
+  - clients.id
+  - clients.raison_sociale
+  - clients.segment
+  - clients.ville
+  - commandes.id
+  - commandes.client_id
+  - commandes.date_commande
+  - commandes.statut
+  - commandes.montant_ht
+  - produits.ref
+  - produits.nom
+  - produits.categorie
+  - produits.fabricant
+  - produits.unite
+  - produits.prix_vente_ht
+  - produits.actif
+  - stocks.id
+  - stocks.ref
+  - stocks.entrepot
+  - stocks.quantite
+  - stocks.seuil_reappro
+  - ventes.id
+  - ventes.commande_id
+  - ventes.ref
+  - ventes.quantite
+  - ventes.prix_unitaire_ht
+  - ventes.remise_pct
+
+# --- Lexique de refus explicite ----------------------------------------------
+# Termes qui DESIGNENT une colonne retiree, en langage naturel. Ils servent au
+# pre-filtre de la couche 0 bis (chantier 2, section 3.2 bis) : une question qui
+# nomme une colonne retiree recoit un refus FORBIDDEN_COLUMN explicite, au lieu
+# d'un HORS_SCHEMA du modele qui ne voit pas la colonne.
+#
+# CE N'EST PAS UNE GARANTIE DE SECURITE. Une liste de mots se contourne, ce
+# document le dit lui-meme (chantier 2, Q2). La securite reste portee par les
+# couches 2 et 3, qui raisonnent sur l'AST. Ce lexique sert a rendre le refus
+# EXPLICITE et IMPUTABLE, donc journalisable et demontrable (E5).
+lexique_refus:
+  produits.prix_achat_ht: [prix d'achat, prix achat, cout d'achat, achat fournisseur]
+  produits.marge_pct: [marge, marges, taux de marge, marge en pourcentage]
+  ventes.marge_ht: [marge, marges, marge sur vente, marge en euros]
+  clients.email: [email, e-mail, mail, adresse mail, courriel, coordonnees]
+
+# --- Les profils. L'ensemble est ferme : ni plus, ni moins que ces trois. -----
 profils:
 
   support:
@@ -70,6 +134,7 @@ profils:
       - produits.prix_achat_ht
       - produits.marge_pct
       - ventes.marge_ht
+      - clients.email
 
   commercial:
     description: poste commercial
@@ -117,16 +182,27 @@ profils:
     colonnes_interdites: []
 
 # --- Invariants verifies par le script --------------------------------------
-# Ils sont ecrits ici pour etre lus, et controles la : un invariant qui ne vit
-# que dans la tete de celui qui a ecrit le fichier n'est pas un invariant.
+# Ils sont ecrits ici pour etre LUS. Ils sont controles dans le script, contre
+# des ancres ecrites EN DUR : un invariant qui se verifie contre une donnee du
+# meme fichier ne verifie rien, il s'annule avec elle.
 invariants:
+  - id: catalogue_exact
+    enonce: le catalogue est exactement les 8 tools nommes par D17
+  - id: profils_exacts
+    enonce: les profils sont exactement support, commercial et dev (P7)
+  - id: E5_colonnes_sensibles_ancrees
+    enonce: colonnes_sensibles est exactement les 3 colonnes nommees par E5
   - id: E5_support_sans_colonnes_sensibles
-    enonce: le profil support interdit les trois colonnes sensibles
+    enonce: le profil support interdit les colonnes sensibles et restreintes
   - id: E4_briques_rag_reservees_dev
     enonce: search_docs, get_document et list_sources n'appartiennent qu'au profil dev
   - id: E5_notes_interdites_support
     enonce: la collection notes n'est pas accessible au profil support
-  - id: catalogue_ferme
-    enonce: aucun profil ne cite un tool absent du catalogue
+  - id: classification_exhaustive
+    enonce: les trois listes de colonnes couvrent exactement le schema de la base
+  - id: doc_type_reels
+    enonce: chaque doc_type declare existe dans le corpus, et reciproquement
+  - id: lexique_complet
+    enonce: chaque colonne retiree a au moins un terme dans le lexique de refus
   - id: schema_reel
     enonce: toute table et toute colonne citee existe dans la base

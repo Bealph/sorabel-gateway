@@ -1,4 +1,4 @@
-# Diagrammes de séquence — interactions de la Gateway
+# Diagrammes de séquence : interactions de la Gateway
 
 > Vue comportementale complétant `00_architecture.md` (vue structurelle). Chaque
 > séquence illustre un comportement clé et ses points de contrôle. Participants

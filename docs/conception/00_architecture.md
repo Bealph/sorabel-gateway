@@ -1,4 +1,4 @@
-# Vue d'ensemble de l'architecture — Sorabel Data Gateway
+# Vue d'ensemble de l'architecture : Sorabel Data Gateway
 
 > Schéma d'architecture globale, en tête du dossier de conception. Il ouvre la
 > Gateway pour montrer ses composants et relie chaque bloc aux exigences DSI.

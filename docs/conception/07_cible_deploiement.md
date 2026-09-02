@@ -1,4 +1,4 @@
-# Chantier 7 — Cible de déploiement Azure
+# Chantier 7 : Cible de déploiement Azure
 
 > Ce chantier pose **où et comment la Gateway s'exécute une fois livrée**, révise
 > les décisions que l'hébergement remet en cause, et dit ce qui reste local
@@ -131,8 +131,19 @@ dépend donc d'aucun accélérateur.
 | Modèle coder plus petit, sur processeur | rien de plus | P5 formellement, au prix d'une qualité de SQL à mesurer |
 
 Microsoft documente le déploiement de modèles via Ollama sur GPU serverless
-Container Apps, et ces GPU sont disponibles en Europe de l'Ouest. La première
-voie n'est donc pas une extrapolation.
+Container Apps. La première voie n'est donc pas une extrapolation. La
+disponibilité régionale, elle, est plus étroite que ce que ce document a affirmé
+jusqu'au 2026-09-02 :
+
+| Région | T4 | A100 |
+| --- | :---: | :---: |
+| West Europe | oui | **non** |
+| France Central | oui | **non** |
+| Sweden Central | oui | oui |
+
+L'A100 n'est donc **pas** disponible en Europe de l'Ouest stricte. Le choix de la
+carte et de la région se tranche avant le lot 5, et non pendant : un modèle coder
+qui exigerait l'A100 imposerait Sweden Central.
 
 **Ce que P5 prévoyait déjà** : « repli mesuré sur SQL-01 à 12 avant API ». Le
 protocole est écrit, il suffit de l'appliquer. La troisième voie se teste en
@@ -229,16 +240,44 @@ d'identité retenu.
 apporterait sur `SORABEL_PROFIL` n'est pas la conformité, c'est l'**expiration et
 la révocation** : retirer un accès sans éditer la configuration d'un poste.
 
+> **Note de fraîcheur, 2026-09-02.** Les citations de la spécification MCP de ce
+> chantier pointent la version `2025-06-18`, en vigueur à la rédaction. L'URL
+> canonique sert depuis la version `2026-07-28`. Les trois points sur lesquels
+> D28 s'appuie sont **inchangés** : l'indicateur de ressource RFC 8707 reste
+> obligatoire, `stdio` reste renvoyé à l'environnement, et le protocole ne définit
+> toujours aucune notion de rôle ou de profil. Un point a bougé : l'enregistrement
+> dynamique de client est passé de `SHOULD` à `MAY` et se trouve formellement
+> déprécié au profit des Client ID Metadata Documents. C'est exactement ce que le
+> tableau de la section 5.1 bis crédite déjà à Keycloak sous le nom de « format de
+> métadonnées client plus récent » : le raisonnement était juste, la citation était
+> en retard sur lui.
+
 ### 5.2 Pourquoi ne pas passer à un service d'index managé
 
 Azure AI Search ferait la recherche vectorielle, le lexical et le filtrage, et
 fournit un classement sémantique intégré, désormais indépendant de la langue.
-C'est tentant, et c'est précisément ce qui l'écarte : **c'est l'argument qui a
-déjà écarté Qdrant**. Un moteur qui fusionne lexical et dense en interne rend la
-baseline « dense seule » moins nette à isoler, or E6 en dépend.
+
+**Motif de rejet corrigé le 2026-09-02.** Ce document affirmait que son hybride
+natif rendait « la baseline dense seule moins nette à isoler ». C'est faux au sens
+technique : la documentation officielle présente l'usage en **index purement
+vectoriel** comme un cas de première classe, et une requête qui ne cible que le
+champ vectoriel, sans requête lexicale ni classement sémantique, produit bien une
+recherche dense seule. L'isolation y est possible.
+
+Ce qui reste vrai est plus faible, et c'est cela qu'il faut dire : mesurer un gain
+hybride **dans le service qui vend l'hybride** affaiblit la neutralité de la
+mesure, et l'architecture retenue, deux index séparés que nous composons
+nous-mêmes, rend l'ablation lisible brique par brique. C'est un choix de rigueur
+méthodologique, pas une impossibilité.
 
 Décision inchangée, mais l'alternative est nommée : si la mesure E6 était
 abandonnée, Azure AI Search deviendrait le choix évident.
+
+**Leçon de méthode, deuxième occurrence.** Le chantier 6 avait déjà dû corriger
+le motif de P3, qui invoquait la simplicité là où le critère décisif était le
+filtrage par métadonnée. Un motif faux sous une conclusion juste ne se voit pas à
+l'usage : il ne tombe que devant un jury, ou devant une relecture qui remonte à la
+source. Les motifs se vérifient comme les chiffres.
 
 ## 6. Ce qui reste local pendant le développement
 

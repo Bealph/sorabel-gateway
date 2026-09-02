@@ -83,6 +83,8 @@ MANIFESTE = [
      "Tool a l'entree, ressources dans le tool, journal dans tous les cas."),
     ("conception/07_cible_deploiement.md", 0, "Architecture cible sur Azure", "chantier 7",
      "Quatre unites deployees. Le bot Slack est entre l'utilisateur et la Gateway."),
+    ("conception/08_interface.md", 0, "Interface de demonstration : deux profils", "chantier 8",
+     "Deux processus, meme image et meme matrice, journal partage. E4 rendu visible."),
     ("conception/04_sequences.md", 0, "Question documentaire : reponse ou abstention", "E1 - E2",
      "answer_question : hybride, reranking, seuil, sources citees ou abstention."),
     ("conception/04_sequences.md", 1, "Text-to-SQL autorise : gardes lecture seule", "E3",

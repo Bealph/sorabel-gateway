@@ -259,15 +259,13 @@ client doit donc brancher sur `status`, et non sur la présence d'une exception.
 | `refused` | `UNAUTHORIZED_COLLECTION` | collection documentaire interdite au profil | idem |
 | `refused` | `FORBIDDEN_COLUMN` | colonne sensible demandée | idem, et ne pas reformuler pour contourner |
 | `refused` | `READ_ONLY_VIOLATION` | la requête était en écriture | idem, en signalant que seule la lecture est possible |
-| `error` | voir question ouverte | panne technique | erreur technique, nouvelle tentative légitime |
+| `error` | `INTERNAL_ERROR` | panne technique du serveur | erreur technique, nouvelle tentative légitime, aucune conclusion métier à en tirer |
 
 Distinction à ne pas manquer : `rows: []` avec `status = "ok"` est un **résultat légitime**,
 car une liste ou un agrégat peut valoir zéro. C'est `not_found` qui signale une entité
 recherchée par identifiant précis et introuvable. Les deux se disent différemment à
 l'utilisateur.
 
-Question ouverte : la table des codes normalisés du chantier 3 ne prévoit pas de code pour
-`status = "error"`. À trancher au développement, ou à assumer comme un statut sans code.
 
 ### 5.3 Exemples
 
@@ -306,8 +304,8 @@ Question métier avec SQL renvoyé :
 ```json
 {
   "status": "ok",
-  "sql": "SELECT COUNT(*) AS n FROM commandes WHERE date_commande LIKE '2026-04%' LIMIT 200",
-  "rows": [ { "n": 128 } ]
+  "sql": "SELECT COUNT(*) AS n FROM commandes WHERE date_commande LIKE '2026-04%'",
+  "rows": [ { "n": 27 } ]
 }
 ```
 
@@ -435,15 +433,27 @@ comblés par une supposition.
 | --- | --- | --- |
 | 1 | Commande et arguments exacts de lancement du serveur en stdio | la configuration client de la section 2.2 reste à compléter |
 | 2 | URL du service et emplacement de la table jeton vers profil, en variante HTTP | bloque l'usage de la variante HTTP |
-| 3 | Code normalisé associé à `status = "error"` | le client doit tolérer un `error` sans `code` |
-| 4 | Schéma exact du champ `detail` selon le code | ne pas s'appuyer dessus, brancher sur `status` et `code` |
-| 5 | Comment un client renseigne son `client_id` déclaratif | journal moins lisible si le champ reste vide |
-| 6 | Correspondance formelle entre les noms de collections de la matrice et les valeurs de `doc_type` du corpus, voir ci-dessous | ambiguïté sur la valeur à passer dans un filtre `list_sources` |
-| 7 | Valeur par défaut de `k` pour `search_docs`, et valeur du seuil d'abstention | non contractuelles, le seuil est calibré empiriquement (E6) |
-| 8 | Ouverture éventuelle de `list_sources` au profil `commercial` | prévue « au cas par cas » par le chantier 3, non tranchée |
+| 3 | Schéma exact du champ `detail` selon le code | ne pas s'appuyer dessus, brancher sur `status` et `code` |
+| 4 | Comment un client renseigne son `client_id` déclaratif | journal moins lisible si le champ reste vide |
+| 5 | Valeur par défaut de `k` pour `search_docs`, et valeur du seuil d'abstention | non contractuelles, le seuil est calibré empiriquement (E6) |
+| 6 | Ouverture éventuelle de `list_sources` au profil `commercial` | prévue « au cas par cas » par le chantier 3, non tranchée |
 
-Détail du point 6. La matrice d'accès nomme les collections `fiches`, `notices`, `sav` et
-`notes` ; le corpus, lui, porte les valeurs de `doc_type` `fiche_technique`, `notice`,
-`procedure_sav` et `note_interne`. La correspondance paraît évidente, mais elle n'est
-écrite nulle part. Tant qu'elle ne l'est pas, ne codez pas en dur la valeur d'un filtre :
-demandez-la au serveur.
+Deux questions figuraient ici jusqu'au 2026-09-02 et ont été retirées : elles étaient
+déjà tranchées ailleurs, et l'une donnait une consigne fausse.
+
+| Ancienne question | Où elle est en fait tranchée |
+| --- | --- |
+| Code associé à `status = "error"` | `INTERNAL_ERROR`, chantier 3, section 4.1 |
+| Correspondance collection vers `doc_type` | `governance/matrice.yaml`, clé `collections`, et chantier 3, section 3.3 |
+
+La seconde conseillait de « ne pas coder en dur la valeur d'un filtre » et de « la
+demander au serveur ». Aucun tool du catalogue n'expose cette correspondance : la
+consigne envoyait vers un appel qui n'existe pas. La correspondance est fixe, et
+contrôlée contre le corpus réel par `governance/verifier_matrice.py` :
+
+| Collection | `doc_type` |
+| --- | --- |
+| `fiches` | `fiche_technique` |
+| `notices` | `notice` |
+| `sav` | `procedure_sav` |
+| `notes` | `note_interne` |

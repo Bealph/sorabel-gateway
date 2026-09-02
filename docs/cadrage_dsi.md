@@ -1,4 +1,4 @@
-# Note de cadrage DSI — Sorabel Data Gateway
+# Note de cadrage DSI : Sorabel Data Gateway
 
 > Reconstitution de la note de cadrage à partir du brief du TP, pour servir de
 > référence dans le dépôt. Si la DSI fournit le fichier officiel, le substituer

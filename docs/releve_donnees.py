@@ -83,6 +83,18 @@ def releve_sql(cx: sqlite3.Connection) -> dict:
     return out
 
 
+# Le groupe tolere les parentheses ECHAPPEES. Un motif [^()]* s'arrete sur le
+# premier antislash-parenthese et jette la ligne entiere : 47 titres de fiche sur
+# 150 disparaissaient ainsi, dont "Cheville metallique M8 \\(boite 100\\)".
+TEXTE_PDF = re.compile(r"\(((?:[^()\\]|\\.)*)\)\s*Tj")
+
+# Neutralise ce qui identifie un EXEMPLAIRE : reference, date, numero de version.
+# Sans le numero de version, les 90 procedures SAV comptaient DEUX corps de texte
+# (Version 1.0 contre Version 2.0) la ou il n'y en a qu'UN. Le chiffre minimisait
+# un defaut du jeu qui borne la mesure E6.
+EXEMPLAIRE = re.compile(r"REF-\d{4}|\d{4}-\d{2}-\d{2}|[Vv]ersion\s*:?\s*\d+\.\d+")
+
+
 def texte_pdf(chemin: Path) -> str:
     brut = chemin.read_bytes()
     morceaux = []
@@ -97,7 +109,7 @@ def texte_pdf(chemin: Path) -> str:
 
 
 def sections_pdf(chemin: Path) -> int:
-    lignes = re.findall(r"\(([^()]*)\)\s*Tj", texte_pdf(chemin))
+    lignes = TEXTE_PDF.findall(texte_pdf(chemin))
     return sum(1 for l in lignes if re.match(r"^\s*\d+\.\s+\S", l))
 
 
@@ -144,7 +156,7 @@ def templatage() -> list[str]:
         gabs: dict[str, int] = {}
         for f in sorted(p for p in d.iterdir() if p.suffix == ext):
             if ext == ".pdf":
-                lignes = re.findall(r"\(([^()]*)\)\s*Tj", texte_pdf(f))
+                lignes = TEXTE_PDF.findall(texte_pdf(f))
                 corps = [l for l in lignes
                          if not re.search(r"R.f.rence produit|FICHE |NOTICE |Version", l)]
                 t = "|".join(corps)
@@ -152,7 +164,7 @@ def templatage() -> list[str]:
                 t = f.read_text(encoding="utf-8", errors="ignore")
                 t = re.sub(r"<title>.*?</title>|<h1>.*?</h1>|<meta[^>]*>|^---.*?^---",
                            "", t, flags=re.S | re.M)
-            brut = re.sub(r"REF-\d{4}|\d{4}-\d{2}-\d{2}", "", t)
+            brut = EXEMPLAIRE.sub("", t)
             # variante ou l'on neutralise aussi les VALEURS : ce qui reste est le gabarit
             gab = re.sub(r"[\d.,]+\s*(?:V|A|W|kA|mm|EUR|%)?", "", brut)
             for cle, d in (("brut", sigs), ("gabarit", gabs)):

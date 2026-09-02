@@ -1,4 +1,4 @@
-# Chantier 3 — Exposition MCP et matrice d'accès
+# Chantier 3 : Exposition MCP et matrice d'accès
 
 > Dossier de conception. Répond aux cinq questions guides du brief et produit les
 > schémas associés. Exigences couvertes : E4 (un serveur, chaque client borné à
@@ -7,7 +7,7 @@
 > Consolide les chantiers 1 (collections RAG, sensibilité des notes) et 2
 > (matrice SQL, pile de gardes).
 >
-> Statut des décisions : PROPOSÉ (à valider par le pilote), sauf mention.
+> Statut des décisions : VALIDÉ. P6, P7 et P8 verrouillés, P8 par D28.
 
 ---
 
@@ -172,7 +172,7 @@ document déplacé reste gouverné.
 | sav        |   oui   |    oui     |   oui   |                                                                        |
 | notes      |    -    |    oui     |   oui   | sensibles : politique-tarifaire, reunion-achat. Jamais pour le support |
 
-### 3.4 Matrice client x table / colonnes (SQL) — rappel chantier 2
+### 3.4 Matrice client x table / colonnes (SQL) : rappel chantier 2
 
 | Table     | support | colonnes bloquees (support) | commercial / dev |
 | --------- | ------- | --------------------------- | ---------------- |
@@ -345,6 +345,19 @@ D29  Domicile des releves, selon qui les lit. (a) La conception ne garde que la
      ne decrit que structure et agregats, jamais de lignes, et ne porte aucune
      notion d'autorisation : les colonnes sensibles restent dans la seule matrice
      (D21), et le schema montre au modele vaut introspection INTER matrice[profil].
+D42  Classification EXHAUSTIVE des colonnes (2026-09-02). Les trois listes
+     colonnes_sensibles, colonnes_restreintes et colonnes_publiques doivent
+     couvrir exactement le schema de la base. Une colonne non classee fait
+     ECHOUER le controle au lieu de devenir visible. Motif : colonnes_interdites
+     seule est une LISTE NOIRE dans un fichier qui proclame deny-by-default, donc
+     une colonne ajoutee a la base etait exposee au support en silence.
+     colonnes_restreintes accueille ce qui depasse le litteral d'E5, aujourd'hui
+     clients.email, sur un profil dont le client est public (D34).
+D44  Les invariants se controlent contre des ANCRES ECRITES EN DUR dans
+     verifier_matrice.py, hors du YAML. Motif : le controle E5 verifiait
+     colonnes_sensibles contre colonnes_interdites, deux listes du meme fichier ;
+     en retirer une colonne des deux laissait 19 controles sur 19 au vert. Un
+     invariant qui se verifie contre la donnee qu'il controle s'annule avec elle.
 ```
 
 ## Arbitrages (verrouillés le 2026-08-27)

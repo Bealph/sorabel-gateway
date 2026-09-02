@@ -10,7 +10,7 @@
 
 | Id | Travail | Fichier | Phase | Bloqué par |
 | --- | --- | --- | --- | --- |
-| M2 | Remplir le tableau de résultats chiffrés | `docs/mesure_e6.md` et `eval/results/` | Développement | le serveur n'existe pas encore |
+| M2 | Remplir le tableau de résultats chiffrés | `docs/mesure_e6.md` et `eval/results/` | Développement | les lots 2a, 2b et 3. Ne dépend PAS du serveur MCP |
 | L1 | Client de démonstration en ligne de commande, montrant deux profils sur le même serveur | `scripts/mcp_client.py`, à créer | Développement | le serveur n'existe pas encore |
 | L3 | Interface graphique et son lien | à définir | Développement | le serveur n'existe pas encore |
 | A1 | Application Slack : hébergement, vérification de signature, réponse différée en deux messages (D34) | `slack_app/`, à créer | Développement | le serveur n'existe pas encore |
@@ -40,5 +40,5 @@ git log --oneline              les 10 commits, chacun avec son raisonnement
 git log -p docs/RESTE_A_FAIRE.md   l'etat complet de la liste, jour par jour
 ```
 
-La phase de conception est close : décisions D1 à D33, arbitrages P1 à P8, plus
+La phase de conception est close : décisions D1 à D37, arbitrages P1 à P8, plus
 aucun point ouvert.

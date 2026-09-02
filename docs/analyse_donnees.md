@@ -1,4 +1,4 @@
-# Analyse du jeu de données — Sorabel Data Gateway
+# Analyse du jeu de données : Sorabel Data Gateway
 
 > Prise de connaissance des données fournies (`data/`). Base SQL inspectée
 > intégralement (schéma, volumétrie, clés étrangères) ; corpus documentaire
@@ -7,7 +7,7 @@
 
 ---
 
-## 1. Base SQL — `data/sorabel.db` (SQLite)
+## 1. Base SQL : `data/sorabel.db` (SQLite)
 
 Six tables métier (plus `sqlite_sequence`, technique). Volumétrie et schéma :
 
@@ -99,7 +99,7 @@ Correspondance avec le jeu d'éval SQL :
 
 ---
 
-## 2. Corpus documentaire — `data/corpus/`
+## 2. Corpus documentaire : `data/corpus/`
 
 Quatre familles de documents, chacune avec ses métadonnées de citation (E1).
 
@@ -185,7 +185,7 @@ ne correspond plus aux données.
 
 <!-- RELEVE:DEBUT -- genere par docs/releve_donnees.py, ne pas editer a la main -->
 
-> Bloc **généré** le 2026-09-01 par `docs/releve_donnees.py`.
+> Bloc **généré** le 2026-09-02 par `docs/releve_donnees.py`.
 > Il décrit **ce jeu de données**, pas la conception. Un autre corpus produirait
 > d'autres valeurs sans qu'aucune décision ne change. Ne pas éditer à la main :
 > relancer le script.
@@ -250,7 +250,7 @@ bonnes réponses qu'il y a de documents. Cela borne ce que E6 peut établir.
 | --- | ---: | ---: | ---: | ---: |
 | `fiches` | 150 | 120 | 19 | 16 |
 | `notices` | 80 | 1 | 1 | 80 |
-| `sav` | 90 | 2 | 1 | 90 |
+| `sav` | 90 | 1 | 1 | 90 |
 | `notes` | 80 | 54 | 54 | 5 |
 
 « Textes distincts » compte les corps différents une fois références et

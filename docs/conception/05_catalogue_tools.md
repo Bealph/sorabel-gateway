@@ -3,8 +3,12 @@
 > Vue de référence du catalogue exposé par la Gateway : nom, entrées, sorties,
 > garanties. Sert de base au serveur MCP et au mini guide d'accès (livrable).
 > Consolide les chantiers 1 (RAG), 2 (Text-to-SQL) et 3 (matrice d'accès).
-> Toutes les entrées incluent implicitement l'identité du client (donc son
-> profil). Toute sortie est typée par `status` ; tout appel est journalisé (E5).
+> **Aucun tool ne prend l'identité ni le profil en entrée.** Le profil est fixé
+> au lancement du serveur (D28) et n'apparaît dans aucune signature : un profil
+> passé en argument serait déclaratif, et n'importe quel appelant pourrait se
+> déclarer `dev`. Les colonnes « Entrées » ci-dessous listent donc uniquement ce
+> que le client transmet. Toute sortie est typée par `status` ; tout appel est
+> journalisé (E5).
 
 ## Famille RAG
 
@@ -20,7 +24,7 @@
 | Tool | Entrees | Sorties | Garanties / comportement |
 | --- | --- | --- | --- |
 | `ask_database` (generatif) | question (texte) | status, rows[], sql (requete generee), OU refus {status, code} | lecture seule (connexion RO + AST SELECT-only) ; perimetre tables/colonnes du profil (E5) ; LIMIT ; SQL toujours renvoye (E3) ; refus type |
-| `get_schema` (aide) | identite, qui donne le profil | status, schema {tables, colonnes autorisees} | AUCUNE donnee renvoyee ; schema filtre au profil (support : sans colonnes sensibles) ; aide a la formulation |
+| `get_schema` (aide) | *aucune* | status, schema {tables, colonnes autorisees} | AUCUNE donnee renvoyee ; schema filtre au profil (support : sans colonnes sensibles) ; aide a la formulation |
 | `check_stock` (fige) | ref | status, stock[] {entrepot, quantite, seuil_reappro} | requete parametree deterministe ; lecture seule ; pas de generation LLM |
 | `order_status` (fige) | order_id | status, {statut, date, montant_ht} | requete parametree ; lecture seule ; pas de colonne sensible ; id absent -> not_found |
 
@@ -34,8 +38,11 @@
 - Autorisation appliquee a deux niveaux : gateway (tool) + tool (ressources).
 - Journalisation JSONL de tout appel (autorise + refuse), sans valeurs sensibles,
   avec le SQL genere le cas echeant et les ressources touchees (E5).
-- Codes de refus normalises : UNAUTHORIZED_TOOL, UNAUTHORIZED_COLLECTION,
-  FORBIDDEN_COLUMN, READ_ONLY_VIOLATION, OUT_OF_SCHEMA, OUT_OF_CORPUS, AMBIGUOUS.
+- Codes normalises, les NEUF du chantier 3, section 4.1, qui fait foi :
+  refus       : UNAUTHORIZED_TOOL, UNAUTHORIZED_COLLECTION, FORBIDDEN_COLUMN,
+                READ_ONLY_VIOLATION
+  non-refus   : OUT_OF_SCHEMA, OUT_OF_CORPUS, NOT_FOUND, AMBIGUOUS,
+                INTERNAL_ERROR (accompagne status = error)
 ```
 
 ## Accès par profil (rappel de la matrice, chantier 3)

@@ -20,7 +20,7 @@
 | Store vectoriel | Chroma, embarqué | D32 | Filtre par métadonnée **avant** la recherche |
 | Index lexical | BM25 applicatif, séparé du store | D32, P3 | Rend la baseline dense isolable, ce dont E6 dépend |
 | Fusion | RRF, k = 60 | D5 | Fusionne des rangs, donc insensible à des scores non comparables |
-| Embeddings | `bge-m3` | P2 | Multilingue, bon en français, tient sur processeur à cette échelle |
+| Embeddings | `bge-m3` | P2 | Multilingue, bon en français. 568 M paramètres, donc *présumé* tenir sur processeur : à mesurer, ce n'est pas un fait sourcé |
 | Reranking | `bge-reranker-v2-m3` | P2 | Cross-encoder, lit question et passage ensemble |
 | Génération SQL | modèle coder instruct | P5, D36 | Seul composant exigeant un accélérateur ou une API |
 | Validation SQL | `sqlglot`, analyse AST | D11 | Raisonne sur la structure réelle, pas sur des mots interdits |
@@ -42,8 +42,8 @@ qualités, mais par ce qu'il évite.
 | **FAISS** | store vectoriel | C'est une bibliothèque de similarité, pas une base : **elle ne filtre pas par métadonnée**. E2 et E4 seraient à recoder | D32 |
 | **Qdrant** | store vectoriel | Son hybride natif rend la **baseline dense moins nette à isoler**, or E6 en dépend. Et c'est un service à administrer | D32 |
 | **sqlite-vec** | store vectoriel | Unifierait la technologie, mais écosystème plus jeune et gain non décisif. Non retenu **par prudence**, pas par rejet | D32 |
-| **Azure AI Search** | store vectoriel | Même motif que Qdrant : hybride natif contre isolabilité de la baseline | 07 §5.2 |
-| **Entra ID** | identité | La spécification MCP exige les indicateurs de ressource RFC 8707 ; **aucune source officielle ne revendique la conformité**, et pas d'enregistrement dynamique de client | 07 §5.1 |
+| **Azure AI Search** | store vectoriel | **Pas** une impossibilité technique, le vecteur pur y est documenté. Mesurer l'hybride dans le service qui le vend affaiblit la neutralité de la mesure | 07 §5.2 |
+| **Entra ID** | identité | La spécification MCP exige les indicateurs de ressource RFC 8707. **Absence de preuve**, non preuve d'absence : aucune source officielle ne revendique la conformité. En revanche Microsoft documente noir sur blanc l'absence d'enregistrement dynamique de client | 07 §5.1 |
 | **Keycloak** | identité | **Même limite qu'Entra ID** : « cannot currently recognize the resource parameter ». Ajoute un service et une base pour ne rien résoudre | 07 §5.1 bis |
 | **Base pour le journal** | journalisation | Écriture seule, relu après coup : un fichier suffit, et se lit sans outil en démonstration | D33 |
 | **Documentaire, clé-valeur, graphe, colonne** | base métier | Aucun ne fournit un langage de requête analysable par AST, ce dont E3 dépend | D31 |
@@ -60,9 +60,15 @@ Dupliquer un **invariant** est sain, ainsi la connexion en lecture seule qui
 crée la dérive.
 
 **La mesure doit rester attribuable.** C'est ce qui écarte Qdrant et Azure AI
-Search. Un moteur qui fusionne lexical et dense en interne rend la baseline
-« dense seule » moins nette, et E6 exige que le gain soit imputable à notre
-choix, pas à l'outil.
+Search. Non parce qu'une baseline dense y serait impossible, elle ne l'est pas,
+mais parce que composer nous-mêmes deux index séparés rend l'ablation lisible
+brique par brique : dense seul, puis hybride, puis reranking. E6 exige que le
+gain soit imputable à un choix nommé, pas à un moteur qui fait tout.
+
+Ce motif a été corrigé le 2026-09-02, après vérification de la documentation
+officielle. C'est la deuxième fois que ce dossier écrit un motif faux sous une
+conclusion juste, après celui de P3. Un motif faux ne se voit pas à l'usage : il
+ne tombe que devant un jury.
 
 **La gouvernance ne se recode pas à la main.** C'est ce qui écarte FAISS : le
 filtrage par métadonnée n'est pas un détail de performance, c'est le mécanisme
@@ -74,6 +80,7 @@ par lequel E2 et E4 tiennent.
 | --- | --- |
 | Modèle exact pour la génération SQL | Ordre d'essai fixé par D36 : petit modèle sur processeur, mesure sur SQL-01 à 12, puis GPU, puis API |
 | Plateforme d'hébergement précise | App Service ou Container Apps. D35 rend le choix indolore, la persistance passe par une seule variable |
+| Région et carte GPU, si la génération SQL en exige une | L'A100 n'existe pas en Europe de l'Ouest stricte, seulement à Sweden Central. À trancher avant le lot 5 |
 | Framework de l'interface graphique | Non tranché. N'engage aucune autre décision |
 | Coût mensuel | Non chiffré, item A4 du backlog. Le palier gratuit de Container Apps est confirmé, les tarifs des modèles restent à relever |
 

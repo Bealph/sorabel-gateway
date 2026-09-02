@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 # Dependances a valider en phase de developpement (voir CLAUDE.md, section 5).
 # dependencies = [
 #   "mcp",              # SDK MCP / FastMCP
-#   "chromadb",         # store vectoriel (a trancher : chroma / faiss / qdrant)
+#   "chromadb",         # store vectoriel : chroma, tranche par D32
 #   "rank-bm25",        # recherche lexicale (hybride)
 #   "sentence-transformers",  # embeddings + cross-encoder (reranking)
 #   "sqlglot",          # parsing / validation SQL (garde-fous lecture seule)

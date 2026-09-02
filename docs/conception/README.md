@@ -1,6 +1,6 @@
-# Dossier de conception — Sorabel Data Gateway
+# Dossier de conception : Sorabel Data Gateway
 
-Vue d'ensemble puis trois chantiers, chacun traité par questions avec ses schémas
+Vue d'ensemble puis sept chantiers, chacun traité par questions avec ses schémas
 (tableaux Markdown + schémas Mermaid). État : conception terminée.
 
 ## Documents
@@ -15,13 +15,16 @@ Vue d'ensemble puis trois chantiers, chacun traité par questions avec ses sché
 | 05_catalogue_tools.md | Catalogue MCP consolide : nom, entrees, sorties, garanties, acces par profil | Fait |
 | 06_choix_stockage.md | Chantier 6 : les trois besoins de stockage, le type retenu pour chacun, les candidats ecartes et leur motif | Fait |
 | 07_cible_deploiement.md | Chantier 7 : cible Azure, persistance des artefacts, Slack comme application a part, dimensionnement de la pile | Fait |
+| 08_interface.md | Chantier 8 : ce que l'interface doit prouver, les 5 ecrans, et comment montrer deux profils malgre D28 | Fait |
 | pile_technique.md | Carte transverse : ce qui est retenu, ce qui est ecarte et pourquoi. Vue informative, ne decide rien | Fait |
 
 Modele de donnees Document/Chunk : dans 01_flux_chunks.md (section 2.4).
 Droits d'acces : la source de verite est ../../governance/matrice.yaml ; les
 tableaux de 03 et 05 en sont des VUES.
+Revue de conception du 2026-09-02 : ../REVUE_CONCEPTION.md, classee par le lot
+que chaque constat bloque. A lire avant d'ouvrir un lot.
 Voir aussi : ../analyse_donnees.md (donnees) et ../mesure_e6.md (protocole E6).
-Vues rendues : ../schemas.html, **17 schemas**, page autonome a ouvrir dans un
+Vues rendues : ../schemas.html, page autonome a ouvrir dans un
 navigateur (Mermaid embarque, aucune installation). Elle est GENEREE par
 `python docs/build_schemas.py` depuis les blocs mermaid des .md, et ne peut donc
 plus etre en retard sur eux. `--verifier` signale une page perimee.

@@ -11,6 +11,39 @@
 
 ---
 
+## 0. État de traitement, au 2026-09-02
+
+Passe de correction faite le jour même de la revue. **Les 24 constats bloquants
+sont fermés.** Le tableau ci-dessous dit par quoi, pour que rien ne soit
+« traité » sans trace.
+
+| Constats | Fermés par |
+| --- | --- |
+| B1, B2 | `verifier_matrice.py` : bug du lecteur de repli corrigé, `indent + 1` au lieu de `indent + 2`. Les 9 invariants s'affichent dans la vue |
+| B3 à B7 | Ancres écrites en dur dans le script (D44), classification exhaustive des 31 colonnes (D42), ensemble des profils fermé, base absente devenue un échec sauf `--sans-base`, `doc_type` contrôlés contre le corpus. **28 contrôles, éprouvés par 10 mutations qui échouent toutes** |
+| B8, B9 | Chantier 1 : règle du report d'en-tête dans chaque chunk, interdiction de la regex maison sur un flux PDF, quatre assertions de fin de lot 1 |
+| B10, B11, B12 | Chantier 1, section 3.5 bis : filtre de profil avant la recherche sur les **deux** branches, index BM25 par collection, motif `REF` et départage, repli sur l'hybride, arbitrage de version comme étage de l'entonnoir |
+| B13, B14, B15 | `mesure_e6.md` : l'abstention ne se compare plus entre branches, RAG-19 sort de la population de calibrage (13 contre 9), ablation en quatre configurations, `Recall@k` sur documents, intervalles de confiance exigés |
+| B16, B17 | Chantier 2 : le périmètre porte sur **toute occurrence** d'une colonne (D43), et la couche 1 est requalifiée, section 2.1 bis, essais SQLite à l'appui |
+| B18 | Couche 0 bis (D41), pré-filtre lexical déclaré dans la matrice. Les fixtures ne bougent pas : les quatre questions contiennent toutes « marge » ou « prix d'achat » |
+| B19 | `05_catalogue_tools.md` : l'identité n'est plus une entrée de tool, ni dans le chapeau ni dans la signature de `get_schema` |
+| B20, B21 | `docs/conception/08_interface.md` : ce que l'interface doit prouver, cinq écrans, et D39 qui tranche la démonstration à deux profils |
+| B22 | `eval/cas_mcp.jsonl` : 22 cas, profil × tool × attendu, **avec les attentes de journal** |
+| B23, B24 | `PASSATION_DEV.md` : chaque lot porte l'écriture de son harnais, et la chaîne de déploiement devient un critère de fin du **lot 0** |
+
+**Une décision dépasse le brief et attend votre confirmation.** La classification
+étant devenue exhaustive, `clients.email` devait être classée. Elle est en
+`colonnes_restreintes`, donc interdite au profil `support`, dont le client est un
+bot Slack tourné vers l'extérieur. E5 ne nomme que les prix d'achat et les marges :
+c'est un ajout, réversible en retirant deux lignes de `governance/matrice.yaml`.
+
+**Ce qui reste ouvert** : la section 4 en entier, moins quatre points traités au
+passage (`Recall@k` sur documents, intervalles de confiance, `clients.email`, et
+l'alignement des trois listes de codes sur les neuf du chantier 3). Les autres
+restent à trancher au moment d'écrire le code concerné, comme prévu.
+
+---
+
 ## 1. Verdict
 
 Le dossier de conception est solide sur ce qui est le plus difficile : les choix

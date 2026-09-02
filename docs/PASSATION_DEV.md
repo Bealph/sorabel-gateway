@@ -1,4 +1,4 @@
-# Passation vers le développement — Sorabel Data Gateway
+# Passation vers le développement : Sorabel Data Gateway
 
 > Document de démarrage pour la session de développement (VSCode / Claude Code).
 > La conception est terminée et figée. Ce document dit quoi lire, ce qui est
@@ -14,9 +14,11 @@
 ## 1. État actuel
 
 ```
-Conception    TERMINEE (docs/conception/ : 00 a 05 + schemas.html)
+Conception    TERMINEE (docs/conception/ : 00 a 08 + schemas.html)
+Revue         FAITE le 2026-09-02 : docs/REVUE_CONCEPTION.md. A LIRE.
 Donnees       PRESENTES (data/sorabel.db + data/corpus/{fiches,notices,sav,notes})
-Jeux d'eval   PRESENTS (eval/questions_sql.jsonl 24, eval/questions_rag.jsonl 30)
+Jeux d'eval   PRESENTS. Fixtures 24 SQL + 30 RAG, attendus SQL + RAG,
+              et eval/cas_mcp.jsonl (22 cas de gouvernance, ecrit le 2026-09-02)
 Code          PAS ENCORE ECRIT (rag/ text2sql/ governance/ mcp_server/ vides)
 ```
 
@@ -25,8 +27,10 @@ Code          PAS ENCORE ECRIT (rag/ text2sql/ governance/ mcp_server/ vides)
 ```
 1. CLAUDE.md                          memoire + decisions + journal
 2. docs/conception/00_architecture.md vue d'ensemble
-3. docs/conception/05_catalogue_tools.md   contrat des 8 tools (entrees/sorties)
-4. Le doc du lot en cours (01 pour le RAG, 02 pour le SQL, 03 pour la matrice)
+3. docs/REVUE_CONCEPTION.md           CE QUI DOIT ETRE FERME AVANT CHAQUE LOT
+4. docs/conception/05_catalogue_tools.md   contrat des 8 tools (entrees/sorties)
+5. Le doc du lot en cours (01 pour le RAG, 02 pour le SQL, 03 pour la matrice,
+   08 pour l'interface)
 ```
 
 Ne pas relire tout le dossier avant d'agir. Charger le doc du lot courant, faire,
@@ -81,14 +85,14 @@ chantier 3.
 
 | Lot | Objet | Livrable / fin de lot |
 | ---: | --- | --- |
-| 0 | Bootstrap | venv, deps installees, arbo de code, chargeur de config + matrice YAML |
+| 0 | Bootstrap | venv, deps installees, arbo de code, chargeur de config + matrice YAML. `verifier_matrice.py` passe SOUS pyyaml, et la vue est regeneree. **Plus : une page vide deployee sur Azure, joignable par son URL, avec `SORABEL_DATA_DIR` monte, un fichier ecrit puis relu APRES redemarrage.** Ce dernier point valide D35, qui est le piege silencieux du chantier 7 |
 | 1 | Ingestion RAG (doc 01) | loaders PDF/HTML/MD -> Document canonique + versions/is_latest + chunking ; index Chroma + BM25 construits |
 | 2a | Recherche RAG, dense de base (doc 01) | dense seul + citations + refus hors corpus. Jalon impose par le brief, et baseline de E6 : a conserver telle quelle |
 | 2b | Recherche RAG, avancee (doc 01) | hybride + RRF + court-circuit REF + rerank + seuil ; tool answer_question |
-| 3 | Mesure E6 (doc 01 Q5, mesure_e6.md) | comparer 2a et 2b ; Recall@k + MRR ; gold DEJA annotes dans eval/attendus_rag.jsonl ; resultats dans eval/results/. ATTENTION : le socle semantique vaut 8 questions, pas 14, cf. mesure_e6.md section 2 |
-| 4 | Text-to-SQL (doc 02) | connexion RO, get_schema, generation + validation AST + perimetre + LIMIT + sortie typee ; figes check_stock/order_status |
-| 5 | Gouvernance + serveur MCP (docs 03, 05, 06) | matrice gateway+tool, journal JSONL, catalogue expose, refus types ; scripts/mcp_client.py demontrant DEUX profils, exige nommement par le brief |
-| 6 | Interface + application Slack (doc 07) | UI du produit et son lien sur Azure ; application Slack : signature verifiee, accuse de reception puis reponse differee (D34) ; preparation soutenance. Le mini guide est DEJA ecrit : mcp_server/GUIDE_ACCES.md |
+| 3 | Mesure E6 (doc 01 Q5, mesure_e6.md) | **ecrire le harnais RAG** qui rejoue eval/questions_rag.jsonl contre eval/attendus_rag.jsonl ; ablation en 4 configurations (A, B, C, D) et non 2 ; Recall@k + MRR ; gold DEJA annotes dans eval/attendus_rag.jsonl ; resultats dans eval/results/. ATTENTION : le socle semantique vaut 8 questions, pas 14, cf. mesure_e6.md section 2 |
+| 4 | Text-to-SQL (doc 02) | **ecrire le harnais SQL, et finir sur 24/24 conformes a eval/attendus_sql.jsonl** ; connexion RO, get_schema, generation + validation AST + perimetre + LIMIT + sortie typee ; figes check_stock/order_status |
+| 5 | Gouvernance + serveur MCP (docs 03, 05, 06) | **ecrire le harnais MCP, et finir sur 22/22 conformes a eval/cas_mcp.jsonl, journal compris** ; matrice gateway+tool, journal JSONL, catalogue expose, refus types ; scripts/mcp_client.py demontrant DEUX profils, exige nommement par le brief |
+| 6 | Interface + application Slack (docs 07 et 08) | UI du produit et son lien sur Azure, **ecran 3 en priorite** : c'est le seul qui demontre E4 et E5 (chantier 8) ; application Slack : signature verifiee, accuse de reception puis reponse differee (D34) ; preparation soutenance. Le mini guide est DEJA ecrit : mcp_server/GUIDE_ACCES.md |
 
 Ne pas commencer un lot avant que le precedent passe ses criteres.
 
@@ -96,8 +100,11 @@ Ne pas commencer un lot avant que le precedent passe ses criteres.
 LOCAL. Le deploiement Azure intervient au lot 5, l'interface et l'application
 Slack au lot 6. Deboguer la pile de gardes a travers une couche d'hebergement
 coute plusieurs fois plus cher, et E6 se mesure plus surement a modele fige.
-Exception recommandee : eprouver la chaine de deploiement a vide des maintenant,
-pour ne pas decouvrir un obstacle Azure au dernier lot.
+EXCEPTION OBLIGATOIRE, et non plus recommandee : eprouver la chaine de
+deploiement a vide DES LE LOT 0. Une recommandation n'est pas un critere de fin,
+et le lot 0 pouvait etre declare termine sans qu'un octet ait atteint Azure. Le
+cadre est de six jours, le deploiement arrive au lot 5 sur 7 et l'interface au
+lot 6 : si Azure resiste, il n'y a aucune marge derriere.
 
 **Tout artefact persistant s'ecrit sous `SORABEL_DATA_DIR` (D35).** Le stockage
 de conteneur est ephemere par defaut : un index ecrit ailleurs disparait au

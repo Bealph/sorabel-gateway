@@ -1,4 +1,4 @@
-# CLAUDE.md — Sorabel Data Gateway
+# CLAUDE.md : Sorabel Data Gateway
 
 > Fichier de mémoire de projet, lu automatiquement par Claude Code à chaque
 > session ouverte dans ce dossier. C'est la source de vérité qui assure la
@@ -49,7 +49,7 @@ unique et gouverné.
 
 ---
 
-## 3. Les 6 exigences DSI (contrat — non négociable)
+## 3. Les 6 exigences DSI (contrat : non négociable)
 
 | Id | Exigence |
 | --- | --- |
@@ -62,7 +62,7 @@ unique et gouverné.
 
 ---
 
-## 4. Clients & profils d'accès (matrice — à finaliser en conception, chantier 3)
+## 4. Clients & profils d'accès (matrice : à finaliser en conception, chantier 3)
 
 | Profil | Client type | RAG (collections) | SQL (tables / colonnes) |
 | --- | --- | --- | --- |
@@ -77,7 +77,7 @@ document.
 
 ---
 
-## 5. Architecture — décisions
+## 5. Architecture : décisions
 
 Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 **PROPOSÉ** (recommandation de l'expert, en attente d'accord) /
@@ -106,6 +106,13 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Cible de deploiement | Azure. Strategie INCREMENTALE : lots 0 a 4 en local, deploiement au lot 5 (D37) | VALIDE |
 | Persistance des artefacts | Chemin unique SORABEL_DATA_DIR. Le stockage de conteneur est ephemere par defaut (D35) | VALIDE |
 | Client Slack | APPLICATION a part entiere, reponse differee, identite Slack au journal seulement (D34) | VALIDE |
+| Interface : ce qu'elle prouve | 5 ecrans, l'ecran 3 compare DEUX profils sur le meme appel. E4/E5 rendus visibles (D38) | PROPOSE |
+| Demo deux profils malgre D28 | DEUX processus, meme image + meme matrice, journal partage. C'est la topologie normale de MCP stdio (D39) | PROPOSE |
+| Ce que l'interface n'est PAS | Pas de selecteur de profil, pas d'authentification, pas de refus "joli" (D40) | PROPOSE |
+| Refus de colonne, explicite | Couche 0 bis : pre-filtre lexical declare dans la matrice. AUCUNE valeur de securite, sert l'imputabilite (D41) | PROPOSE |
+| Classification des colonnes | EXHAUSTIVE : sensibles + restreintes + publiques = le schema. Une colonne non classee fait echouer le controle (D42) | PROPOSE |
+| Perimetre SQL | Porte sur TOUTE occurrence d'une colonne, pas les projections : WHERE, ORDER BY, GROUP BY, HAVING, sous-requetes (D43) | PROPOSE |
+| Ancrage des invariants | Ecrits EN DUR dans verifier_matrice.py, hors du YAML qu'ils controlent (D44) | PROPOSE |
 
 Référence méthodo RBAC/MCP retenue par le pilote :
 https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-guide-for-engineering-teams-fhf
@@ -123,14 +130,15 @@ sorabel-data-gateway/
 ├── docs/
 │   ├── cadrage_dsi.md     # note de cadrage DSI (contexte + exigences)
 │   ├── analyse_donnees.md # le jeu de donnees ; bloc de releve GENERE
-│   ├── conception/        # 7 chantiers, 00 a 07, index, plus pile_technique.md
+│   ├── REVUE_CONCEPTION.md # revue du 2026-09-02, classee par lot bloque
+│   ├── conception/        # 8 chantiers, 00 a 08, index, plus pile_technique.md
 │   │                      # (carte informative du retenu / de l'ecarte)
 │   ├── mesure_e6.md       # protocole de mesure du gain RAG, chiffres au lot 3
 │   ├── PASSATION_DEV.md   # POINT D'ENTREE DEV : lots, criteres, garde-fous
 │   ├── RESTE_A_FAIRE.md   # ce qui reste, l'historique est dans git
 │   ├── releve_donnees.py  # GENERE le bloc de releve de analyse_donnees.md
 │   ├── build_schemas.py   # GENERE schemas.html depuis les blocs mermaid des .md
-│   ├── schemas.html       # 18 schemas rendus. NE PAS editer, regenerer.
+│   ├── schemas.html       # schemas rendus. NE PAS editer, regenerer.
 │   │                      # Porte la bibliotheque Mermaid, stockee une seule fois
 │   └── archive/           # documents qu'on ne maintient plus, avertis en tete
 ├── scripts/              # mcp_client.py : demo support vs commercial (a creer)
@@ -138,15 +146,16 @@ sorabel-data-gateway/
 ├── rag/                  # ingestion, chunking, hybride, reranking
 ├── text2sql/             # generation SQL lecture seule + garde-fous
 ├── governance/
-│   ├── matrice.yaml           # SOURCE DE VERITE des droits (D21)
+│   ├── matrice.yaml           # SOURCE DE VERITE des droits (D21), + lexique de refus
 │   ├── verifier_matrice.py    # controle les invariants, GENERE la vue
 │   ├── matrice_lisible.md      # vue generee. NE PAS editer, regenerer.
-│   └── logs/                  # journal JSONL de tout appel (a creer, lot 0)
+│   └── logs/                  # journal JSONL de tout appel (ecrit au lot 5)
 ├── eval/
 │   ├── questions_sql.jsonl    # fixture SQL, 24 questions. NE PAS modifier.
 │   ├── questions_rag.jsonl    # fixture RAG, 30 questions. NE PAS modifier.
 │   ├── attendus_sql.jsonl     # attendus par question, oracle des tests (D30)
 │   ├── attendus_rag.jsonl     # gold des "couverte" (P4), 13 annotes
+│   ├── cas_mcp.jsonl          # 22 cas de gouvernance : profil x tool x attendu
 │   └── results/               # sorties d'evaluation, datees
 └── data/                 # corpus + base SQL, NON versionnes (.gitignore)
 ```
@@ -581,6 +590,99 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             sqlite-vec, Azure AI Search, Entra ID, Keycloak), plus les trois
             motifs recurrents de rejet. Informatif, ne decide rien.
             VERIFIE : 19 controles matrice, releve a jour, schemas.html a jour.
+2026-09-02  REVUE DE CONCEPTION, puis passe de correction. Huit relecteurs, un
+            angle chacun, lecture seule. Resultat : docs/REVUE_CONCEPTION.md,
+            classe par le LOT que chaque constat bloque et non en liste plate.
+            LE FAIT LE PLUS LOURD : le titre est le seul signal qui distingue
+            170 des 400 fichiers du corpus. Mesure : sans leur titre, les 80
+            notices ont UN corps de texte distinct, les 90 procedures SAV aussi.
+            Aucune ligne du dossier ne disait que le titre est recopie dans
+            chaque chunk. Sans cette regle, le moteur cite une notice au hasard
+            parmi 80, avec titre, ref, version et date parfaitement formes : E1
+            formellement satisfaite, citation fausse, rien ne le signale. Et le
+            socle E6 tombe de 8 questions a 2. Regle posee au chantier 1.
+            Le dossier annoncait DEUX corps de texte pour les SAV. Il y en a UN.
+            Le releve comptait le litteral Version 1.0 contre Version 2.0. Un
+            chiffre qui MINIMISE une faiblesse du jeu est ce qui se paie le plus
+            cher en soutenance. Neutraliseur corrige.
+            TROIS DEFAUTS REPRODUITS DIRECTEMENT, tous dans du code du depot :
+            (a) la couche 1 ne bloque pas TOUTE ecriture. Sur une connexion
+            mode=ro + query_only, PRAGMA query_only=0 est ACCEPTE, puis ATTACH
+            d'un fichier tiers, CREATE, INSERT : 120 lignes de prix_achat_ht
+            exfiltrees. La base metier reste protegee. Ce qui protege vraiment,
+            c'est la couche 2, qui type ATTACH et PRAGMA comme non-SELECT. Deux
+            couches sur le papier, UNE qui tient. Phrase corrigee, section 2.1
+            bis ecrite avec les messages exacts de SQLite.
+            (b) le lecteur YAML de repli de verifier_matrice.py ecrasait 4
+            invariants sur 5 : la pile etait depilee par la fille de l'item de
+            liste, qui remplacait alors la liste par un dict. La vue generee ET
+            COMMITEE affichait une section d'invariants VIDE, sous la phrase le
+            script echoue si l'une tombe. Corrige, indent+1 au lieu de indent+2.
+            (c) le motif PDF de releve_donnees.py perdait 47 titres de fiche sur
+            150, en s'arretant sur une parenthese echappee. Corrige, et le
+            chantier 1 INTERDIT desormais la regex maison sur un flux PDF, avec
+            quatre assertions de fin de lot 1.
+            DEFAUT DE GOUVERNANCE QUE J'AVAIS CREE LA VEILLE : les colonnes
+            etaient une LISTE NOIRE dans un fichier proclamant deny-by-default,
+            et le controle E5 verifiait colonnes_sensibles contre
+            colonnes_interdites, deux listes du MEME fichier. En retirer une
+            colonne des deux laissait 19 controles sur 19 au vert. Corrige par
+            D42, classification exhaustive des 31 colonnes, et D44, ancres
+            ecrites en dur dans le script. 28 controles, EPROUVES en les faisant
+            echouer un par un : 10 mutations, 10 echecs nommant le fautif, dont
+            l'ajout d'un 4e profil et le renommage d'un tool, qui passaient tous
+            les deux avant.
+            clients.email a du etre classee, la classification etant exhaustive.
+            Mise en colonnes_restreintes, interdite au support. AU-DELA du
+            litteral d'E5, decision A CONFIRMER PAR LE PILOTE.
+            E5 AVAIT UN TROU DE CONCEPTION : le perimetre etait decrit sur les
+            colonnes touchees, notion tournee vers la SORTIE. ORDER BY marge_pct
+            divulgue le classement sans afficher la colonne, et une dichotomie
+            sur un predicat rend la valeur exacte : marge de REF-8842 = 47,3,
+            reconstituee sur la base reelle. D43 : toute occurrence, WHERE,
+            JOIN ON, GROUP BY, HAVING, ORDER BY, agregats, sous-requetes.
+            CONTRADICTION TEST / MECANISME : SQL-17 a 20 attendent
+            FORBIDDEN_COLUMN alors que la couche 0 cache la colonne, donc le
+            modele repond HORS_SCHEMA. La mauvaise reponse aurait ete de montrer
+            les colonnes pour pouvoir les refuser. Resolue par D41, couche 0 bis,
+            pre-filtre lexical declare dans la matrice, qui rend le refus
+            explicite et imputable SANS valeur de securite. Les fixtures ne
+            bougent pas : les 4 questions contiennent toutes marge ou prix
+            d'achat.
+            MOTIF FAUX, DEUXIEME OCCURRENCE apres celui de P3. Azure AI Search
+            etait ecarte au pretexte que son hybride natif empeche d'isoler une
+            baseline dense. La documentation officielle presente l'index PUREMENT
+            VECTORIEL comme un cas de premiere classe. Conclusion inchangee,
+            motif reecrit : c'est la neutralite de la mesure, pas une
+            impossibilite. Je l'avais propage la veille en le recopiant.
+            SPEC MCP : les citations pointaient 2025-06-18, l'URL canonique sert
+            2026-07-28. Les trois points qui portent D28 sont inchanges. Le DCR
+            passe de SHOULD a MAY et est deprecie au profit de CIMD, que le
+            chantier 7 creditait deja a Keycloak sans le nommer.
+            GPU A100 : absent de West Europe et de France Central, present
+            seulement a Sweden Central. Tableau corrige.
+            DEUX MANQUES COMBLES, qui n'etaient pas des erreurs mais des vides :
+            eval/cas_mcp.jsonl, 22 cas de gouvernance profil x tool x attendu,
+            avec les attentes de JOURNAL. Les 4 tests d'acceptation MCP n'avaient
+            aucun oracle, alors que ce sont ceux joues en direct devant
+            l'evaluateur. Et docs/conception/08_interface.md : ce que l'interface
+            doit PROUVER, 5 ecrans, l'ecran 3 comparant deux profils sur le meme
+            appel. D39 tranche la contradiction trouvee par la revue : D28 fige
+            le profil au lancement, donc DEUX PROCESSUS, meme image et meme
+            matrice, journal partage. C'est la topologie normale de MCP stdio,
+            pas un contournement.
+            PASSATION : la parade au report du risque de deploiement passe de
+            recommandee a critere de fin du lot 0. Et chaque lot porte desormais
+            l'ecriture de son harnais : aucun lot n'en etait charge, les oracles
+            existaient sans programme pour les consommer.
+            OUTILLAGE : validation Mermaid rebranchee sur mermaid-cli, 20/20.
+            PIEGE RETROUVE : ne PAS chercher error-icon dans un SVG, mermaid
+            l'injecte dans le CSS de TOUS ses SVG, valides compris. Sur un
+            diagramme casse, mermaid-cli sort en code non nul et n'ecrit AUCUN
+            fichier. C'est le seul signal fiable, et le detecteur a ete calibre
+            sur un cas casse avant d'etre cru.
+            VERIFIE : 28 controles matrice, releve a jour, schemas a jour,
+            20 diagrammes valides, tableaux Markdown coherents.
 ```
 
 ---

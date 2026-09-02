@@ -40,7 +40,7 @@
 <body>
 <header>
   <h1>Sorabel Data Gateway — Vues schématisées</h1>
-  <p>19 schémas, extraits des fichiers du dossier de conception le 2026-09-01.</p>
+  <p>20 schémas, extraits des fichiers du dossier de conception le 2026-09-02.</p>
 </header>
 <div id="alerte">
   <b>Les schémas ne s'affichent pas ?</b> Cette page a besoin d'exécuter du JavaScript.
@@ -48,7 +48,7 @@
   Ouvrez <code>docs/schemas.html</code> dans un navigateur. Ce message disparaît dès que
   le rendu fonctionne.
 </div>
-<nav><ol><li><a href="#s1">Architecture globale</a></li><li><a href="#s2">Les quatre supports de stockage</a></li><li><a href="#s3">Modele relationnel de la base metier</a></li><li><a href="#s4">Flux d'ingestion, par artefacts</a></li><li><a href="#s5">Modele de donnees Document / Chunk</a></li><li><a href="#s6">Le modele sur un cas reel</a></li><li><a href="#s7">Flux de recherche, l'entonnoir</a></li><li><a href="#s8">Chemin Text-to-SQL</a></li><li><a href="#s9">Jointures canoniques</a></li><li><a href="#s10">Pile de gardes lecture seule</a></li><li><a href="#s11">Schema montre a chaque profil</a></li><li><a href="#s12">Arbre de decision des tools SQL</a></li><li><a href="#s13">Matrice appliquee aux deux niveaux</a></li><li><a href="#s14">Architecture cible sur Azure</a></li><li><a href="#s15">Question documentaire : reponse ou abstention</a></li><li><a href="#s16">Text-to-SQL autorise : gardes lecture seule</a></li><li><a href="#s17">Colonne sensible pour le support : refus</a></li><li><a href="#s18">Appel non autorise au niveau tool</a></li><li><a href="#s19">Tentative d'ecriture : lecture seule</a></li></ol></nav>
+<nav><ol><li><a href="#s1">Architecture globale</a></li><li><a href="#s2">Les quatre supports de stockage</a></li><li><a href="#s3">Modele relationnel de la base metier</a></li><li><a href="#s4">Flux d'ingestion, par artefacts</a></li><li><a href="#s5">Modele de donnees Document / Chunk</a></li><li><a href="#s6">Le modele sur un cas reel</a></li><li><a href="#s7">Flux de recherche, l'entonnoir</a></li><li><a href="#s8">Chemin Text-to-SQL</a></li><li><a href="#s9">Jointures canoniques</a></li><li><a href="#s10">Pile de gardes lecture seule</a></li><li><a href="#s11">Schema montre a chaque profil</a></li><li><a href="#s12">Arbre de decision des tools SQL</a></li><li><a href="#s13">Matrice appliquee aux deux niveaux</a></li><li><a href="#s14">Architecture cible sur Azure</a></li><li><a href="#s15">Interface de demonstration : deux profils</a></li><li><a href="#s16">Question documentaire : reponse ou abstention</a></li><li><a href="#s17">Text-to-SQL autorise : gardes lecture seule</a></li><li><a href="#s18">Colonne sensible pour le support : refus</a></li><li><a href="#s19">Appel non autorise au niveau tool</a></li><li><a href="#s20">Tentative d'ecriture : lecture seule</a></li></ol></nav>
 <main>
   <section id="s1">
     <h2>1. Architecture globale <span class="tag">structurelle</span></h2>
@@ -249,13 +249,15 @@ flowchart LR
     <p class="cap">La decroissance est la regle. Le modele le plus couteux ne voit que la preselection.</p>
     <pre class="mermaid">
 flowchart TB
-    Q["Question de l'utilisateur"] --&gt; R{"La question contient-elle&lt;br/&gt;un motif REF-XXXX ?"}
+    Q["Question de l'utilisateur"] --&gt; PF["Filtre de profil E4&lt;br/&gt;collections autorisees&lt;br/&gt;AVANT toute recherche"]
+    PF --&gt; R{"La question contient-elle&lt;br/&gt;un motif REF-XXXX ?"}
 
     R --&gt;|oui| EX["Court-circuit exact&lt;br/&gt;filtre sur la metadonnee ref&lt;br/&gt;C chunks vers ceux de la reference"]
+    R --&gt;|"oui, mais 0 chunk"| SP
     R --&gt;|non| SP["Interrogation des deux index&lt;br/&gt;en parallele"]
 
-    SP --&gt; BM["BM25 lexical&lt;br/&gt;C vers top n"]
-    SP --&gt; DN["Dense bge-m3, cosinus&lt;br/&gt;C vers top n"]
+    SP --&gt; BM["BM25 lexical, index par collection&lt;br/&gt;C vers top n"]
+    SP --&gt; DN["Dense bge-m3, cosinus, clause where&lt;br/&gt;C vers top n"]
 
     BM --&gt; FU["Fusion RRF, k=60&lt;br/&gt;2 listes de n vers m"]
     DN --&gt; FU
@@ -263,7 +265,8 @@ flowchart TB
     EX --&gt; RR["Reranking cross-encoder&lt;br/&gt;bge-reranker-v2-m3&lt;br/&gt;m vers k reordonnes"]
     FU --&gt; RR
 
-    RR --&gt; SG{"Score du meilleur passage&lt;br/&gt;superieur au seuil tau ?"}
+    RR --&gt; VE["Arbitrage de version&lt;br/&gt;is_latest, un chunk par version_group"]
+    VE --&gt; SG{"Score du meilleur passage&lt;br/&gt;superieur au seuil tau ?"}
     SG --&gt;|non| AB["Abstention E1&lt;br/&gt;status = out_of_corpus"]
     SG --&gt;|oui| GE["Generation ancree&lt;br/&gt;sur les k passages retenus"]
     GE --&gt; OU["Reponse + sources&lt;br/&gt;titre, ref, version, date"]
@@ -425,7 +428,27 @@ flowchart TB
   </section>
 
   <section id="s15">
-    <h2>15. Question documentaire : reponse ou abstention <span class="tag">E1 - E2</span></h2>
+    <h2>15. Interface de demonstration : deux profils <span class="tag">chantier 8</span></h2>
+    <p class="cap">Deux processus, meme image et meme matrice, journal partage. E4 rendu visible.</p>
+    <pre class="mermaid">
+flowchart LR
+    UI["Interface web&lt;br/&gt;ecran 3, comparaison"]
+
+    UI --&gt;|"MCP stdio"| S1["Processus serveur&lt;br/&gt;SORABEL_PROFIL=support"]
+    UI --&gt;|"MCP stdio"| S2["Processus serveur&lt;br/&gt;SORABEL_PROFIL=commercial"]
+
+    S1 --&gt; M[("governance/matrice.yaml&lt;br/&gt;source unique")]
+    S2 --&gt; M
+    S1 --&gt; J[("governance/logs/&lt;br/&gt;journal partage")]
+    S2 --&gt; J
+
+    M -.-&gt;|"meme image, meme code,&lt;br/&gt;meme matrice"| CODE["Un seul serveur MCP&lt;br/&gt;au sens de E4"]
+    </pre>
+    <p class="src">source : docs/conception/08_interface.md, diagramme 1</p>
+  </section>
+
+  <section id="s16">
+    <h2>16. Question documentaire : reponse ou abstention <span class="tag">E1 - E2</span></h2>
     <p class="cap">answer_question : hybride, reranking, seuil, sources citees ou abstention.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -455,8 +478,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 1</p>
   </section>
 
-  <section id="s16">
-    <h2>16. Text-to-SQL autorise : gardes lecture seule <span class="tag">E3</span></h2>
+  <section id="s17">
+    <h2>17. Text-to-SQL autorise : gardes lecture seule <span class="tag">E3</span></h2>
     <p class="cap">ask_database : generation, AST, perimetre, LIMIT, execution read-only, SQL renvoye.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -484,8 +507,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 2</p>
   </section>
 
-  <section id="s17">
-    <h2>17. Colonne sensible pour le support : refus <span class="tag">E5</span></h2>
+  <section id="s18">
+    <h2>18. Colonne sensible pour le support : refus <span class="tag">E5</span></h2>
     <p class="cap">Le perimetre rattrape meme si le modele produit un SQL touchant une colonne interdite.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -510,8 +533,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 3</p>
   </section>
 
-  <section id="s18">
-    <h2>18. Appel non autorise au niveau tool <span class="tag">E4</span></h2>
+  <section id="s19">
+    <h2>19. Appel non autorise au niveau tool <span class="tag">E4</span></h2>
     <p class="cap">Le refus intervient a l'entree, aucun moteur n'est atteint.</p>
     <pre class="mermaid">
 sequenceDiagram
@@ -529,8 +552,8 @@ sequenceDiagram
     <p class="src">source : docs/conception/04_sequences.md, diagramme 4</p>
   </section>
 
-  <section id="s19">
-    <h2>19. Tentative d'ecriture : lecture seule <span class="tag">E3</span></h2>
+  <section id="s20">
+    <h2>20. Tentative d'ecriture : lecture seule <span class="tag">E3</span></h2>
     <p class="cap">L'AST rejette le non-SELECT, la connexion read-only reste le garde-fou ultime.</p>
     <pre class="mermaid">
 sequenceDiagram

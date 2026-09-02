@@ -1,4 +1,4 @@
-# Chantier 2 — Catalogue de tools et chemin Text-to-SQL
+# Chantier 2 : Catalogue de tools et chemin Text-to-SQL
 
 > Dossier de conception. Répond aux cinq questions guides du brief et produit les
 > schémas associés. Exigences couvertes : E2 (langage naturel), E3 (lecture seule
@@ -6,7 +6,7 @@
 > sensibles jamais pour le support). S'appuie sur `docs/analyse_donnees.md`
 > (schéma SQL réel) et sur les valeurs réelles extraites de `data/sorabel.db`.
 >
-> Statut des décisions : PROPOSÉ (à valider par le pilote), sauf mention.
+> Statut des décisions : VALIDÉ. P5 verrouillé le 2026-08-26.
 
 ---
 
@@ -153,7 +153,8 @@ un non argumenté.
 
 | Couche | Barriere                                               | Ce qu'elle bloque                                                                             | Exigence |
 | -----: | ------------------------------------------------------ | --------------------------------------------------------------------------------------------- | -------- |
-|      1 | Connexion READ-ONLY (SQLite mode=ro / query_only)      | TOUTE ecriture, meme si les couches hautes sont contournees                                   | E3       |
+|      0 bis | Pre-filtre lexical (lexique_refus de la matrice)    | rend EXPLICITE le refus d'une question qui nomme une colonne retiree. Aucune valeur de securite, voir 3.2 bis | E5       |
+|      1 | Connexion READ-ONLY (SQLite mode=ro / query_only)      | toute ecriture DANS LA BASE METIER. Ne couvre PAS une base attachee, voir 2.1 bis            | E3       |
 |      2 | Validation AST (sqlglot)                               | non-SELECT (INSERT/UPDATE/DELETE/DROP/ALTER/PRAGMA/ATTACH), instructions multiples (; empile) | E3       |
 |      3 | Perimetre tables/colonnes (extraction AST + whitelist) | acces hors matrice du profil (prix_achat_ht, marge_pct, ...)                                  | E4/E5    |
 |      4 | LIMIT par defaut + timeout                             | requetes lourdes, produit cartesien, blocage de la base                                       | E3       |
@@ -176,9 +177,36 @@ flowchart LR
 Point important sur la « liste de mots interdits » : c'est un filtre rapide
 complémentaire, mais **insuffisant seul** (contournable par commentaires, casse,
 alias). L'autorité, c'est l'analyse AST, qui raisonne sur la structure réelle de
-la requête. La connexion en lecture seule reste le garde-fou ultime : même une
-requête d'écriture qui passerait toutes les couches logicielles échouerait au
-niveau du moteur.
+la requête.
+
+### 2.1 bis Ce que la couche 1 ne couvre pas
+
+Ce document a affirmé jusqu'au 2026-09-02 que la connexion en lecture seule était
+le « garde-fou ultime », bloquant toute écriture « même si les couches hautes
+sont contournées ». **C'est faux, et l'essai le montre.** Sur une connexion
+ouverte exactement comme spécifié, `mode=ro` puis `PRAGMA query_only = ON` :
+
+| Instruction | SQLite répond |
+| --- | --- |
+| `UPDATE produits SET ...` | `attempt to write a readonly database` |
+| `PRAGMA query_only = 0` | **accepté**, le drapeau retombe à 0 |
+| `ATTACH DATABASE 'exfil.db' AS atk` | **accepté**, le fichier est créé |
+| `CREATE TABLE atk.vol(...)` puis `INSERT INTO atk.vol SELECT ref, prix_achat_ht, marge_pct FROM produits` | **accepté**, 120 lignes écrites |
+
+`mode=ro` protège **le fichier ouvert**, pas le processus. La documentation
+SQLite le dit d'ailleurs pour le pragma : « the database is not truly read-only ».
+
+Ce qui protège réellement contre l'écriture, c'est la **couche 2** : `sqlglot`
+type `ATTACH` et `PRAGMA` comme des instructions non-SELECT, et la règle du SELECT
+unique les refuse avant exécution. La pile tient donc aujourd'hui, mais elle tient
+sur **une** couche et non sur deux. Conséquences à tenir :
+
+- ne jamais présenter la couche 1 comme un rattrapage de la couche 2 ;
+- tout chemin d'exécution qui court-circuiterait l'AST, un tool figé futur ou un
+  script d'administration, n'aurait **aucune** protection contre `ATTACH` ;
+- la couche 2 doit refuser explicitement `ATTACH`, `PRAGMA` et `DETACH` par leur
+  type de nœud, pas seulement « tout ce qui n'est pas un `SELECT` », pour que le
+  refus soit lisible au journal.
 
 L'incident du brief (base verrouillée un vendredi soir) est adressé par la
 couche 4 (LIMIT + timeout) et la couche 1 (aucune écriture possible).
@@ -243,6 +271,70 @@ Apres generation : extraction des tables/colonnes depuis l'AST, verification
                    interdite -> REFUS CLAIR + journalisation (jamais un filtrage
                    silencieux qui masquerait le probleme).
 ```
+
+**« Toute référence » veut dire toute occurrence, précision du 2026-09-02.**
+L'extraction porte sur chaque nœud colonne de l'arbre : projection, `WHERE`,
+`JOIN ... ON`, `GROUP BY`, `HAVING`, `ORDER BY`, fonction d'agrégat, et
+sous-requête à toute profondeur. En `sqlglot`, c'est `find_all(exp.Column)` après
+résolution des alias, **jamais** la liste des expressions projetées.
+
+La nuance n'est pas théorique : elle sépare une garde qui tient d'une garde
+décorative. Une colonne interdite divulgue son contenu sans jamais être affichée.
+
+| Requête, profil `support`, aucune colonne sensible projetée | Ce qu'elle révèle |
+| --- | --- |
+| `SELECT ref, nom FROM produits ORDER BY marge_pct DESC LIMIT 5` | les 5 références les plus margées |
+| `SELECT categorie FROM produits GROUP BY categorie HAVING AVG(marge_pct) > 45` | la catégorie la plus margée |
+| `SELECT ref FROM produits WHERE ref='REF-8842' AND marge_pct >= 47.3` | la marge exacte, par dichotomie, un bit par appel |
+
+La troisième a été jouée sur la base réelle : la marge de `REF-8842` vaut **47,3**,
+reconstituée seuil par seuil, chaque appel étant journalisé comme autorisé.
+
+Piège de nommage à connaître : le journal appelle ce champ
+`ressources_touchees.colonnes`, une notion tournée vers la **sortie**. Un
+développeur qui code « colonnes touchées = colonnes projetées » écrit un code
+cohérent avec le nom du champ, et rouvre les trois fuites ci-dessus.
+
+### 3.2 bis Couche 0 bis : le refus explicite, ajouté le 2026-09-02
+
+La couche 0 crée un problème que la revue a mis au jour. Le support ne voit pas
+exister `marge_pct` : un modèle à qui l'on cache la colonne ne génère pas de SQL
+qui la touche, il répond `HORS_SCHEMA`. Rien ne fuit, E5 est respectée, mais le
+test d'acceptation du brief attend « refus (matrice) + journalisé », et un
+`out_of_schema` n'est pas un refus de matrice. Il ne produit **aucune trace
+imputable** : un audit ne pourrait pas compter les tentatives d'accès aux marges.
+
+La mauvaise réponse serait de montrer les colonnes au modèle pour pouvoir les
+refuser ensuite, c'est-à-dire démonter la première ligne de défense pour faire
+passer le test censé la prouver.
+
+**La règle retenue.** Avant la génération, la question est confrontée au lexique
+de refus déclaré dans `governance/matrice.yaml`. Si elle nomme une colonne
+retirée pour le profil, l'appel est refusé immédiatement, avec
+`code = FORBIDDEN_COLUMN`, sans appeler le modèle.
+
+| Question, profil `support` | Terme reconnu | Sortie |
+| --- | --- | --- |
+| « quelle est la marge sur la REF-8842 ? » | `marge` | `refused` / `FORBIDDEN_COLUMN` |
+| « quel est le prix d'achat du projecteur LED 100 W ? » | `prix d'achat` | `refused` / `FORBIDDEN_COLUMN` |
+| « quelle est la météo à Lille ? » | aucun | `out_of_schema`, comme avant |
+
+**Ce que cette couche n'est pas.** Ce n'est **pas** une garantie de sécurité. Ce
+document explique lui-même en Q2 pourquoi une liste de mots ne protège rien :
+elle se contourne par la casse, les commentaires, une paraphrase. La sécurité
+reste portée par les couches 2 et 3, qui raisonnent sur l'arbre syntaxique.
+
+Cette couche sert à une autre chose, et une seule : rendre le refus **explicite
+et imputable**. Un contournement du lexique ne donne rien de plus qu'aujourd'hui,
+puisque le modèle ne voit toujours pas la colonne et que les couches 2 et 3
+restent en travers. Autrement dit, elle ne peut faire qu'améliorer la lisibilité
+du refus, jamais dégrader la protection. C'est la condition pour qu'elle soit
+acceptable malgré ses faux positifs, dont le coût est un refus injustifié, jamais
+une fuite.
+
+Effet secondaire à connaître : elle est **fail-safe**. « Quelle marge de manœuvre
+avons-nous sur ce délai ? » serait refusée à tort. Sur ce domaine métier, le
+compromis est bon.
 
 ### 3.3 Traitement de `SELECT *`
 
@@ -425,6 +517,21 @@ D26  Resultat vide : liste/agregat sans ligne = status=ok, rows=[] ; entite par
      identifiant precis introuvable = status=not_found. SQL toujours renvoye.
 D27  Desambiguisation : ambiguite de critere -> CLARIFY ; ambiguite d'entite
      (un libelle -> plusieurs ref) -> reponse multiligne (status=ok).
+D41  Couche 0 bis, refus explicite (2026-09-02). Avant generation, la question
+     est confrontee au lexique_refus de governance/matrice.yaml. Si elle nomme
+     une colonne retiree pour le profil, refus immediat FORBIDDEN_COLUMN, sans
+     appeler le modele. AUCUNE valeur de securite : une liste de mots se
+     contourne, et ce document explique en Q2 pourquoi. Sa seule fonction est de
+     rendre le refus EXPLICITE et IMPUTABLE, donc journalisable et demontrable.
+     Motif : la couche 0 cache les colonnes au support, donc le modele repond
+     HORS_SCHEMA et aucune trace de tentative n'existe. Elle ne peut pas degrader
+     la protection, les couches 2 et 3 restant en travers, et ses faux positifs
+     coutent un refus injustifie, jamais une fuite.
+D43  La couche 3 inspecte TOUTE occurrence d'une colonne, pas les seules
+     projections : WHERE, JOIN ON, GROUP BY, HAVING, ORDER BY, agregats,
+     sous-requetes a toute profondeur. Motif : ORDER BY marge_pct divulgue le
+     classement sans afficher la colonne, et une dichotomie sur un predicat
+     reconstitue la valeur exacte. Verifie le 2026-09-02 sur la base reelle.
 D30  Le tableau de correspondance des 24 questions SQL quitte le dossier de
      conception : sa colonne "mecanisme" est de la tracabilite au niveau de la
      CLASSE et non de l'item, sa colonne "comportement attendu" est un corrige

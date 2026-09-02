@@ -82,7 +82,7 @@ sorabel-data-gateway/
 |-----------------------------------|--------------|
 | Squelette + mémoire de projet     | Fait         |
 | Analyse des données               | Fait, relevé généré |
-| Conception (3 chantiers + schémas)| Fait, D1 à D30 |
+| Conception (7 chantiers + schémas)| Fait, D1 à D37 |
 | Jeux d'évaluation + attendus      | Fait         |
 | Protocole de mesure E6            | Fait, chiffres au lot 3 |
 | Implémentation RAG                | À venir      |
@@ -100,5 +100,5 @@ exécution des tests d'acceptation, reproduction de la mesure E6).
 
 ---
 
-*Projet de formation — Dev IA agentic. Conception menée avec un assistant IA
+*Projet de formation : Dev IA agentic. Conception menée avec un assistant IA
 selon une méthode pilote / expert (voir `CLAUDE.md`, §7).*

@@ -1,4 +1,4 @@
-# Chantier 6 — Choix des bases de données
+# Chantier 6 : Choix des bases de données
 
 > Ce document tranche **quel type de stockage** convient à chacun des besoins de
 > la Gateway, et pourquoi. Il ne décrit ni le schéma des données (chantier 2 et

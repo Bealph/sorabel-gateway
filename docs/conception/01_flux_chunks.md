@@ -1,12 +1,14 @@
-# Chantier 1 — RAG avancé : flux documentaire et chunking
+# Chantier 1 : RAG avancé, flux documentaire et chunking
 
 > Dossier de conception. Répond aux cinq questions guides du brief et produit les
 > schémas associés. Exigences couvertes : E1 (citations + abstention), E2
 > (référence exacte + langage naturel), E6 (gain mesuré). S'appuie sur
 > `docs/analyse_donnees.md` (structure réelle du corpus).
 >
-> Statut des décisions : PROPOSÉ (recommandation de l'expert, à valider par le
-> pilote). Les points ouverts sont listés en fin de document.
+> Statut des décisions : VALIDÉ. Les arbitrages P1 à P4 ont été verrouillés le
+> 2026-08-26, voir la section « Arbitrages » en fin de document. Ce chapeau
+> annonçait « PROPOSÉ » jusqu'au 2026-09-02, en contradiction avec le corps du
+> même fichier.
 
 ---
 
@@ -49,6 +51,25 @@ Chaque source est convertie vers un même enregistrement :
 
 Normalisation commune : Unicode NFC, espaces normalisés, sections préservées,
 la référence et le titre restent présents dans le texte (utile au lexical).
+
+**Interdit, et pourquoi, ajouté le 2026-09-02.** L'extraction PDF passe par
+PyMuPDF ou pdfplumber. **Aucune expression régulière maison sur le flux PDF.**
+Ce n'est pas une préférence de style : l'outil de relevé du dépôt en portait une,
+`\(([^()]*)\)\s*Tj`, dont la classe s'arrête sur la première parenthèse
+échappée. Le titre `FICHE TECHNIQUE - Cheville métallique M8 \(boîte 100\)`
+était donc jeté en entier, et avec lui **47 titres de fiche sur 150**. Un motif
+tolérant aux échappements en perd zéro. Reproduit dans un loader, ce défaut ferait
+perdre à 31 % des fiches leur titre et leur nom de produit, c'est-à-dire les
+seuls termes sur lesquels le lexical peut travailler.
+
+**Assertions de fin de lot 1**, à écrire avec le loader :
+
+| Assertion | Ce qu'elle attrape |
+| --- | --- |
+| 150 fiches sur 150 ont un titre non vide | la perte silencieuse ci-dessus |
+| chaque document a `ref`, `version`, `date` non nuls | un format mal parsé |
+| exactement un `is_latest` vrai par `version_group` | une réindexation partielle |
+| chaque `doc_type` extrait appartient à la matrice | un dossier renommé |
 
 ### 1.4 Traitement des versions (dédoublonnage)
 
@@ -166,6 +187,30 @@ structure, pas selon un nombre de caractères arbitraire.
 Regle globale : respecter les frontieres section et document ; cible 200 a 400
 tokens ; chevauchement ~15% uniquement si une section depasse la cible ; ne
 jamais couper une phrase ni fusionner deux documents.
+
+**Règle du report d'en-tête, ajoutée le 2026-09-02.** Le texte indexé de chaque
+chunk est préfixé du titre du document, de sa référence et de sa version :
+
+```
+<titre du document> | <ref> | v<version>
+<texte de la section>
+```
+
+Ce n'est pas un confort de lecture, c'est la condition pour que la recherche
+distingue deux documents. Mesuré sur le corpus fourni, en neutralisant
+références, dates et numéros de version :
+
+| Collection | Fichiers | Corps distincts **avec** le titre | Corps distincts **sans** |
+| --- | ---: | ---: | ---: |
+| `notices` | 80 | 43 | **1** |
+| `procedure_sav` | 90 | 90 | **1** |
+
+Sans le report, le moteur voit 80 chunks au texte rigoureusement identique et en
+cite un au hasard : une notice de projecteur LED pour une question sur un
+disjoncteur, avec titre, référence, version et date parfaitement formés. E1 est
+formellement satisfaite et la citation est fausse, sans qu'aucune garde ne
+puisse le voir. La propriété est celle du jeu fourni, la règle vaut pour tout
+corpus documentaire d'entreprise, où le gabarit est la norme.
 
 Justification : une question cible souvent une section précise (par exemple
 « que vérifier 48 h après la mise en service ? » vise la section Mise en service
@@ -289,8 +334,6 @@ v1.0 est une version périmée de la fiche v2.1. D'où la clé composite
 la fiche entière, une question sur le serrage des bornes vise une seule section
 de la notice. Un découpage uniforme servirait mal l'une des deux.
 
-Volumes sur l'ensemble du corpus :
-
 La règle de découpage, elle, ne dépend pas du corpus :
 
 | Type de document | Chunks produits | Pourquoi |
@@ -358,13 +401,15 @@ présélectionné.
 
 ```mermaid
 flowchart TB
-    Q["Question de l'utilisateur"] --> R{"La question contient-elle<br/>un motif REF-XXXX ?"}
+    Q["Question de l'utilisateur"] --> PF["Filtre de profil E4<br/>collections autorisees<br/>AVANT toute recherche"]
+    PF --> R{"La question contient-elle<br/>un motif REF-XXXX ?"}
 
     R -->|oui| EX["Court-circuit exact<br/>filtre sur la metadonnee ref<br/>C chunks vers ceux de la reference"]
+    R -->|"oui, mais 0 chunk"| SP
     R -->|non| SP["Interrogation des deux index<br/>en parallele"]
 
-    SP --> BM["BM25 lexical<br/>C vers top n"]
-    SP --> DN["Dense bge-m3, cosinus<br/>C vers top n"]
+    SP --> BM["BM25 lexical, index par collection<br/>C vers top n"]
+    SP --> DN["Dense bge-m3, cosinus, clause where<br/>C vers top n"]
 
     BM --> FU["Fusion RRF, k=60<br/>2 listes de n vers m"]
     DN --> FU
@@ -372,7 +417,8 @@ flowchart TB
     EX --> RR["Reranking cross-encoder<br/>bge-reranker-v2-m3<br/>m vers k reordonnes"]
     FU --> RR
 
-    RR --> SG{"Score du meilleur passage<br/>superieur au seuil tau ?"}
+    RR --> VE["Arbitrage de version<br/>is_latest, un chunk par version_group"]
+    VE --> SG{"Score du meilleur passage<br/>superieur au seuil tau ?"}
     SG -->|non| AB["Abstention E1<br/>status = out_of_corpus"]
     SG -->|oui| GE["Generation ancree<br/>sur les k passages retenus"]
     GE --> OU["Reponse + sources<br/>titre, ref, version, date"]
@@ -382,11 +428,13 @@ L'entonnoir, étage par étage :
 
 | Étage | Entrée | Sortie | Coût unitaire | Ce qu'il apporte |
 | --- | --- | --- | --- | --- |
-| Court-circuit `ref` | `C` chunks | les chunks de la référence | négligeable | garantit E2 |
+| Filtre de profil | `C` chunks | `C'` chunks autorisés | négligeable | garantit E4 |
+| Court-circuit `ref` | `C'` chunks | les chunks de la référence | négligeable | garantit E2 |
 | BM25 | `C` | `n` | très faible | termes exacts |
 | Dense | `C` | `n` | faible, vecteurs précalculés | sens, paraphrases |
 | Fusion RRF | `2n` | `m` | nul | réconcilie les deux |
 | Reranking | `m` | `k` | **élevé** | ordre juste + score calibré |
+| Arbitrage de version | `k` | `k` | nul | cite la version courante (P1) |
 | Seuil tau | `k` | `k` ou 0 | nul | abstention (E1) |
 
 **Ce qui est de la conception, ici, c'est la décroissance**, pas les nombres :
@@ -427,6 +475,47 @@ on n'appelle pas le générateur du tout : on renvoie `out_of_corpus`. C'est la
 première des deux gardes d'E1 (la seconde étant la consigne d'ancrage donnée au
 LLM, cf. 4.2). Le calibrage de tau se fait sur les 8 questions `hors_corpus` et
 les 14 `couverte` : il faut une marge nette entre les deux populations.
+
+### 3.5 bis Trois règles ajoutées le 2026-09-02
+
+La revue de conception a montré que trois garanties affirmées ailleurs dans le
+dossier n'avaient aucun mécanisme dans cet entonnoir. Elles sont posées ici.
+
+**a. Le filtre de profil s'applique avant la recherche, sur les deux branches.**
+C'est le motif qui a fait retenir Chroma et écarter FAISS (D32). Côté dense, la
+clause `where` du store le fait. Côté lexical, **aucune bibliothèque BM25 usuelle
+n'a de clause de filtrage** : il faut donc un **index BM25 par collection**,
+sélectionné avant la requête, et non un filtrage du résultat. Filtrer après coup
+paraît équivalent et ne l'est pas : le passage interdit aurait été **lu**, la
+profondeur `n` serait consommée par des chunks hors périmètre, et aucun refus ne
+serait journalisé puisque aucun tool n'aurait été refusé.
+
+**b. Le court-circuit sur référence est défini par un motif, un départage et un
+repli.**
+
+| Point | Règle |
+| --- | --- |
+| Motif reconnu | `REF-\d{4}`, insensible à la casse, tiret obligatoire |
+| Plusieurs `doc_type` pour la référence | Si la question nomme un type (« fiche », « notice »), il prime. Sinon, ordre par défaut `fiche_technique`, `notice`, `procedure_sav` |
+| Plusieurs versions | Traité par l'arbitrage de version, point c |
+| Référence absente du corpus | **Repli sur l'hybride** avec la question entière, puis seuil tau normal |
+
+Le repli est la règle la plus importante des quatre. Sans lui, la présence d'un
+code dans une question **dégrade** la couverture : `REF-1234` inexistante rendrait
+`out_of_corpus` alors que le reste de la question aurait trouvé des passages
+pertinents.
+
+**c. L'arbitrage de version est un étage, pas une intention.** Après reranking,
+on ne conserve **qu'un chunk par `version_group`**, celui dont `is_latest` est
+vrai. Une version antérieure ne remonte que par `get_document` avec une version
+explicite (D2). Sans cet étage, le cross-encoder, qui ignore les dates, peut
+classer la v1.0 devant la v2.1 : la réponse cite alors honnêtement, format E1
+respecté, un document périmé. C'est exactement ce que le brief reproche à
+l'existant, « confond les versions d'une même notice ».
+
+Contrainte associée, à vérifier au lot 1 : **exactement un `is_latest` vrai par
+`version_group`**. C'est une assertion d'ingestion, du même genre que celles que
+`governance/verifier_matrice.py` joue sur la matrice.
 
 ### 3.6 Benchmark des briques (recommandations)
 

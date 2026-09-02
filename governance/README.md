@@ -11,7 +11,7 @@ appel, colonnes sensibles jamais pour le support).
 | `matrice.yaml` | **La source de vérité** des droits (D21). Chargée au démarrage, appliquée aux deux niveaux : gateway pour le tool, tool pour les ressources | oui |
 | `verifier_matrice.py` | Contrôle la cohérence, puis régénère la vue lisible | oui |
 | `matrice_lisible.md` | Vue générée, à titre informatif | **non** |
-| `logs/` | Journal JSONL, un objet par appel, autorisé ou refusé (D33). À créer au développement | — |
+| `logs/` | Journal JSONL, un objet par appel, autorisé ou refusé (D33). À créer au développement | - |
 
 ## Vérifier
 
