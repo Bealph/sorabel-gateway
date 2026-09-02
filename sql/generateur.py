@@ -25,7 +25,10 @@ from functools import cached_property
 
 from .service import Generation
 
-MODELE_DEFAUT = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+#: Modèle RETENU par D48, et non le plus gros qui tienne. Mesuré à 17/24 sur
+#: `eval/questions_sql.jsonl`, 12 à 20 s en régime. Le 1,5B a été mesuré à
+#: 16/24 pour trois fois le temps : plus gros n'était pas meilleur ici.
+MODELE_DEFAUT = "Qwen/Qwen2.5-Coder-0.5B-Instruct"
 
 CONSIGNE = """Tu traduis une question en SQL SQLite, sur le schema ci-dessous.
 
