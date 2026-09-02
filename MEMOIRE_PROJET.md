@@ -93,7 +93,7 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Langage / runtime | Python | PROPOSE |
 | Framework MCP | FastMCP (SDK Python officiel) | PROPOSE |
 | Base SQL | SQLite (fichier fourni), acces read-only au niveau du pilote | VALIDE |
-| RAG - embeddings | BAAI/bge-m3 (multilingue, local) | VALIDE |
+| RAG - embeddings | intfloat/multilingual-e5-small par defaut, nom lu dans EMBEDDING_MODEL. 384 dim, 910 chunks en 60 s sur processeur. bge-m3 a une variable pres (D47) | VALIDE |
 | RAG - recherche | Hybride : BM25 + dense, court-circuit REF | VALIDE |
 | RAG - fusion | RRF (Reciprocal Rank Fusion, k=60) | VALIDE |
 | RAG - reranking | Cross-encoder BAAI/bge-reranker-v2-m3 | VALIDE |
@@ -108,6 +108,7 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Journalisation | JSONL de tout appel (autorise + refuse), sans valeurs sensibles, avec SQL + code | VALIDE |
 | Catalogue de tools | 8 tools : answer_question, search_docs, get_document, list_sources, ask_database, get_schema, check_stock, order_status | VALIDE |
 | Interface graphique | Deployee sur Azure, cible du livrable "lien vers une UI" | VALIDE |
+| Chargement du modele | PARESSEUX, au premier encodage. 22,5 s a froid contre 30 s de budget par appel dans la suite d'acceptance (D46) | VALIDE |
 | Cible de deploiement | Azure. Strategie INCREMENTALE : lots 0 a 4 en local, deploiement au lot 5 (D37) | VALIDE |
 | Persistance des artefacts | Chemin unique SORABEL_DATA_DIR. Le stockage de conteneur est ephemere par defaut (D35) | VALIDE |
 | Client Slack | APPLICATION a part entiere, reponse differee, identite Slack au journal seulement (D34) | VALIDE |

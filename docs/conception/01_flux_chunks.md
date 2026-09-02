@@ -654,3 +654,64 @@ P4  Eval E6 -> ANNOTER les gold doc des 14 questions "couverte" (Recall@k et MRR
 - Tables PDF : aujourd'hui listes cle:valeur ; si de vraies grilles apparaissent,
   les lineariser pour preserver le sens a l'embedding.
 ```
+
+---
+
+## Q6. Ce que l'implémentation a tranché, et mesuré
+
+> Ajouté le 2026-09-02, pendant le lot 1. Ces deux décisions ne pouvaient pas se
+> prendre sur le papier : elles dépendent de mesures faites sur la machine.
+
+### D46 : le modèle d'embedding se charge PARESSEUSEMENT
+
+La suite d'acceptance accorde **30 secondes par appel** et lance un processus
+serveur neuf par session de test. Mesuré sur le poste de développement :
+
+| Étape | À froid | À chaud |
+| --- | ---: | ---: |
+| import de `torch` | 6,6 s | 3,2 s |
+| import de `sentence_transformers` | 11,2 s | 3,6 s |
+| chargement du modèle | 4,7 s | 3,7 s |
+| **total** | **22,5 s** | **10,4 s** |
+
+Payé au démarrage, cela mangerait le budget avant même la première recherche, et
+un démarrage à froid frôlerait le délai. Le modèle se charge donc au **premier
+encodage**, une seule fois par processus.
+
+Effet de bord heureux, et il tient à un choix de conception : le court-circuit
+sur référence exacte est un **filtre par métadonnée**, sans aucun embedding.
+`search_docs("REF-8842")` ne charge donc jamais le modèle. Le test d'acceptation
+d'E2 est instantané.
+
+### D47 : `multilingual-e5-small` par défaut, et le modèle reste une variable
+
+P2 avait retenu `bge-m3`. Le dépôt d'exercice propose `intfloat/multilingual-e5-small`
+dans son `.env.example`. Retenu : **le défaut de l'amont**, et le nom reste lu
+dans `EMBEDDING_MODEL`.
+
+Motifs, dans l'ordre :
+
+- **La mesure d'E6 ne dépend pas du modèle**, à condition que les deux branches
+  utilisent le même. C'est pour cela que l'encodeur vit dans `common/` et non
+  dans `ingest/` : l'ingestion et la recherche ne peuvent pas diverger.
+- Mesuré : 910 chunks encodés en **60 secondes**, 384 dimensions, sur processeur.
+  Le corpus entier se réindexe en une minute, ce qui rend l'ablation du lot 3
+  praticable au lieu d'être théorique.
+- `bge-m3` reste accessible en changeant une variable d'environnement, si la
+  mesure montrait que la qualité de rappel le justifie.
+
+Ce que cela ne change pas : P2 tenait sur deux critères, local et multilingue.
+Les deux sont satisfaits.
+
+### Ce que l'index a révélé, et qui confirme deux règles
+
+Trois requêtes de contrôle sur l'index réel, 910 chunks :
+
+| Requête | Résultat | Ce que cela confirme |
+| --- | --- | --- |
+| filtre exact `reference = REF-8842` et `is_latest` | la fiche, 4 sections de notice, **et une note interne** « Point politique tarifaire » | le filtre de gouvernance n'est pas optionnel : une note interdite au `support` porte cette référence |
+| « quel disjoncteur pour du triphasé ? » | 3 résultats, dont **REF-1024 deux fois**, en v1.0 et v2.1 | l'arbitrage de version n'est pas un raffinement : sans lui, deux places sur trois du top-k sont prises par le même document |
+| « quelle est notre politique tarifaire ? » | sans filtre : deux `note_interne`. Avec le filtre du profil `support` : deux `procedure_sav` | le filtrage par métadonnée s'applique bien **avant** la recherche |
+
+La deuxième ligne est la plus instructive : elle montre le défaut que la revue
+avait déduit du dossier, reproduit ici sur des données réelles.

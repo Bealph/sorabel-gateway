@@ -25,6 +25,9 @@ htmlcov/
 chroma-data/
 logs/*.jsonl
 data/sorabel.db
+# Index documentaire : artefact GENERE par `python -m ingest`, binaire et
+# reconstructible en une minute. Un artefact reconstructible ne se versionne pas.
+data/index/
 
 # IDE / OS
 .idea/
