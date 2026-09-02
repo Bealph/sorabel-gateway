@@ -98,7 +98,7 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | RAG - fusion | RRF (Reciprocal Rank Fusion, k=60) | VALIDE |
 | RAG - reranking | Cross-encoder BAAI/bge-reranker-v2-m3 | VALIDE |
 | RAG - versions | Indexer toutes, is_latest, citer la plus recente ; ancienne sur demande explicite | VALIDE |
-| Store vectoriel | Chroma (dense) + bm25 applicatif separe. Motif : filtrage par metadonnee AVANT la recherche | VALIDE |
+| Store vectoriel | Chroma EMBARQUE (PersistentClient), pas de service ni Docker + bm25 applicatif separe. Motif : filtrage par metadonnee AVANT la recherche, eprouve le 2026-09-02 (D45) | VALIDE |
 | RAG - eval E6 | Gold doc annotes pour les "couverte" | VALIDE |
 | Text-to-SQL - securite | Defense en profondeur : connexion RO + AST (sqlglot) SELECT-only + perimetre profil + LIMIT/timeout + SQL renvoye + log | VALIDE |
 | Text-to-SQL - catalogue | ask_database (generique) + get_schema + figes check_stock / order_status, les deux seuls que le brief nomme | VALIDE |
@@ -779,6 +779,31 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             Chroma sur 8002 n'a pas ete demarre ; et la chaine de deploiement
             Azure n'a pas ete eprouvee a vide, alors que c'est un critere de fin
             de lot que la revue a rendu obligatoire.
+2026-09-02  DOCKER INDISPONIBLE, et ce n'est pas bloquant. Docker Desktop
+            refuse de demarrer : "Virtualization support not detected". Cause
+            reelle, mesuree : VT-x est DESACTIVE DANS LE FIRMWARE du poste
+            (VirtualizationFirmwareEnabled = False), alors que le processeur
+            i7-10610U sait le faire et que SLAT est present. Cela se reactive au
+            redemarrage dans le BIOS, et peut etre verrouille par une DSI. Ni
+            Windows ni Docker n'y peuvent rien.
+            D45 : Chroma passe en EMBARQUE, chromadb.PersistentClient, sans
+            service ni conteneur, sur un chemin sous SORABEL_DATA_DIR. Le contrat
+            dit que l'implementation interne est libre, et la suite d'acceptance
+            ne touche jamais Chroma : elle parle au serveur MCP en stdio.
+            EPROUVE, non suppose, sur chromadb 0.5.23 avec des vecteurs choisis
+            pour que le chunk INTERDIT soit le plus proche de la requete :
+            sans filtre, la note interne remonte 2e ; avec le filtre de profil,
+            elle disparait ET la profondeur est remplie de candidats autorises ;
+            le filtre combine doc_type + is_latest fonctionne ; la persistance
+            survit a la fermeture du client. C'est exactement la propriete qui a
+            fait retenir Chroma et ecarter FAISS.
+            GAIN INATTENDU : une unite de moins a deployer. Le dimensionnement du
+            chantier 7 comptait un service Chroma, il n'y en a plus.
+            COUT ASSUME : un index en processus ne se partage pas entre
+            instances. Avec D39, les deux processus serveurs liront le meme
+            repertoire en lecture seule apres l'ingestion, qui est hors ligne et
+            faite une fois. Si l'ingestion devenait continue, il faudrait revenir
+            au service.
 ```
 
 ---

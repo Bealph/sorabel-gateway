@@ -226,3 +226,50 @@ D33  Journal : FICHIER JSONL en ajout, un objet par ligne, pas de base. Ecriture
 - Les licences et les versions des candidats n'ont pas ete verifiees. A faire
   au lot 0, au moment de figer les dependances.
 ```
+
+---
+
+## D45 : Chroma EMBARQUÉ, sans service ni conteneur
+
+> Ajouté le 2026-09-02, après essai sur le poste de développement.
+
+Le dépôt amont propose Chroma comme **service**, via `docker compose` sur le port
+8002, et `.env.example` déclare un `CHROMA_URL`. Cette voie est fermée ici :
+Docker Desktop ne démarre pas, la virtualisation étant **désactivée dans le
+firmware** du poste (`VirtualizationFirmwareEnabled = False`). Cela se réactive
+au redémarrage, dans le BIOS, et peut être verrouillé par une DSI.
+
+**Décision : `chromadb.PersistentClient`, en processus, sur un chemin sous
+`SORABEL_DATA_DIR` (D35).** Le contrat d'intégration dit que « l'implémentation
+interne est libre », et la suite d'acceptance ne touche jamais Chroma : elle
+parle au serveur MCP en stdio et rien d'autre.
+
+**Ce qui a été vérifié**, et non supposé, sur `chromadb` 0.5.23 avec des vecteurs
+choisis pour que le chunk interdit soit le plus proche de la requête :
+
+| Requête | Résultat | Ce que cela prouve |
+| --- | --- | --- |
+| sans filtre | `notice A`, `note interne tarifaire` | la note interdite est bien la 2e plus proche |
+| `where doc_type in [notice]` | `notice A`, `notice B` | elle disparaît, **et** la profondeur est remplie de candidats autorisés |
+| `where doc_type + is_latest` | `notice A` seule | le filtre combiné fonctionne |
+| réouverture du client | 4 chunks relus | la persistance survit au processus |
+
+C'est la propriété exacte qui a fait retenir Chroma et écarter FAISS : le filtre
+par métadonnée s'applique **avant** la recherche. Si le filtrage avait lieu après,
+la note aurait été lue, la profondeur `n` aurait été consommée par des candidats
+hors périmètre, et aucun refus n'aurait été journalisé.
+
+**Ce que ce choix fait gagner**, au-delà du contournement : une unité de moins à
+déployer. Le dimensionnement du chantier 7 comptait un service Chroma ; il n'y en
+a plus. L'index devient un fichier sous le chemin unique de D35, donc versionnable
+en artefact, reproductible et sauvegardable comme le reste.
+
+**Ce que ce choix coûte**, et il faut le dire : un index en processus ne se
+partage pas entre plusieurs instances de serveur. Avec D39, deux processus
+serveurs, un par profil, ils liront **le même répertoire** en lecture seule après
+l'ingestion. C'est tenable parce que l'ingestion est hors ligne et faite une
+fois. Si un jour l'ingestion devenait continue, il faudrait revenir au service.
+
+**À faire au lot 1** : désactiver la télémétrie de Chroma
+(`ANONYMIZED_TELEMETRY=False`). Elle émet des événements réseau à chaque appel,
+ce qui n'a pas sa place dans une gateway gouvernée, et elle bruite déjà la sortie.
