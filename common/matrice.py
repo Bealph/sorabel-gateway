@@ -26,6 +26,11 @@ class Droits:
     """Ce qu'un profil peut faire. Immuable pour la vie du processus (D28)."""
 
     profil: str
+    #: Le CLIENT que ce profil sert, tel que la matrice le decrit. Le support
+    #: n'est pas un humain devant un ecran : c'est le bot Slack du SAV. Cette
+    #: description est lue depuis `governance/matrice.yaml` et non recopiee,
+    #: parce que l'interface l'affiche et que ce qui est recopie derive.
+    client: str
     tools: frozenset[str]
     collections: frozenset[str]
     doc_types: frozenset[str]
@@ -62,6 +67,7 @@ def droits(profil: str | None = None, chemin: Path | None = None) -> Droits:
 
     return Droits(
         profil=nom,
+        client=str(p.get("description") or nom),
         tools=frozenset(p.get("tools") or []),
         collections=frozenset(mes_collections),
         # C'est `doc_type` qui porte le filtrage, pas le nom de collection : un

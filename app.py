@@ -47,6 +47,21 @@ def accueil() -> None:
         "et que les deux sont journalisées. C'est l'objet de la page "
         "« Serveur MCP », et c'est par là qu'il faut commencer.", icon="🎯")
 
+    st.warning(
+        "**Cette interface n'est pas le client du produit, elle tient sa "
+        "place.** Le cadrage DSI nomme trois consommateurs de la gateway : le "
+        "**bot Slack du support**, l'**IDE des développeurs** et le **poste "
+        "des commerciaux**. Chacun est un programme distinct, qui lance son "
+        "propre processus serveur avec son profil. "
+        "L'application Slack en particulier n'est **pas** un client MCP "
+        "direct : c'est un service à héberger, qui accuse réception sous les "
+        "3 secondes qu'impose Slack, puis publie la réponse dans un second "
+        "message (D34). Elle n'est pas construite, et c'est un manque assumé, "
+        "inscrit au reste à faire sous les items A1 et A2. "
+        "Ce que cette interface démontre est la **gateway et sa gouvernance**, "
+        "qui ne changent pas d'un client à l'autre : c'est précisément "
+        "l'intérêt d'un point d'accès unique.", icon="💬")
+
     st.subheader("Les six exigences, et où chacune se voit")
     st.dataframe([
         {"Exigence": "E1 · citer ses sources, ne jamais inventer",
@@ -116,8 +131,10 @@ def accueil() -> None:
 navigation = st.navigation({
     "Le produit": [
         st.Page(accueil, title="Accueil", icon="🏠", default=True),
+        st.Page(str(PAGES / "demo_chat.py"), title="Assistant", icon="💬",
+                url_path="assistant"),
     ],
-    "Les trois briques": [
+    "Sous le capot": [
         st.Page(str(PAGES / "demo_mcp.py"), title="Serveur MCP", icon="🔐",
                 url_path="mcp"),
         st.Page(str(PAGES / "demo_rag.py"), title="Recherche documentaire",

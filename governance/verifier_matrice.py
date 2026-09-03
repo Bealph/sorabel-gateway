@@ -223,6 +223,13 @@ def controler(m: dict, sans_base: bool) -> Controle:
     # --- La matrice EST celle du contrat, profil par profil -------------------
     for nom in sorted(PROFILS_ATTENDUS):
         p = profils.get(nom, {})
+        # `description` nomme le CLIENT que le profil sert, et l'interface
+        # l'affiche : le support n'est pas un humain devant un ecran, c'est le
+        # bot Slack du SAV. Sans ce controle, la description pourrait
+        # disparaitre et l'interface se rabattrait en silence sur le nom du
+        # profil, en perdant la seule mention de son client reel.
+        c.exige(len(str(p.get("description") or "")) >= 10,
+                f"{nom} : description du client presente")
         c.compare(set(p.get("tools") or []), TOOLS_PAR_PROFIL[nom],
                   f"{nom} : tools exactement ceux du contrat")
         c.compare(set(p.get("tables") or []), TABLES_PAR_PROFIL[nom],

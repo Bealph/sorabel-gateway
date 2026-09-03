@@ -31,6 +31,8 @@ sys.path.insert(0, str(RACINE))
 
 from scripts.page import configurer  # noqa: E402
 
+from common.matrice import droits  # noqa: E402
+
 from scripts.client_persistant import ClientPersistant  # noqa: E402
 
 configurer("Sorabel, demo serveur MCP")
@@ -147,6 +149,17 @@ for profil in PROFILS:
         st.sidebar.error(f"`{profil}` : {c.erreur}")
     else:
         st.sidebar.success(f"`{profil}` · {len(c.outils)} tools · session ouverte")
+    # Le client reel est lu dans la matrice, jamais recopie ici : c'est lui que
+    # cette page remplace, et le support n'est pas un humain devant un ecran.
+    st.sidebar.caption(f"client : {droits(profil).client}")
+st.sidebar.info(
+    "**Cette page tient la place des vrais clients.** En production, le profil "
+    "`support` est consommé par une **application Slack**, qui est un programme "
+    "à héberger et non un client MCP direct (D34) : elle reçoit la question, "
+    "accuse réception sous 3 secondes, appelle la gateway, puis publie la "
+    "réponse dans un second message. Elle n'est pas construite (items A1 et A2 "
+    "du reste à faire). Ce que cette page démontre est la **gateway**, qui est "
+    "identique quel que soit le client.", icon="💬")
 st.sidebar.divider()
 st.sidebar.caption(f"Journal : `{JOURNAL.relative_to(RACINE)}`")
 if st.sidebar.button("Vider le journal"):

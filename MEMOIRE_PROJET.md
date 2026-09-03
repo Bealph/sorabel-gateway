@@ -119,6 +119,7 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Classification des colonnes | EXHAUSTIVE : sensibles + restreintes + publiques = le schema. Une colonne non classee fait echouer le controle (D42) | PROPOSE |
 | Perimetre SQL | Porte sur TOUTE occurrence d'une colonne, pas les projections : WHERE, ORDER BY, GROUP BY, HAVING, sous-requetes (D43) | PROPOSE |
 | Ancrage des invariants | Ecrits EN DUR dans verifier_matrice.py, hors du YAML qu'ils controlent (D44) | PROPOSE |
+| Routage conversationnel | Amorce lexicale DECLAREE (schema + lexique de refus) puis similarite e5. Le modele local de D48 a ete REFUTE par la mesure : 4 montages, tous au hasard (D49) | VALIDE |
 
 Référence méthodo RBAC/MCP retenue par le pilote :
 https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-guide-for-engineering-teams-fhf
@@ -151,6 +152,8 @@ sorabel-data-gateway/
 │   ├── schemas.html       # schemas rendus. NE PAS editer, regenerer.
 │   │                      # Porte la bibliotheque Mermaid, stockee une seule fois
 │   └── archive/           # documents qu'on ne maintient plus, avertis en tete
+├── client/               # ROUTAGE conversationnel : routeur.py,
+│                         # conversation.py, routage.yaml (vocabulaire declare)
 ├── scripts/              # demo_rag.py, demo_sql.py, demo_mcp.py : les trois
 │                         # pages de demonstration, plus client_persistant.py
 │                         # et demo_deux_profils.py
@@ -934,6 +937,7 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
               uv run python docs/releve_donnees.py --verifier
               uv run python docs/build_schemas.py --verifier
               uv run python eval/verifier_cas_mcp.py
+              uv run python eval/mesure_routage.py
               uv run python tests/eprouver_gardes.py
               uv run python -m ingest --controles-seuls
               uv run ruff check .
@@ -1105,6 +1109,112 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             distingue entre les deux profils.
             VERIFIE : suite d'acceptance 12/12 en 202 s, cinq verificateurs
             verts, 27 gardes SQL, 14 controles d'ingestion, ruff propre.
+
+2026-09-03  INTERFACE CONVERSATIONNELLE, demandee par le pilote. Un champ, une
+            question, aucun tool a choisir. Trois points tranches par le
+            pilote : elle s'AJOUTE comme premier ecran, elle tourne en profil
+            SUPPORT seul, et le routage est automatique.
+            C'EST LE CERVEAU DE L'APPLICATION SLACK. Le bot recoit une phrase
+            libre et doit choisir le tool : c'est le meme travail. A1 et A2 ne
+            sont donc plus deux chantiers separes de celui-ci, mais la meme
+            piece avec une autre devanture.
+            D49, ET LE MECANISME CHOISI A ETE REFUTE PAR LA MESURE. Le pilote
+            avait retenu le modele local de D48 avec sortie contrainte. Quatre
+            montages mesures sur les fixtures, TOUS AU NIVEAU DU HASARD :
+              logits du premier jeton des etiquettes      4/20
+              choix multiple A/B/C/D                      6/20
+              choix multiple avec calibration              5/20
+              generation libre puis lecture                1/20
+              choix a deux classes                        28/54, en repondant
+                                                          TOUJOURS documentaire
+            C'est un modele de CODE de 0,5 milliard : D48 mesurait deja 17/24
+            en SQL avec un echafaudage lourd, et la classification en francais
+            libre est hors de sa portee. Un defaut de MON montage s'y ajoutait :
+            comparer les logits bruts du premier jeton compare aussi leur
+            frequence a priori dans le vocabulaire, et le prior du jeton
+            ecrasait la reponse du modele.
+            CE QUI MARCHE, sur le meme jeu : amorce lexicale DECLAREE, puis
+            similarite d'embeddings e5-small, deja embarque pour le RAG.
+              e5 seul, descriptions en exemples          41/54   38/46
+              + vocabulaire declare                      44/54   41/46
+              + listes d'intention                       47/54   44/46
+            Et surtout 9 sur 9 sur les questions qui DEMONTRENT une exigence,
+            contre 2 sur 6 avec e5 seul. Ce point pese plus que l'agregat : mal
+            routee, "quelle est la marge sur la REF-8842 ?" ne declencherait
+            jamais le refus de colonne, et E5 deviendrait invisible dans la
+            conversation. Mesure rejouable : eval/mesure_routage.py.
+            UNE FAUTE DE METHODE DE MA PART, en cours de route. J'ai d'abord
+            fabrique les etiquettes de reference MECANIQUEMENT, selon le
+            fichier d'origine de la question. "quel est le stock total de la
+            REF-8842 ?" venait de la fixture SQL, donc etiquetee BASE, alors
+            que le tool fige de stock y repond aussi bien. Au moins CINQ de mes
+            vingt references etaient contestables : je mesurais contre un
+            oracle en partie faux, la quatrieme occurrence du meme defaut.
+            Corrige en prenant la reference la ou elle est legitime, le fichier
+            de fixture pour les 54 questions, et en comptant a part les 8
+            questions hors corpus, dont plusieurs sont semantiquement des
+            questions de gestion.
+            LA CONVERSATION NE REFORMULE RIEN. Rendre 27 sous la forme "il y a
+            eu 27 commandes en avril" demanderait une generation par-dessus une
+            donnee juste, donc une occasion d'inventer la ou il n'y en avait
+            aucune. La composition passe par des gabarits deterministes.
+            PORTEE DE E3 PRECISEE PAR LE PILOTE, et j'avais dit faux. Le
+            cadrage exige que la requete soit RENVOYEE avec le resultat :
+            l'obligation porte sur le tool, et la gateway la tient, journal
+            compris. L'AFFICHER dans la conversation est un choix d'interface.
+            La regle "le SQL jamais replie" vient du chantier 8, ecrite pour
+            l'ecran destine a un integrateur ; un agent du SAV ne lit pas de
+            SQL. Retenu : replie en cas de succes, VISIBLE en cas de refus,
+            car un refus sans sa requete n'est pas auditable, et c'est la que
+            voir le SQL compte le plus. Eprouve sur un vrai CREATE TABLE
+            refuse par la couche AST.
+            E1, elle, porte bien sur la RESTITUTION : les sources restent
+            visibles sous chaque reponse documentaire.
+            DEUX DEFAUTS VUS SUR UNE CAPTURE DU PILOTE : le gabarit scalaire
+            recopiait le nom de colonne du SQL dans une phrase pour humain,
+            "COUNT(*) : 28" au lieu de "28" ; et un tableau d'une seule cellule
+            repetait la valeur deja donnee. Les deux corriges.
+            ECART A D40 ASSUME, demande par le pilote pour eprouver les deux
+            profils : l'assistant porte un SELECTEUR. Il ne rouvre PAS le trou
+            corrige en conception, ou profil etait un PARAMETRE de tool que
+            tout appelant pouvait remplir. Ici DEUX PROCESSUS serveur tournent,
+            chacun lance avec son profil et incapable d'en changer (D28), et le
+            selecteur choisit l'interlocuteur. Aucun tool ne recoit de profil,
+            aucune variable d'environnement ne bouge. Le fil est COMMUN et
+            chaque tour porte la marque du profil qui a repondu, plus un bouton
+            qui rejoue la meme question sur l'autre serveur, sans la ressaisir
+            donc sans risque qu'elle differe d'une virgule.
+            LES LIBELLES DES QUESTIONS D'AMORCE ONT ETE REECRITS SUR MESURE, et
+            non sur ce qu'on esperait. Trois relevés ont change la liste :
+            (a) la marge : les DEUX profils refusent, le support par la matrice
+                en FORBIDDEN_COLUMN, le commercial en OUT_OF_SCHEMA parce que le
+                generateur de D48 echoue. Le libelle le dit desormais : deux
+                refus, deux causes, deux codes.
+            (b) "combien de ventes en avril" RETIREE des amorces. Le support
+                rend ok, la table ventes lui etant cachee le modele substitue
+                commandes en silence, tandis que le commercial echoue. Le bouton
+                donnerait a croire que le support a PLUS d'acces que le
+                commercial, l'inverse de la verite. Phenomene consigne en
+                MCP-18, mais il n'a rien a faire sur un bouton d'amorce.
+            (c) "supprime les commandes de test" : sur le profil commercial le
+                modele produit un VRAI DELETE que la couche AST arrete. C'est
+                la meilleure demonstration d'E3, et elle etait invisible.
+            La comparaison la plus nette reste la negociation Fixor : support
+            hors_corpus, commercial ok avec 5 sources.
+            LA TRACE DU ROUTAGE N'EST PAS LE JOURNAL DE LA GATEWAY. J'avais
+            dit l'inverse au pilote, et c'etait faux : logs/journal.jsonl est
+            l'artefact d'audit de la DSI, dont le cadrage fixe les cles. Le
+            client tient donc sa propre trace, logs/conversation.jsonl, qui dit
+            POURQUOI tel tool a ete appele la ou le journal dit QUE tel tool a
+            ete appele.
+            SLACK, ce que la relecture a montre : le cadrage DSI ne l'exige
+            PAS, il ne le nomme qu'une fois et de facon descriptive. En
+            revanche matrice.yaml decrit le support comme "bot Slack du SAV,
+            client tourne vers l'exterieur". L'interface le dit desormais, et
+            ce nom est LU dans la matrice via Droits.client, avec un controle
+            qui echoue si la description disparait. 28 controles.
+            VERIFIE : suite d'acceptance 12/12 en 226 s, six verificateurs
+            verts dont la mesure de routage, ruff propre.
 ```
 
 ---

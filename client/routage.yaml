@@ -1,0 +1,103 @@
+# Vocabulaire declaratif du routage conversationnel.
+#
+# POURQUOI CE FICHIER EXISTE, ET POURQUOI IL N'EST PAS DANS matrice.yaml
+# La matrice est la source de verite des DROITS (D21). Y verser du vocabulaire
+# d'interface la ferait deriver vers un fichier fourre-tout, et le controle de
+# ses invariants perdrait son sens. Le routage ne decide d'aucun droit : il
+# choisit quoi demander, la matrice decide ensuite si c'est permis.
+#
+# CE QUI N'EST PAS ICI, ET C'EST VOULU
+# Les noms de tables et de colonnes ne sont pas recopies : ils sont releves
+# dans la base par introspection, et les termes sensibles viennent du
+# `lexique_refus` de la matrice. Les recopier ici creerait une seconde verite,
+# le defaut que ce projet a paye trois fois.
+
+# Descriptions comparees a la question par similarite d'embeddings. Elles sont
+# redigees comme des PHRASES D'EXEMPLE et non comme des definitions de
+# categorie : mesure du 2026-09-03, les definitions donnent 33/54 et les
+# exemples 41/54, avec le meme modele. Un modele de phrases rapproche une
+# question d'un texte qui lui ressemble, pas d'une etiquette abstraite.
+descriptions:
+  DOCUMENT: >-
+    Comment installer, entretenir ou reparer un produit. Quelle procedure
+    suivre pour un retour, une garantie, un SAV. Que dit la notice ou la fiche
+    technique. Quelles caracteristiques, quel calibre, quelle compatibilite
+    pour une reference.
+  BASE: >-
+    Combien, quel total, quel montant, quel chiffre d'affaires. Liste,
+    classement ou comptage de clients, de commandes, de ventes, de stocks.
+    Quelle quantite en entrepot. Statistiques sur les donnees de gestion.
+
+# E3 : une demande d'ecriture DOIT atteindre la couche SQL pour y etre refusee.
+# Si elle partait en documentaire, la garde de lecture seule ne se verrait
+# jamais et l'exigence deviendrait invisible dans la conversation.
+ecriture:
+  - mets a jour
+  - met a jour
+  - mettre a jour
+  - modifie
+  - modifier
+  - insere
+  - inserer
+  - ajoute
+  - ajouter
+  - supprime
+  - supprimer
+  - efface
+  - effacer
+  - cree
+  - creer
+  - vide
+  - vider
+  - remplace
+
+# Les deux listes suivantes sont les SEULES redigees a la main, et elles ont
+# ete ecrites en regardant les fixtures d'evaluation. Leur apport mesure est de
+# +3 points sur 54, et ce gain est donc OPTIMISTE : il peut ne pas se
+# reproduire sur des questions inedites. Sans elles, le routage vaut encore
+# 41/46 hors questions hors corpus, et les 6 questions de gouvernance partent
+# toutes au bon endroit.
+agregat:
+  - combien
+  - total
+  - montant
+  - nombre de
+  - liste
+  - classement
+  - "top "
+  - moyenne
+  - somme
+  - chiffre d'affaires
+  - par mois
+  - meilleur
+  - plus rentable
+  - seuil
+
+documentaire:
+  - comment
+  - procedure
+  - notice
+  - garantie
+  - installer
+  - entretenir
+  - reparer
+  - precaution
+  - consigne
+  - duplicata
+  - que dit
+  - documentation
+  - fiche technique
+  - sav
+
+# Raccourci vers le tool fige `check_stock`, strictement meilleur qu'une
+# generation de SQL quand il s'applique : requete ecrite a la main, aucun
+# modele, aucun risque. N'a aucun effet sur la gouvernance, le tool est soumis
+# a la meme matrice.
+stock:
+  - stock
+  - dispo
+  - disponible
+  - disponibilite
+  - entrepot
+  - rupture
+  - reappro
