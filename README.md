@@ -147,6 +147,15 @@ envoyé au modèle, sa sortie brute, les ressources extraites de l'arbre
 syntaxique, le SQL avant et après injection du `LIMIT`, et l'enveloppe qu'un
 client MCP recevrait, lui, à côté de tout ce qu'il ne reçoit pas.
 
+```bash
+uv run python scripts/demo_deux_profils.py
+```
+
+La session de démonstration : la **même** séquence d'appels jouée sur les deux
+profils, par le vrai protocole MCP, avec un processus serveur par profil. Les
+deux lisent la même matrice et écrivent dans le **même** journal, ce qui rend la
+comparaison vérifiable : les deux décisions opposées se lisent à la suite.
+
 ## État d'avancement
 
 | Phase                             | Statut       |

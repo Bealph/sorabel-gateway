@@ -1,5 +1,9 @@
 # Mini guide d'accès à la Sorabel Data Gateway
 
+> Tableaux de faits générés le 2026-09-03 par `python mcp_server/verifier_guide.py`, depuis
+> `governance/matrice.yaml` et depuis le serveur lui-même. Ne pas les éditer
+> à la main : ils seraient réécrits, et ils ont déjà dérivé une fois.
+
 > Livrable du brief : « le serveur MCP exposant le catalogue complet ainsi qu'un mini guide
 > d'accès ». Document d'intégration, destiné aux équipes qui branchent un client sur la
 > Gateway. Ce n'est pas un dossier de conception : les justifications sont dans
@@ -18,11 +22,10 @@
 | --- | --- | --- |
 | Support SAV | bot Slack | `support` |
 | Ventes | poste commercial | `commercial` |
-| Développement | IDE des devs | `dev` |
 
 Ce que la Gateway garantit, en trois lignes :
 
-1. Toute réponse documentaire cite ses sources (titre, référence, version, date, lien) ;
+1. Toute réponse documentaire cite ses sources (titre, référence, date) ;
    si le corpus ne couvre pas la question, elle le dit au lieu d'inventer (E1).
 2. Tout SQL exécuté est en lecture seule, borné aux tables et colonnes de votre profil, et
    la requête générée vous est toujours renvoyée avec le résultat (E3, E5).
@@ -50,7 +53,7 @@ un profil et ignore d'où il vient.
 
 ```mermaid
 flowchart TD
-    L["Lanceur du client<br/>configuration du poste"] -->|"SORABEL_PROFIL"| P["Processus serveur"]
+    L["Lanceur du client<br/>configuration du poste"] -->|"SORABEL_PROFILE"| P["Processus serveur"]
     P --> RP["resoudre_profil(contexte)"]
     RP -->|"absent ou inconnu"| KO["Le serveur refuse de demarrer"]
     RP -->|"profil valide"| GW["Gateway, autorisation au niveau tool"]
@@ -61,16 +64,16 @@ flowchart TD
 ### 2.2 Transport normatif : stdio
 
 Votre client lance le serveur comme sous-processus et dialogue par les flux standards.
-Le profil est fixé au lancement par la variable d'environnement `SORABEL_PROFIL`,
+Le profil est fixé au lancement par la variable d'environnement `SORABEL_PROFILE`,
 validée au démarrage contre les clés de la matrice.
 
 Règles à connaître :
 
 | Règle | Conséquence pour l'intégrateur |
 | --- | --- |
-| `SORABEL_PROFIL` absente ou inconnue | le serveur **refuse de démarrer** : le deny-by-default s'applique au lancement, pas au premier appel |
+| `SORABEL_PROFILE` absente ou inconnue | le serveur **refuse de démarrer** : le deny-by-default s'applique au lancement, pas au premier appel |
 | Profil immuable pour la vie du processus | un processus égale un profil, pas de bascule en cours de session |
-| Valeurs acceptées | `support`, `commercial`, `dev`, les clés de la matrice |
+| Valeurs acceptées | `support`, `commercial` : les clés de la matrice, et elles seules |
 | Besoin de deux profils | déclarer deux entrées de serveur distinctes, jamais un paramètre |
 
 Configuration client, forme habituelle d'une déclaration de serveur MCP en stdio :
@@ -82,7 +85,7 @@ Configuration client, forme habituelle d'une déclaration de serveur MCP en stdi
       "command": "<commande de lancement du serveur, non encore figee>",
       "args": [],
       "env": {
-        "SORABEL_PROFIL": "support"
+        "SORABEL_PROFILE": "support"
       }
     }
   }
@@ -123,55 +126,42 @@ votre déploiement qui a raison, pas ce document.
 
 ### 3.1 Tools accessibles
 
-| Tool | `support` | `commercial` | `dev` | Précision |
-| --- | :---: | :---: | :---: | --- |
-| `answer_question` | oui | oui | oui | |
-| `search_docs` | non | non | oui | brique RAG, réservée à l'IDE |
-| `get_document` | non | non | oui | brique RAG, réservée à l'IDE |
-| `list_sources` | non | non | oui | brique RAG, réservée à l'IDE |
-| `ask_database` | oui | oui | oui | `support` : colonnes sensibles bloquées |
-| `get_schema` | oui | oui | oui | `support` : schéma filtré, sans colonnes sensibles |
-| `check_stock` | oui | oui | oui | |
-| `order_status` | oui | oui | oui | |
+<!-- GENERE-DEBUT tools -->
+| Tool | `support` | `commercial` |
+| --- | :---: | :---: |
+| `answer_question` | oui | oui |
+| `search_docs` | oui | oui |
+| `get_document` | oui | oui |
+| `list_sources` | oui | oui |
+| `ask_database` | oui | oui |
+| `get_schema` | **non** | oui |
+| `check_stock` | oui | oui |
+| `order_status` | oui | oui |
 
-Un appel à un tool absent de votre colonne est refusé avant toute logique métier, avec le
-code `UNAUTHORIZED_TOOL`. Ce n'est pas une panne, c'est le comportement attendu.
+Un appel à un tool absent de votre colonne est refusé **avant toute logique métier**, avec le code `UNAUTHORIZED_TOOL`. Ce n'est pas une panne, c'est le comportement attendu. Le catalogue annoncé par `tools/list` est lui aussi borné à votre profil : on ne vous annonce pas ce que vous ne pouvez pas appeler.
+<!-- GENERE-FIN tools -->
 
-### 3.2 Collections documentaires
+### 3.2 Collections, tables et colonnes
 
-| Collection | `support` | `commercial` | `dev` | Contenu |
-| --- | :---: | :---: | :---: | --- |
-| `fiches` | oui | oui | oui | fiches techniques produit |
-| `notices` | oui | oui | oui | notices d'utilisation |
-| `sav` | oui | oui | oui | procédures SAV |
-| `notes` | non | oui | oui | notes internes sensibles : politique tarifaire, réunion achat |
+<!-- GENERE-DEBUT ressources -->
+| Ressource | `support` | `commercial` |
+| --- | :---: | :---: |
+| collection `fiches_techniques` | oui | oui |
+| collection `notes_internes` | **non** | oui |
+| collection `notices` | oui | oui |
+| collection `procedures_sav` | oui | oui |
+| table `clients` | oui | oui |
+| table `commandes` | oui | oui |
+| table `produits` | oui | oui |
+| table `stocks` | oui | oui |
+| table `ventes` | **non** | oui |
+| colonne `clients.email` | **retirée** | visible |
+| colonne `produits.marge_pct` | **retirée** | visible |
+| colonne `produits.prix_achat_ht` | **retirée** | visible |
+| colonne `ventes.marge_ht` | **retirée** | visible |
 
-Conséquence concrète : le bot support ne verra jamais un passage de note interne remonter
-dans une réponse, ni dans une citation. Le filtrage a lieu dans le tool, pas dans le client.
-
-### 3.3 Tables et colonnes SQL
-
-Les cinq tables métier sont accessibles aux trois profils. La restriction porte sur les
-colonnes, jamais sur les tables.
-
-| Table | Colonnes retirées au profil `support` | `commercial` et `dev` |
-| --- | --- | --- |
-| `clients` | aucune | toutes |
-| `produits` | `prix_achat_ht`, `marge_pct` | toutes |
-| `stocks` | aucune | toutes |
-| `commandes` | aucune | toutes |
-| `ventes` | `marge_ht` | toutes |
-
-Trois colonnes sur trente et une disparaissent pour le support. Elles ne sont pas filtrées
-après coup : elles n'apparaissent pas dans le schéma présenté au modèle de génération, donc
-il ne peut pas les référencer. Si une requête les référence malgré tout, elle est refusée
-avec `FORBIDDEN_COLUMN`, jamais filtrée en silence. Le support conserve `prix_vente_ht`,
-qui est une donnée publique.
-
-Appelez `get_schema` pour obtenir, à l'exécution, la vue exacte dont dispose votre profil.
-C'est la source la plus fiable pour cadrer une question avant `ask_database`.
-
----
+Une **table** absente est un refus, pas un filtrage : `ventes` n'est pas accessible au `support`, pas même par une jointure. Une **colonne** retirée l'est dans toute la requête, y compris dans un tri, un filtre ou une sous-requête, et pas seulement dans les colonnes affichées.
+<!-- GENERE-FIN ressources -->
 
 ## 4. Choisir son tool
 
@@ -182,7 +172,7 @@ flowchart TD
     Q["Besoin"] --> N{"Documentaire ou donnees chiffrees ?"}
     N -->|"documentaire"| R{"Reponse prete a afficher ?"}
     R -->|"oui"| AQ["answer_question"]
-    R -->|"non, je pilote mon pipeline"| BR{"Quelle brique, profil dev"}
+    R -->|"non, je pilote mon pipeline"| BR{"Quelle brique"}
     BR -->|"chercher des passages"| SD["search_docs"]
     BR -->|"lire un document entier"| GD["get_document"]
     BR -->|"explorer le corpus"| LS["list_sources"]
@@ -212,22 +202,28 @@ Principe de routage : les tools figés sont déterministes, sans appel de modèl
 sûrs et moins coûteux. Préférez-les chaque fois que l'entité est connue. `ask_database` est
 la voie ouverte pour tout le reste.
 
-### 4.3 Ce que renvoie chaque famille
+### 4.3 Ce que renvoie chaque tool
 
-| Famille | Charge utile en cas de succès |
-| --- | --- |
-| RAG haut niveau | `answer`, plus `sources[]` avec `title`, `ref`, `version`, `date`, `url` |
-| RAG briques | `hits[]` (passage, score, `doc_id`, `ref`, `version`, `section`), `document`, ou `sources[]` |
-| SQL généré | `rows[]` et le `sql` réellement exécuté |
-| SQL figé | `stock[]` par entrepôt, ou le statut de la commande |
+<!-- GENERE-DEBUT payloads -->
+| Tool | `status` | Clés de `payload` en cas de succès |
+| --- | --- | --- |
+| `answer_question` | `ok` | `answer`, `sources` [{`titre`, `reference`, `date`}] |
+| `search_docs` | `ok` | `hits` [{`doc_id`, `score`, `text`, `metadata`}], `voie` |
+| `get_document` | `ok` | `text`, `metadata` {`date`, `doc_id`, `doc_type`, `is_latest`, `reference`, `titre`, `version`, `version_group`} |
+| `list_sources` | `ok` | `sources` [{`doc_id`, `titre`, `reference`, `version`, `date`, `doc_type`, `is_latest`}] |
+| `ask_database` | `ok` | `sql`, `columns` [], `rows` [[]], `ressources` {`tables`, `colonnes`} |
+| `get_schema` | `ok` | `schema` |
+| `check_stock` | `ok` | `sql`, `columns` [], `rows` [[]], `parametres` [] |
+| `order_status` | `ok` | `sql`, `columns` [], `rows` [[]], `parametres` [] |
+
+Relevé en appelant réellement le serveur : ce tableau ne peut pas diverger du code sans que le contrôle tombe. Seules les **clés** y figurent, jamais les valeurs.
+<!-- GENERE-FIN payloads -->
 
 Deux règles utiles côté client :
 
-- une réponse documentaire sans source n'existe pas. Pas de sources, pas de réponse ;
-- par défaut, c'est la version la plus récente d'un document qui est citée. Une version
-  antérieure n'est renvoyée que si vous la demandez explicitement.
-
----
+- une réponse documentaire sans source n'existe pas. Pas de sources, pas de
+  réponse ;
+- par défaut, c'est la version la plus récente d'un document qui est citée.
 
 ## 5. Lire une réponse
 
@@ -248,24 +244,23 @@ client doit donc brancher sur `status`, et non sur la présence d'une exception.
 
 ### 5.2 Statuts, codes, et conduite à tenir
 
-| `status` | Code associé | Signification | Ce que fait le client |
-| --- | --- | --- | --- |
-| `ok` | aucun | réponse valide | afficher `answer` et `sources`, ou `rows` et `sql` |
-| `out_of_corpus` | `OUT_OF_CORPUS` | le corpus ne couvre pas la question | dire « non trouvé dans la documentation », ne rien inventer |
-| `out_of_schema` | `OUT_OF_SCHEMA` | la question ne relève pas des données disponibles | dire « hors des données disponibles » ; aucun SQL n'a été produit |
-| `not_found` | `NOT_FOUND` | identifiant valide, aucune donnée correspondante | dire « identifiant valide, aucune donnée » ; ne pas présenter cela comme une réponse |
-| `clarify` | `AMBIGUOUS` | critère ambigu | redemander la précision, en proposant les options renvoyées |
-| `refused` | `UNAUTHORIZED_TOOL` | ce profil ne peut pas appeler ce tool | message d'accès refusé, pas de nouvelle tentative aveugle |
-| `refused` | `UNAUTHORIZED_COLLECTION` | collection documentaire interdite au profil | idem |
-| `refused` | `FORBIDDEN_COLUMN` | colonne sensible demandée | idem, et ne pas reformuler pour contourner |
-| `refused` | `READ_ONLY_VIOLATION` | la requête était en écriture | idem, en signalant que seule la lecture est possible |
-| `error` | `INTERNAL_ERROR` | panne technique du serveur | erreur technique, nouvelle tentative légitime, aucune conclusion métier à en tirer |
+<!-- GENERE-DEBUT statuts -->
+| `status` | Ce qu'il signifie | Conduite à tenir |
+| --- | --- | --- |
+| `ok` | réponse valide | l'exploiter |
+| `refused` | droit refusé, écriture refusée, ou colonne hors périmètre | afficher le refus, ne pas reformuler pour contourner |
+| `clarification` | la question est ambiguë | redemander la précision |
+| `hors_corpus` | la documentation ne couvre pas la question | le dire, ne rien inventer |
+| `error` | panne technique du serveur | aucune conclusion métier |
 
-Distinction à ne pas manquer : `rows: []` avec `status = "ok"` est un **résultat légitime**,
-car une liste ou un agrégat peut valoir zéro. C'est `not_found` qui signale une entité
-recherchée par identifiant précis et introuvable. Les deux se disent différemment à
+**Ces cinq statuts sont les seuls.** Un code plus précis peut accompagner un refus dans `payload.code`, par exemple `UNAUTHORIZED_TOOL`, `FORBIDDEN_COLUMN`, `READ_ONLY_VIOLATION` ou `OUT_OF_SCHEMA`. Il ne remplace jamais le `status` : un client aiguille sur `status`, et lit `code` pour affiner.
+<!-- GENERE-FIN statuts -->
+
+Distinction à ne pas manquer : `rows: []` avec `status = "ok"` est un
+**résultat légitime**, car une liste ou un agrégat peut valoir zéro. Un
+identifiant précis introuvable rend lui aussi `ok`, mais son `message` le dit
+et son payload porte `trouve: false`. Les deux se disent différemment à
 l'utilisateur.
-
 
 ### 5.3 Exemples
 

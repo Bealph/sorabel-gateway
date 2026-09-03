@@ -923,6 +923,7 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
                 attentes de JOURNAL
             OUTILLAGE, a relancer apres toute modification :
               uv run python governance/verifier_matrice.py --verifier
+              uv run python mcp_server/verifier_guide.py --verifier
               uv run python docs/releve_donnees.py --verifier
               uv run python docs/build_schemas.py --verifier
               uv run python tests/eprouver_gardes.py

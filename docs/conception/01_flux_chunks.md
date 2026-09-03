@@ -703,6 +703,36 @@ Motifs, dans l'ordre :
 Ce que cela ne change pas : P2 tenait sur deux critères, local et multilingue.
 Les deux sont satisfaits.
 
+### Le reranking pris sur le fait, le 2026-09-03
+
+En construisant la démonstration des deux profils, j'ai cru trouver un défaut :
+la question « quelle est notre politique tarifaire sur les remises ? » recevait
+une abstention du profil `commercial`, alors qu'il a accès aux notes internes.
+
+| Configuration | Score du meilleur passage | Seuil | Issue | Document en tête |
+| --- | ---: | ---: | --- | --- |
+| A, dense seul | 0,875 | 0,853 | `ok` | la bonne note interne |
+| D, complet | -3,797 | -1,7 | `hors_corpus` | **la même** note interne |
+
+La recherche trouvait le bon document et le seuil le rejetait. J'ai conclu trop
+vite à une régression. **Vérification faite, l'abstention est juste**, et c'est
+la branche dense qui avait tort.
+
+La note s'intitule « Point politique tarifaire », et son contenu est : « Revue
+des prix de vente de la catégorie Outillage à main. La marge cible reste fixée
+par la direction commerciale. » Elle **ne parle pas de remises**. Le bi-encodeur
+dense a rapproché la question du **titre** ; le cross-encodeur, qui lit la
+question et le passage **ensemble**, a jugé que le passage ne répond pas.
+
+C'est exactement son travail, et c'est la démonstration en acte de ce que la
+mesure E6 avait chiffré sans le rendre tangible : le reranking n'apporte presque
+rien au classement, où l'hybride plafonnait déjà, et beaucoup à la **décision
+d'abstention**, où la marge de séparation passe de 0,0015 à 1,41.
+
+Vérifié que ce n'est pas un travers systématique : sur cinq questions
+légitimes, quatre passent le seuil avancé avec des scores de 0,20 à 8,43. Seule
+celle dont le corpus ne porte pas la réponse est rejetée.
+
 ### Ce que l'index a révélé, et qui confirme deux règles
 
 Trois requêtes de contrôle sur l'index réel, 910 chunks :
