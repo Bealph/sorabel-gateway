@@ -147,7 +147,9 @@ sorabel-data-gateway/
 │   ├── schemas.html       # schemas rendus. NE PAS editer, regenerer.
 │   │                      # Porte la bibliotheque Mermaid, stockee une seule fois
 │   └── archive/           # documents qu'on ne maintient plus, avertis en tete
-├── scripts/              # mcp_client.py : demo support vs commercial (a creer)
+├── scripts/              # demo_rag.py, demo_sql.py, demo_mcp.py : les trois
+│                         # pages de demonstration, plus client_persistant.py
+│                         # et demo_deux_profils.py
 ├── mcp_server/           # serveur MCP + GUIDE_ACCES.md (mini guide, livrable)
 ├── rag/                  # ingestion, chunking, hybride, reranking
 ├── text2sql/             # generation SQL lecture seule + garde-fous
@@ -162,6 +164,7 @@ sorabel-data-gateway/
 │   ├── attendus_sql.jsonl     # attendus par question, oracle des tests (D30)
 │   ├── attendus_rag.jsonl     # gold des "couverte" (P4), 13 annotes
 │   ├── cas_mcp.jsonl          # 22 cas de gouvernance : profil x tool x attendu
+│   ├── verifier_cas_mcp.py    # controle que l'oracle ci-dessus dit la verite
 │   └── results/               # sorties d'evaluation, datees
 └── data/                 # corpus + base SQL, NON versionnes (.gitignore)
 ```
@@ -926,9 +929,121 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
               uv run python mcp_server/verifier_guide.py --verifier
               uv run python docs/releve_donnees.py --verifier
               uv run python docs/build_schemas.py --verifier
+              uv run python eval/verifier_cas_mcp.py
               uv run python tests/eprouver_gardes.py
               uv run python -m ingest --controles-seuls
               uv run ruff check .
+2026-09-03  CHANTIER 3, SERVEUR MCP. Termine. La suite d'acceptance passe de
+            12 rouges a 12 VERTS en 208 s, avec le budget de 30 s par appel.
+            C'est le premier moment ou notre metre devient celui de l'evaluateur.
+            SERVEUR : mcp_server/server.py, transport stdio, serveur bas niveau
+            et non FastMCP, pour garder la main sur la validation. Un POINT DE
+            PASSAGE UNIQUE : tout appel y entre, y est autorise ou refuse, et y
+            est journalise avant de rendre l'enveloppe. Il n'y a pas de second
+            chemin, donc pas de chemin qui aurait oublie le journal.
+            list_tools est borne au profil : on n'annonce pas ce qu'on refusera.
+            AUCUN parametre n'est obligatoire au schema, et c'est voulu : le
+            controle du droit doit preceder la validation de schema, sans quoi un
+            tool interdit rendrait une erreur de protocole au lieu d'un refus de
+            matrice.
+            PRECHAUFFAGE : les imports se font dans le FIL PRINCIPAL, les poids
+            dans un fil secondaire. Ma premiere version importait tout dans le
+            fil : course avec le fil de requete, ImportError sur numpy._typing
+            partiellement initialise, et les 8 tests dependant d'un modele
+            tombaient ensemble.
+
+2026-09-03  GUIDE D'ACCES REGENERE, et il etait GRAVEMENT PERIME. C'est un
+            LIVRABLE, lu par un integrateur : trois profils dont un dev qui
+            n'existe pas, search_docs donne interdit au support alors qu'il lui
+            est accessible, get_schema donne accessible alors qu'il ne l'est pas,
+            SORABEL_PROFIL au lieu de SORABEL_PROFILE, et des sources annoncees
+            en title/ref/url la ou le contrat impose titre/reference/date.
+            La revue avait PREDIT ce mode de defaillance, constat 11 : rien ne
+            compare les trois vues a la source. Je n'avais pas ferme le constat.
+            CORRIGE PAR UN GENERATEUR : mcp_server/verifier_guide.py produit les
+            tableaux depuis matrice.yaml et depuis LE SERVEUR LUI-MEME, en
+            appelant reellement les huit tools. Eprouve par mutation.
+            DEMONSTRATION DES DEUX PROFILS : scripts/demo_deux_profils.py, meme
+            sequence sur les deux profils, vrai protocole, journal partage.
+            12 entrees pour 12 appels, 7 autorises, 5 refuses.
+            UNE ABSTENTION QUE J'AI MAL DIAGNOSTIQUEE, puis rattrapee. Une
+            question du scenario faisait s'abstenir les deux profils. J'ai cru a
+            une regression du reranker. Verification faite, L'ABSTENTION ETAIT
+            JUSTE et c'est la branche dense qui avait tort : la note "Point
+            politique tarifaire" traite d'une revue de prix et ne parle pas de
+            remises. Le bi-encodeur avait rapproche la question du TITRE, le
+            cross-encodeur a lu question et passage ensemble et a conclu que le
+            passage ne repond pas. C'est E6 rendu tangible : le reranking
+            n'apporte presque rien au CLASSEMENT et beaucoup a l'ABSTENTION.
+
+2026-09-03  INTERFACE DE DEMONSTRATION DU SERVEUR MCP, demandee par le pilote
+            avant le deploiement. scripts/demo_mcp.py, cinq onglets : le
+            catalogue negocie, un appel de bout en bout avec la ligne de journal
+            qu'il ecrit, la session sur les deux profils, le journal filtrable,
+            et le rejeu des cas de gouvernance.
+            C'est la seule des trois pages qui parle au VRAI serveur, par le vrai
+            protocole. scripts/client_persistant.py garde une session ouverte par
+            profil dans un fil portant sa propre boucle : sans cela, chaque clic
+            relancerait un serveur et rechargerait les modeles. Session ouverte
+            en 16 s, puis appels a 0,01 s. Ce n'est pas un contournement, c'est
+            ce que fait tout client MCP durable.
+            PAGE VALIDEE PAR EXECUTION REELLE, via streamlit.testing AppTest :
+            0 exception, deux sessions ouvertes, 7 et 8 tools. Un HTTP 200 sur le
+            port ne prouve RIEN : Streamlit n'execute le script qu'a la connexion
+            d'un navigateur, et mon premier controle ne mesurait donc rien.
+
+2026-09-03  L'ORACLE DE GOUVERNANCE ETAIT FAUX. Trouve en branchant l'onglet de
+            rejeu sur eval/cas_mcp.jsonl. TROISIEME OCCURRENCE du meme mode de
+            defaillance, apres les enumerations de la base et le guide d'acces :
+            CE QUI EST RECOPIE DERIVE.
+            Le fichier avait ete ecrit pendant la revue du 2026-09-02, justement
+            pour combler l'absence d'oracle des quatre tests d'acceptation MCP,
+            puis l'amont a ete rapatrie et il n'a jamais ete realigne. Il etait
+            perime sur CINQ AXES :
+              droits : search_docs attendu refuse au support, 5 cas
+              profil dev, qui n'existe pas au contrat, 3 cas
+              statuts hors contrat : out_of_corpus, not_found
+              arguments perimes : q pour query, ref pour reference
+              cles de journal francaises : horodatage, decision, latence_ms
+            Un oracle faux est PIRE qu'un oracle absent : il fait echouer un
+            serveur juste, ou pire, reussir un serveur faux.
+            REECRIT, 22 cas, et surtout TENU par eval/verifier_cas_mcp.py, qui
+            confronte chaque cas a la matrice, au catalogue et au contrat. Le
+            controle qui aurait attrape la derive va dans les DEUX SENS : une
+            attente de refus sur un tool accorde est fausse, et une attente
+            d'autre chose qu'un refus sur un tool non accorde l'est autant.
+            C'est le second sens qui manquait. Eprouve par 8 mutations, dont la
+            derive historique elle-meme : 8 sur 8 attrapees.
+            TROIS MESURES QUI ONT CHANGE DES CAS, et qui disent la verite plutot
+            que ce qu'on aimerait :
+            (a) MCP-12, "les 5 produits les plus rentables" : on attendait un
+                refus par la couche AST sur ORDER BY marge_pct. Le modele ne PEUT
+                PAS nommer marge_pct, la couche 0 la lui cache, alors il
+                SUBSTITUE prix_vente_ht et rend ok. Aucune fuite, mais la reponse
+                ne repond pas a la question. Troisieme motif de D41.
+            (b) MCP-18, meme phenomene sur une TABLE : ventes est retiree au
+                support, le modele rend COUNT(*) FROM commandes.
+            (c) MCP-16 : la question mentionnait "prix d'achat", donc le
+                pre-filtre lexical court-circuitait et la couche AST ne se voyait
+                jamais. Reformulee sans ces mots, le modele produit un vrai
+                CREATE TABLE ... AS SELECT et la couche 2 le refuse par TYPE de
+                noeud. C'est enfin le cas qui montre la garde d'ecriture.
+            MCP-14 ECHOUE, ET L'ORACLE NE PLIE PAS. Le commercial doit obtenir la
+            marge ; il recoit refused/OUT_OF_SCHEMA. La gouvernance est JUSTE,
+            verifie : marge_pct figure bien au schema rendu au commercial. Ce qui
+            manque est la capacite du generateur retenu par D48, mesuree a 17/24
+            et confirmee sur trois reformulations. Aligner l'oracle sur le
+            comportement observe transformerait une limite de modele en
+            comportement attendu et la ferait disparaitre du rapport. Consigne
+            comme limite_connue, avec sa decision et sa cause.
+            GARDE-FOU SUR CE MECANISME, car il pourrait servir a enterrer des
+            echecs : le verificateur exige qu'une limite nomme une decision du
+            projet et une cause etayee. Eprouve, et une mutation est PASSEE : un
+            limite_connue bien forme mais creux franchit ces controles. Un script
+            ne juge pas la sincerite d'une prose, mais il peut COMPTER. D'ou un
+            PLAFOND a 2 : l'accumulation se ferait un cas a la fois sans que rien
+            ne sonne. Relever le plafond doit rester un geste delibere.
+            19 des 20 cas jouables conformes, le vingtieme etant MCP-14.
 ```
 
 ---
