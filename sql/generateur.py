@@ -112,6 +112,17 @@ class GenerateurLocal:
         modele.eval()
         return tokenizer, modele
 
+    @property
+    def pret(self) -> bool:
+        """Le modèle est-il déjà en mémoire ?
+
+        Sert à l'affichage : sur ce poste, le chargement prend plusieurs
+        minutes, et une page qui n'en dit rien paraît cassée. Lire l'attribut de
+        cache plutôt que le déclencher, sinon la question provoquerait ce
+        qu'elle mesure.
+        """
+        return "_modele" in self.__dict__
+
     def prechauffer(self) -> None:
         """Charge le modèle dans un fil d'arrière-plan, sans bloquer l'appelant.
 
@@ -168,4 +179,6 @@ class GenerateurLocal:
                 pad_token_id=tokenizer.eos_token_id,
             )
         brut = tokenizer.decode(sortie[0][entree.shape[-1]:], skip_special_tokens=True)
-        return analyser(brut)
+        generation = analyser(brut)
+        generation.brut = brut
+        return generation

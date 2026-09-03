@@ -137,6 +137,16 @@ de mesure E6 généré. Il n'y a volontairement pas de sélecteur de profil : le
 profil est une propriété du serveur, fixée à son lancement, pas une préférence
 d'affichage.
 
+```bash
+uv run streamlit run scripts/demo_sql.py     # http://localhost:8502
+```
+
+La démonstration du Text-to-SQL, elle, montre **où chaque question s'arrête** :
+la pile de gardes étage par étage avec celui qui a tranché, le schéma réellement
+envoyé au modèle, sa sortie brute, les ressources extraites de l'arbre
+syntaxique, le SQL avant et après injection du `LIMIT`, et l'enveloppe qu'un
+client MCP recevrait, lui, à côté de tout ce qu'il ne reçoit pas.
+
 ## État d'avancement
 
 | Phase                             | Statut       |

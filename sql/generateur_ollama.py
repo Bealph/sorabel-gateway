@@ -129,4 +129,7 @@ class GenerateurOllama:
             raise OllamaIndisponible(
                 f"generation impossible via {self.url} : {e}") from e
 
-        return analyser((reponse.get("message") or {}).get("content", ""))
+        brut = (reponse.get("message") or {}).get("content", "")
+        generation = analyser(brut)
+        generation.brut = brut
+        return generation

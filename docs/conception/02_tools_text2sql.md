@@ -319,6 +319,30 @@ retirée pour le profil, l'appel est refusé immédiatement, avec
 | « quel est le prix d'achat du projecteur LED 100 W ? » | `prix d'achat` | `refused` / `FORBIDDEN_COLUMN` |
 | « quelle est la météo à Lille ? » | aucun | `out_of_schema`, comme avant |
 
+**Un troisième motif, mesuré le 2026-09-03 en construisant la démonstration.**
+J'attendais qu'en désactivant le pré-filtre, la couche 3 attrape la même demande
+sur l'arbre syntaxique. **Elle ne le fait pas**, et pour une bonne raison : la
+couche 0 a retiré la colonne du schéma, donc le modèle ne peut pas la nommer.
+
+Ce qui se produit à la place est plus instructif. Trois issues sont possibles :
+
+| Issue | Statut | Ce qu'elle vaut |
+| --- | --- | --- |
+| Le modèle se récuse | `refused` · `OUT_OF_SCHEMA` | la couche 0 a suffi |
+| Le modèle invente le nom de la colonne retirée | `refused` · `FORBIDDEN_COLUMN` | la couche 3 le rattrape |
+| Le modèle **substitue** une colonne visible | **`ok`** | rien ne fuit, et la réponse porte sur autre chose |
+
+Mesuré, profil `support`, pré-filtre désactivé : « classement des produits par
+marge » produit `SELECT nom FROM produits ORDER BY prix_vente_ht DESC` et un
+statut `ok`. E5 tient, aucune donnée sensible ne sort, aucune garde n'avait de
+raison de refuser. Mais l'utilisateur reçoit un classement par **prix** en
+croyant lire un classement par **marge**, et rien ne le lui signale.
+
+Le pré-filtre ne sert donc pas qu'à l'imputabilité : **il évite une réponse
+silencieusement hors sujet**. C'est la même famille de défaut que le littéral
+sans accent, et elle est plus insidieuse ici, puisqu'elle produit un résultat
+d'apparence irréprochable.
+
 **Ce que cette couche n'est pas.** Ce n'est **pas** une garantie de sécurité. Ce
 document explique lui-même en Q2 pourquoi une liste de mots ne protège rien :
 elle se contourne par la casse, les commentaires, une paraphrase. La sécurité
