@@ -130,6 +130,10 @@ https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-g
 ```
 sorabel-data-gateway/
 ├── MEMOIRE_PROJET.md      # ce fichier : memoire de projet
+├── app.py                 # INTERFACE LIVRABLE : entree multipage, 5 ecrans
+├── Dockerfile             # image de l'interface. JAMAIS CONSTRUITE
+├── .dockerignore          # contexte reduit a 10,4 Mo
+├── deploy/azure.sh        # Container Apps, mode --a-vide pour eprouver
 ├── README.md             # vitrine du projet
 ├── .gitignore
 ├── pyproject.toml        # metadata + dependances (a valider en phase dev)
@@ -1044,6 +1048,63 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             PLAFOND a 2 : l'accumulation se ferait un cas a la fois sans que rien
             ne sonne. Relever le plafond doit rester un geste delibere.
             19 des 20 cas jouables conformes, le vingtieme etant MCP-14.
+
+2026-09-03  DEPLOIEMENT : tout est ecrit, rien n'est deploye, et le verrou est
+            nomme. C'est le dernier livrable du brief, un lien vers une
+            interface.
+            DOCKER TOUJOURS INDISPONIBLE, contre ce que le pilote croyait. Le
+            client 29.7.2 repond, mais le moteur Linux rend HTTP 500 sur toutes
+            ses routes. Trois mesures concordent : VirtualizationFirmwareEnabled
+            = False, HypervisorPresent = False, et WSL n'a AUCUNE distribution
+            installee. VT-x est donc toujours coupe au firmware, rien n'a change
+            depuis le 2026-09-02. Docker Desktop peut afficher son interface
+            sans que son moteur demarre : ne pas confondre les deux.
+            CE N'EST PAS BLOQUANT. az acr build televerse le contexte et
+            construit COTE AZURE, sans aucun moteur local. Le contexte a ete
+            mesure a 10,4 Mo grace au .dockerignore, contre 1,3 Go de venv et
+            4,8 Go de cache de modeles laisses sur le poste.
+            LE VRAI VERROU EST az login, qui ouvre un navigateur et revient donc
+            au pilote. az CLI 2.89.1 est installe, aucun compte n'est connecte.
+            INTERFACE ASSEMBLEE, app.py, et SANS DUPLICATION : st.navigation
+            monte les scripts de scripts/ tels quels, et chacun reste lancable
+            seul pour le developpement. Cinq ecrans conformes a D38, avec un
+            accueil qui porte la carte des six exigences et dit ou chacune se
+            voit. Ajout de l'ecran 5, scripts/demo_e6.py, qui affiche le rapport
+            d'ablation GENERE et enonce ce que la mesure ne prouve pas.
+            UN DEFAUT QUE L'ASSEMBLAGE SEUL REVELE : set_page_config ne peut
+            etre appele qu'une fois par execution. Les trois pages l'appelaient,
+            donc chacune marchait seule et l'ensemble tombait. Corrige par
+            scripts/page.py, qui tolere le second appel. Eprouve en basculant
+            reellement de page sous AppTest : 0 exception.
+            CHAINE DE DEPLOIEMENT ECRITE : Dockerfile, .dockerignore et
+            deploy/azure.sh. Le script porte le mode --a-vide que la revue avait
+            rendu obligatoire, et qui n'avait jamais ete fait : il deploie une
+            image d'exemple de Microsoft pour eprouver authentification, groupe,
+            registre, environnement et entree publique en quelques minutes,
+            AVANT d'y envoyer nos 3 Go.
+            L'IMAGE N'A JAMAIS ETE CONSTRUITE, et le Dockerfile le dit en tete.
+            L'etape la plus fragile y est signalee : la reinstallation de torch
+            depuis l'index processeur, qui sort du verrou de uv.lock pour eviter
+            2,5 Go de pilotes CUDA inutiles. Si la premiere construction echoue,
+            c'est la qu'il faut regarder.
+            DEUX CHOIX QUI COUTENT, ecrits dans le script plutot que subis :
+            min-replicas a 1, parce qu'un reveil a froid suppose de retirer une
+            image de plusieurs gigaoctets puis de charger les modeles, soit
+            plusieurs minutes de page muette pour qui clique ; et max-replicas a
+            1, parce que le journal est un fichier local au conteneur et que
+            deux repliques tiendraient deux journaux differents, ce qui ferait
+            mentir l'ecran du journal partage. Passer a l'echelle demanderait un
+            stockage partage, que D33 n'a pas prevu.
+            AUCUN COUT CHIFFRE, et je ne l'invente pas : les tarifs n'ont pas
+            ete relus sur les pages officielles. L'item A4 reste ouvert, et la
+            decision d'allumer une replique en continu revient au pilote.
+            DERIVE CORRIGEE AU PASSAGE : le chantier 8 citait la paire "MCP-01
+            contre MCP-05" pour demontrer un refus de tool. Elle n'existe plus
+            depuis la reecriture de l'oracle le matin meme. La bonne paire est
+            MCP-05 contre MCP-17, get_schema etant le SEUL tool que la matrice
+            distingue entre les deux profils.
+            VERIFIE : suite d'acceptance 12/12 en 202 s, cinq verificateurs
+            verts, 27 gardes SQL, 14 controles d'ingestion, ruff propre.
 ```
 
 ---

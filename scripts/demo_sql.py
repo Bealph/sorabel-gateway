@@ -33,6 +33,8 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from scripts.page import configurer  # noqa: E402
+
 from common.config import CONFIG  # noqa: E402
 from common.matrice import droits, lexique_refus  # noqa: E402
 from sql.gardes import LIMITE  # noqa: E402
@@ -40,7 +42,7 @@ from sql.generateur import GenerateurLocal  # noqa: E402
 from sql.schema import introspecter  # noqa: E402
 from sql.service import ServiceSql, Trace  # noqa: E402
 
-st.set_page_config(page_title="Sorabel, demo Text-to-SQL", layout="wide")
+configurer("Sorabel, demo Text-to-SQL")
 
 PASTILLE = {"ok": "🟢", "refused": "🔴", "clarification": "🟡", "error": "⚫"}
 RACINE = Path(__file__).resolve().parent.parent

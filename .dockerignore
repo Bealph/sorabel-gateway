@@ -1,0 +1,38 @@
+# Ce qui ne doit PAS partir dans le contexte de construction.
+#
+# `az acr build` téléverse ce contexte vers Azure : tout ce qui reste ici est
+# envoyé sur le réseau, puis pèse dans l'image. Le poste porte 1,3 Go de venv
+# et 4,8 Go de cache de modèles, qui n'ont rien à y faire, l'image les
+# reconstruit elle-même.
+
+.venv/
+.git/
+.github/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Secrets : jamais dans une image, jamais dans un registre.
+.env
+.env.*
+!.env.example
+
+# Sorties d'exécution : le conteneur écrit les siennes.
+logs/
+eval/results/
+.docker-data/
+
+# Réglages de poste, sans objet dans un conteneur.
+.vscode/
+.python-version
+CLAUDE.md
+
+# Documentation et schémas : ils pèsent, notamment schemas.html qui embarque
+# la bibliothèque Mermaid, et l'interface ne les lit pas. Deux exceptions,
+# lues par une page : le rapport E6 et le protocole de mesure, tenus par
+# `docs/` mais nommés explicitement plus bas.
+docs/schemas.html
+docs/archive/

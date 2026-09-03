@@ -29,9 +29,11 @@ import streamlit as st
 RACINE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RACINE))
 
+from scripts.page import configurer  # noqa: E402
+
 from scripts.client_persistant import ClientPersistant  # noqa: E402
 
-st.set_page_config(page_title="Sorabel, demo serveur MCP", layout="wide")
+configurer("Sorabel, demo serveur MCP")
 
 JOURNAL = RACINE / "logs" / "demo_mcp.jsonl"
 PROFILS = ("support", "commercial")

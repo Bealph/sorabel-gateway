@@ -24,12 +24,14 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from scripts.page import configurer  # noqa: E402
+
 from common.matrice import droits  # noqa: E402
 from retrieval.depot import Depot  # noqa: E402
 from retrieval.recherche import CONFIGS  # noqa: E402
 from retrieval.service import ServiceRag, seuil_pour  # noqa: E402
 
-st.set_page_config(page_title="Sorabel Data Gateway, demo RAG", layout="wide")
+configurer("Sorabel Data Gateway, demo RAG")
 
 COULEUR = {"ok": "🟢", "hors_corpus": "🟡", "refused": "🔴"}
 

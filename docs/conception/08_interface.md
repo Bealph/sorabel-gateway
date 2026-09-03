@@ -66,7 +66,15 @@ deux.
 
 Les paires à jouer sont déjà écrites, elles viennent de `eval/cas_mcp.jsonl` :
 MCP-10 contre MCP-14 pour la colonne sensible, MCP-08 contre MCP-09 pour la
-collection `notes`, MCP-01 contre MCP-05 pour le refus de tool. Trois boutons
+collection `notes_internes`, MCP-05 contre MCP-17 pour le refus de tool.
+
+> **Corrigé le 2026-09-03.** Cette phrase citait « MCP-01 contre MCP-05 »,
+> une paire qui n'existe plus. L'oracle `eval/cas_mcp.jsonl` a été réécrit
+> le jour même : il attendait `search_docs` refusé au support, ce que le
+> cadrage DSI contredit, et il nommait un profil `dev` absent du contrat.
+> La paire qui démontre un refus de tool est désormais `get_schema`,
+> refusé au support et accordé au commercial, le seul tool que la matrice
+> distingue entre les deux profils. Trois boutons
 suffisent, et la démonstration est reproductible à l'identique le jour de la
 soutenance.
 
