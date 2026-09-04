@@ -182,31 +182,40 @@ pour empêcher.
 La ligne « Abstention » du gabarit ne porte donc **que** sur la branche avancée,
 et se lit comme une garantie d'E1, pas comme un gain d'E6.
 
-## 6. Gabarit de résultats
+## 6. Où lire les résultats
 
-À remplir au lot 3. Les cases vides sont volontaires : elles ne seront pas
-comblées par une estimation.
+> **Mis à jour le 2026-09-03.** Cette section portait un gabarit vide, « à
+> remplir au lot 3 ». Le lot 3 est fait, et les chiffres existent : ils vivent
+> dans **`eval/rapport_gain.md`**, produit par
+> `uv run python -m retrieval.rapport`. C'est ce fichier que la suite
+> d'acceptance de l'amont contrôle.
+>
+> **Le gabarit n'a donc pas été rempli, et c'est délibéré.** Recopier ici des
+> valeurs générées ailleurs créerait une seconde vérité, qui dériverait au
+> premier réindexage sans que rien ne le signale. Le projet a déjà payé ce
+> défaut quatre fois : les énumérations de la base, le guide d'accès, l'oracle
+> de gouvernance, et les étiquettes de référence du routage. Ce document reste
+> le **protocole**, écrit avant l'implémentation ; le rapport porte les
+> chiffres.
+
+Résultats au 2026-09-02, recopiés ici pour mémoire de l'ordre de grandeur
+**et non comme source** :
+
+| Population | A, dense | B, +hybride | C, +rerank | D, complet |
+| --- | :---: | :---: | :---: | :---: |
+| `reference_exacte`, Recall@1 | 0,875 | 0,875 | 1,000 | 1,000 |
+| `couverte`, Recall@1 | 0,778 | 0,889 | 1,000 | 1,000 |
+
+Le rapport généré porte les intervalles, le test de McNemar, les populations
+exactes et la lecture question par question. **En cas de divergence avec le
+tableau ci-dessus, c'est le rapport qui fait foi**, et ce tableau qui est
+périmé.
 
 **Recall@k porte sur des DOCUMENTS, pas sur des chunks.** Une notice fait quatre
 chunks : à k = 3, une liste de chunks peut être remplie par un seul document, et
 le chiffre ne voudrait plus rien dire. On déduplique par `doc_id` avant de
 compter. Un `gold_alternatifs` de `eval/attendus_rag.jsonl` compte comme un
 succès.
-
-| Métrique, sur documents | A, dense | B, +hybride | C, +rerank | D, complet | Gain D sur A |
-| --- | --- | --- | --- | --- | --- |
-| Recall@1, `reference_exacte` | | | | | |
-| Recall@3, `reference_exacte` | | | | | |
-| Recall@5, `reference_exacte` | | | | | |
-| MRR, `reference_exacte` | | | | | |
-| Recall@1, `couverte` | | | | | |
-| Recall@3, `couverte` | | | | | |
-| Recall@5, `couverte` | | | | | |
-| MRR, `couverte` | | | | | |
-
-| Garantie E1, branche avancée seule | Valeur |
-| --- | --- |
-| Abstention sur les 9 `hors_corpus` | |
 
 **Chaque taux se publie avec son intervalle de confiance.** Sur huit questions,
 une seule qui bascule vaut 12,5 points, et les intervalles de Wilson à 95 % de
@@ -240,7 +249,9 @@ cela dit des limites.
 ## 8. Où vivent les résultats
 
 ```
-eval/results/                sorties datees, une par execution
-docs/mesure_e6.md            ce protocole, plus la synthese finale
-eval/attendus_rag.jsonl      annotation gold des 14 questions "couverte" (P4)
+eval/rapport_gain.md         LES RESULTATS, generes, source unique
+docs/mesure_e6.md            ce protocole, ecrit avant l'implementation
+eval/attendus_rag.jsonl      annotation gold des questions "couverte" (P4)
+eval/results/                sorties datees par execution. VIDE a ce jour :
+                             le rapport est regenere, pas archive.
 ```
