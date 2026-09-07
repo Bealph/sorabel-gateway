@@ -22,11 +22,28 @@
 
 ## Ce qui reste
 
-| Id | Travail | Fichier | Bloqué par |
-| --- | --- | --- | --- |
-| A4 | Coût mensuel réel, à établir avec la calculatrice Azure et les volumes du projet | `docs/conception/07_cible_deploiement.md` | rien, mais la décision d'allumer une réplique en continu appartient au pilote |
-| A1 | Application Slack : hébergement, vérification de signature, réponse différée en deux messages (D34) | `slack_app/`, à créer | un espace de travail Slack, qui n'existe pas |
-| A2 | Format de restitution des sources dans un message Slack. E1 exige des sources citées, un message mal conçu les rend illisibles | à définir | A1 |
+| Id | Travail | Ce qui manque |
+| --- | --- | --- |
+| A1 | Application Slack : **écrite et éprouvée hors ligne**, `slack_app/`, 42 contrôles verts dont la signature, le rejeu, la déduplication et le budget de 3 s. | Un **espace de travail Slack**, qui n'existe pas, et un administrateur pour y installer l'application. Le dialogue réel avec l'API Slack n'est donc pas éprouvé, et le service n'est pas déployé. |
+| — | `eval/results/` : archiver une sortie datée par exécution de la mesure E6 | Rien ne le bloque. Mineur : le rapport est régénéré, pas archivé. |
+
+**A2 est fait** : `slack_app/formatage.py` rend les sources en liste Block Kit,
+titre en gras, référence en code, date en clair, avec un refus marqué comme un
+refus et le SQL visible sur un refus seulement. Douze contrôles portent sur ce
+seul point, parce qu'E1 exige des sources *lisibles* et non seulement présentes.
+
+**A4 est fait, et calculé plutôt qu'écrit** : `deploy/cout.py` interroge l'API
+tarifaire publique d'Azure et la consommation réelle du conteneur. Résultat au
+2026-09-07 : **155 USD par mois** au tarif actif, 50 USD au tarif repos, et le
+CPU mesuré à 0,127 cœur est **13 fois au-dessus** du seuil de 0,01 qui
+conditionne le tarif repos. C'est donc la borne haute qui s'applique. Décision
+du pilote : laisser allumé jusqu'à la soutenance.
+
+**`clients.email` est tranchée** : classée `restreinte`, donc fermée au support.
+Le motif n'est pas notre préférence mais `docs/schema.sql`, fourni par la DSI,
+qui annote la colonne « donnée personnelle : usage interne uniquement ». Un bot
+Slack tourné vers l'extérieur n'est pas un usage interne. Reversible en
+retirant deux lignes de la matrice.
 
 ---
 
@@ -63,9 +80,8 @@ différée en deux messages.
 ## L'ordre dans lequel le reste se débloque
 
 ```
-fait le 2026-09-07  ->  A3 puis L3, la chaine eprouvee puis l'interface en ligne
-independant         ->  A4, le cout chiffre
-un espace Slack     ->  A1 puis A2
+fait le 2026-09-07  ->  A3, L3, A4, A2, et A1 ecrite et eprouvee hors ligne
+un espace Slack     ->  deployer A1 et la confronter au vrai Slack
 ```
 
 **Le brief est entierement livre** : dossier de conception, serveur MCP avec son

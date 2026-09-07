@@ -63,7 +63,11 @@ colonnes_sensibles:
 # Au-dela du litteral d'E5. Donnee a caractere personnel, sur un profil dont le
 # client est un bot Slack tourne vers l'exterieur. Le cadrage DSI ne la nomme
 # pas ; la classifier etait obligatoire, la classification etant exhaustive.
-# DECISION A CONFIRMER PAR LE PILOTE, reversible en retirant deux lignes.
+# DECISION PRISE le 2026-09-07, et elle ne repose pas sur notre gout :
+# docs/schema.sql, FOURNI PAR LA DSI, annote la colonne "donnee
+# personnelle : usage interne uniquement". Un bot tourne vers
+# l'exterieur n'est pas un usage interne. Reversible en retirant deux
+# lignes, ici et dans colonnes_interdites du profil support.
 colonnes_restreintes:
   - clients.email
 

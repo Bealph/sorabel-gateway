@@ -28,6 +28,19 @@ Déployé sur Azure Container Apps, image construite côté Azure par
 `--controles` en lecture seule et un mode `--a-vide` qui éprouve la chaîne sans
 rien construire.
 
+**L'application tourne en continu, donc elle est facturée en continu.** Coût
+mesuré : environ **155 USD par mois**, calculé par `deploy/cout.py` depuis
+l'API tarifaire d'Azure et la consommation réelle du conteneur. Pour l'éteindre
+sans rien détruire, le jour où le lien n'est plus nécessaire :
+
+```
+az containerapp update --name sorabel-gateway \
+  --resource-group adialloRG --min-replicas 0
+```
+
+Le rallumer se fait avec `--min-replicas 1`, au prix de quelques minutes de
+réveil.
+
 ---
 
 ## Ce que fait la Gateway

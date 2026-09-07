@@ -136,7 +136,11 @@ sorabel-data-gateway/
 ├── Dockerfile             # image de l'interface. JAMAIS CONSTRUITE
 ├── .dockerignore          # contexte reduit a 10,4 Mo
 ├── deploy/                # azure.sh (modes --controles, --a-vide,
-│                          # --detruire), purger_cuda.py, telecharger_modeles.py
+│                          # --detruire), purger_cuda.py,
+│                          # telecharger_modeles.py, cout.py (A4)
+├── slack_app/             # APPLICATION SLACK : signature.py (frontiere de
+│                          # confiance), formatage.py (A2), serveur.py.
+│                          # Eprouvee hors ligne, JAMAIS deployee
 ├── README.md             # vitrine du projet
 ├── .gitignore
 ├── pyproject.toml        # metadata + dependances (a valider en phase dev)
@@ -941,6 +945,8 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
               uv run python eval/verifier_cas_mcp.py
               uv run python eval/mesure_routage.py
               uv run python tests/eprouver_gardes.py
+              uv run python tests/eprouver_slack.py
+              uv run python deploy/cout.py           (demande az login)
               uv run python -m ingest --controles-seuls
               uv run ruff check .
 2026-09-03  CHANTIER 3, SERVEUR MCP. Termine. La suite d'acceptance passe de
@@ -1320,6 +1326,83 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             de formation PARTAGE. Pour l'eteindre sans rien detruire :
               az containerapp update --name sorabel-gateway \
                 --resource-group adialloRG --min-replicas 0
+
+2026-09-07  TOUT LE RESTE A FAIRE, ferme ou reduit a son seul blocage reel.
+            A4, LE COUT, ENFIN CHIFFRE, et CALCULE plutot qu'ecrit :
+            deploy/cout.py interroge l'API tarifaire publique d'Azure et la
+            consommation reelle du conteneur. Un chiffre recopie dans un
+            document aurait derive au premier changement de tarif ou de
+            dimensionnement, defaut deja paye cinq fois.
+              vCPU actif  0,000024 USD/s     vCPU repos  0,000003 USD/s
+              memoire     0,000003 USD/Gio-s registre    0,1666 USD/jour
+              gratuit mensuel : 180 000 vCPU-s, 360 000 Gio-s, 2 M requetes
+              -> borne repos 50 USD/mois, borne ACTIVE 155 USD/mois
+            LA MESURE TRANCHE ENTRE LES DEUX BORNES, et c'est le point : la
+            documentation de facturation exige moins de 0,01 coeur vCPU pour le
+            tarif repos. Mesure : 0,127 coeur en moyenne, 1,48 au maximum, soit
+            13 FOIS le seuil. C'est donc 155 USD/mois. Decision du pilote :
+            laisser allume jusqu'a la soutenance.
+            DEUX PIEGES DE L'API TARIFAIRE, tous deux consignes dans le script :
+            (a) l'alimentation EUR renvoie 0,00 pour les compteurs de calcul, et
+                pas seulement en France Central : verifie sur les 61 regions. En
+                USD les valeurs sont reelles. Publier un cout nul aurait ete
+                pire que ne rien publier.
+            (b) az est un .cmd sous Windows, que subprocess ne trouve pas sans
+                son extension : FileNotFoundError alors qu'az fonctionne
+                parfaitement dans le terminal.
+            Sources relues : la page tarifaire Container Apps pour le palier
+            gratuit, learn.microsoft.com/azure/container-apps/billing pour les
+            conditions du tarif repos.
+            A1, L'APPLICATION SLACK, ECRITE ET EPROUVEE HORS LIGNE.
+            slack_app/ : signature.py, formatage.py, serveur.py. Aucune
+            dependance nouvelle, http.server de la bibliotheque standard suffit
+            pour un point d'entree qui recoit des POST : ajouter un cadre web
+            aurait modifie uv.lock, que l'amont epingle.
+            Les trois contraintes de D34 sont traitees :
+              le budget de 3 s : le 200 part d'abord, l'accuse est publie, la
+                reponse suit dans un second message. MESURE : le 200 revient en
+                1 ms.
+              le point d'entree public : signature.py est la seule frontiere de
+                confiance. Specification relue sur docs.slack.dev, chaine de
+                base v0:{timestamp}:{corps BRUT}, HMAC-SHA256, fenetre de cinq
+                minutes, comparaison a temps constant.
+              une contrainte que le dossier n'avait PAS vue : Slack REJOUE
+                l'evenement jusqu'a trois fois s'il n'a pas son 200 dans le
+                budget. Sans deduplication par event_id, la meme question
+                partirait trois fois a la gateway et le journal porterait trois
+                appels pour une question.
+            A2, LE RENDU DES SOURCES, fait et eprouve par douze controles. E1
+            exige des sources LISIBLES et non seulement presentes : un mur de
+            texte ou titre, reference et date se noient satisfait la lettre et
+            rate l'intention. Liste Block Kit, titre en gras, reference en code,
+            date en clair. Un refus est marque comme un refus, avec son code. Et
+            le SQL n'apparait QUE sur un refus, ou il est la seule chose qui
+            rende la decision auditable : un agent du SAV ne lit pas de SQL.
+            L'IDENTITE SLACK VA A LA TRACE, JAMAIS A UNE DECISION. Elle est
+            attestee par le bot et non verifiee par la gateway (D34), donc elle
+            ameliore l'imputabilite sans entrer dans l'autorisation. Elle atterrit
+            dans logs/conversation.jsonl, la trace CLIENT, et non dans
+            logs/journal.jsonl dont le cadrage fixe les cles.
+            42 CONTROLES VERTS, tous eprouves par leur echec : signature abimee
+            d'un caractere, autre secret, rejeu a 6 minutes dans le passe ET
+            dans le futur, en-tetes absents, secret absent, corps reserialise,
+            requete non signee refusee en 401, chemin inconnu en 404, message de
+            bot ignore pour eviter la boucle.
+            CE QUI RESTE, ET C'EST LE SEUL BLOCAGE : l'espace de travail Slack
+            n'existe pas, et il faut un administrateur pour y installer une
+            application. Le dialogue reel avec l'API Slack n'est donc PAS
+            eprouve, et le service n'est pas deploye. Le serveur.py le dit en
+            tete plutot que de le laisser supposer.
+            clients.email TRANCHEE, et pas sur notre gout : docs/schema.sql,
+            FOURNI PAR LA DSI, annote la colonne "donnee personnelle : usage
+            interne uniquement". Un bot Slack tourne vers l'exterieur n'est pas
+            un usage interne. Classee restreinte, fermee au support, reversible
+            en retirant deux lignes.
+            MENAGE AZURE : rien a faire, la revision aux variables corrompues
+            s'etait desactivee d'elle-meme et l'etiquette d'image inutilisee
+            n'existait pas. Verifie plutot que suppose.
+            VERIFIE : 42 controles Slack, 28 controles matrice, l'interface
+            deployee repond sur ses six routes, ruff propre.
 ```
 
 ---
