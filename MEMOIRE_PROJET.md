@@ -139,8 +139,9 @@ sorabel-data-gateway/
 │                          # --detruire), purger_cuda.py,
 │                          # telecharger_modeles.py, cout.py (A4)
 ├── slack_app/             # APPLICATION SLACK : signature.py (frontiere de
-│                          # confiance), formatage.py (A2), serveur.py.
-│                          # Eprouvee hors ligne, JAMAIS deployee
+│                          # confiance), formatage.py (A2), serveur.py,
+│                          # manifeste.yaml. DEPLOYEE, deux bots, un par
+│                          # profil, dans deux canaux distincts
 ├── README.md             # vitrine du projet
 ├── .gitignore
 ├── pyproject.toml        # metadata + dependances (a valider en phase dev)
@@ -1403,6 +1404,117 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             n'existait pas. Verifie plutot que suppose.
             VERIFIE : 42 controles Slack, 28 controles matrice, l'interface
             deployee repond sur ses six routes, ruff propre.
+
+2026-09-07  DEUX BOTS SLACK, UN PAR PROFIL, ET QUATRE DEFAUTS DE MON FAIT.
+            Demande du pilote : « au lieu d'un seul canal, pourquoi ne pas
+            avoir #equipe-commercial et #equipe-support ». Bonne idee, et pour
+            une raison qui n'etait pas la sienne au depart : elle deplace
+            l'autorisation vers l'APPARTENANCE AU CANAL, controlee par Slack.
+            Nous cessons de fabriquer le controle d'acces et nous appuyons sur
+            un systeme dont c'est le metier. C'est meilleur qu'un selecteur,
+            que D40 refusait parce qu'il ferait du profil un parametre rempli
+            par l'appelant.
+            DEUX CANAUX SEULS NE SUFFISENT PAS, et c'est le point : un
+            processus porte UN profil (D28). Deux canaux parlant au meme
+            service obtiendraient tous deux support, et leurs noms MENTIRAIENT,
+            ce qui est pire qu'un canal unique. Il faut donc deux services et
+            deux applications Slack, une Request URL par application.
+            ECARTEE : un service unique qui aiguillerait selon le canal.
+            L'identifiant de canal est atteste par la signature de Slack, mais
+            il vient du CONTENU DE LA REQUETE, ce que D28 a ete ecrit pour
+            empecher. L'isolation deviendrait une propriete de mon code au lieu
+            d'une propriete du deploiement.
+            deploy/azure.sh --slack [profil] gere les deux, meme image, seule
+            la variable SORABEL_PROFILE change.
+
+            DEFAUT 1, LE PROFIL ETAIT CODE EN DUR dans slack_app/serveur.py,
+            releve par le pilote. Le service derogeait ainsi a D28 qu'il citait
+            en commentaire, et deployer une instance commerciale exigeait de
+            modifier le code. Il se lit desormais dans SORABEL_PROFILE, comme
+            le serveur MCP le fait deja.
+
+            DEFAUT 2, UN MESSAGE MENSONGER, le plus interessant. Sur « quelle
+            est la marge sur la REF-8842 ? » le bot commercial repondait
+                « le schema ne contient aucune donnee de marge »
+            C'est FAUX : le commercial n'a AUCUNE colonne interdite. Le modele
+            avait recopie la tournure d'un exemple de NOTRE PROPRE PROMPT,
+            « le schema ne contient aucune donnee meteorologique », en
+            substituant le mot. Le texte libre du modele remontait tel quel a
+            l'utilisateur.
+            Une justification inventee est pire qu'un refus sec : elle fait
+            croire a une regle qui n'existe pas, et un integrateur qui la lit
+            conclut a tort que la donnee est hors perimetre. C'est l'esprit
+            d'E1, ne jamais inventer, applique au chemin SQL. Le message est
+            desormais DETERMINISTE et n'affirme que ce que nous savons ; le
+            texte du modele reste dans la trace.
+            L'echec lui-meme reste MCP-14, la limite_connue de D48, et il est
+            juste qu'il se voie.
+
+            DEFAUT 3, MAUVAIS DIMENSIONNEMENT. J'avais fixe 3 Gio d'apres la
+            memoire mesuree de l'INTERFACE, 2,49 Gio, sans voir que ce
+            conteneur n'avait pas encore charge le generateur SQL. Qwen-0,5B en
+            float32 pese a lui seul ~2 Gio, plus 0,5 d'embeddings et 0,5 de
+            reranker : le compte tombe pile a 3 Gio.
+            MESURE : WorkingSetBytes a 3,00 Gio sur 3,00 alloues, soit 100 %,
+            et RestartCount a ZERO. Le noyau avait tue le SOUS-PROCESSUS
+            serveur MCP sans tuer le conteneur, d'ou un flux stdio ferme et
+            aucun redemarrage au compteur.
+            Extrapoler la mesure d'un conteneur a un autre qui ne charge pas
+            les memes choses etait une faute de methode. Les deux bots sont
+            passes a 2 vCPU et 4 Gio, Container Apps n'offrant pas de palier
+            entre 3 et 4 Gio.
+
+            DEFAUT 4, AUCUNE RECONNEXION, le plus grave. Une fois le
+            sous-processus mort, ClientPersistant gardait sa session morte et
+            rendait ClosedResourceError a TOUS les appels suivants,
+            definitivement. Le service paraissait casse alors qu'il suffisait
+            de relancer le serveur. Meme avec assez de memoire, une mort
+            passagere aurait empoisonne le service jusqu'au redemarrage du
+            conteneur.
+            Corrige : la classe distingue une SESSION MORTE d'un simple delai
+            depasse, rouvre une fois et rejoue l'appel. Une seule fois, pour ne
+            pas boucler si le serveur meurt a chaque demarrage. Un client MCP
+            durable doit survivre a la mort de son serveur.
+
+            PIEGES AZURE RENCONTRES, tous consignes dans deploy/azure.sh :
+            (a) `secret set` dit « must be restarted », mais REDEMARRER NE
+                SUFFIT PAS : la valeur est resolue a la CREATION de la revision.
+            (b) une nouvelle revision recoit 100 % du trafic AVANT d'etre
+                saine : pendant le tirage des 6 Go c'est l'ANCIENNE replique qui
+                repond, donc l'ancien secret marche encore et le nouveau semble
+                refuse. J'ai failli conclure a tort deux fois.
+            (c) `secret show -o tsv` ROGNE LES ESPACES DE FIN. Le magasin
+                annoncait 59 caracteres la ou le conteneur en avait 60 : un
+                retour chariot ramasse au copier-coller depuis le navigateur.
+                Slack recevait « Bearer xoxb-...rS9h\r » et rendait
+                invalid_auth sans rien dire de la cause. Ce qui a tranche est un
+                `wc -c` DANS le conteneur, immunise contre les artefacts
+                d'affichage : mon premier essai avait cru lire un « L » qui
+                n'existait pas, et j'avais bati un raisonnement dessus avant de
+                voir que n'importe quel jeton errone rend invalid_auth, donc que
+                ce test ne distinguait rien.
+                signature.py et serveur.py coupent desormais les deux secrets.
+            (d) une signature Slack porte sur le CORPS BRUT : un JSON reanalyse
+                puis reserialise echoue, ce que les tests eprouvent.
+            (e) le manifeste ne peut PAS declarer d'evenements sans request_url,
+                et fournir l'URL avant que les secrets soient poses echoue
+                aussi, Slack la verifiant par un defi. L'ordre est contraint par
+                Slack : creer, installer, poser les secrets, PUIS abonner.
+                J'avais ecrit le contraire dans le manifeste, sans verifier.
+            (f) poser un secret dans le magasin ne suffit pas, il faut le
+                BRANCHER sur une variable d'environnement. J'avais donne la
+                commande pour le premier bot et l'avais omise pour le second.
+
+            LES SUCCES SONT DESORMAIS TRACES, et pas seulement les echecs.
+            Tant que seul l'echec parlait, il fallait deduire la reussite d'une
+            absence d'erreur, ce qui n'est pas une preuve : nous en avons fait
+            l'experience pendant une heure.
+
+            COUT : trois services a 465 USD/mois, soit ~15 USD par jour.
+            Decision du pilote : laisser allume jusqu'a la soutenance. Les
+            commandes d'extinction sont dans le README.
+            VERIFIE : suite d'acceptance 12/12 en 207 s, 52 controles Slack,
+            sept verificateurs verts, 27 gardes SQL, ruff propre.
 ```
 
 ---

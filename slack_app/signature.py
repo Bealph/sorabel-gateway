@@ -68,8 +68,20 @@ def secret(depuis_env: str = "SLACK_SIGNING_SECRET") -> str:
     Absent, on rend une chaîne vide, et `verifier` refuse tout : un service qui
     démarrerait sans secret et accepterait les requêtes serait pire qu'un
     service arrêté.
+
+    LE `.strip()` N'EST PAS COSMETIQUE, il a coûté une heure de diagnostic le
+    2026-09-07. Le secret avait été posé depuis PowerShell avec un retour
+    chariot ramassé au copier-coller depuis le navigateur. Slack recevait donc
+    `Bearer xoxb-…rS9h\\r` et répondait `invalid_auth`, sans rien dire de la
+    cause. Et le CLI d'Azure ne montrait rien : `az containerapp secret show
+    -o tsv` **rogne les espaces de fin**, donc il affichait une valeur propre
+    là où le conteneur en avait une autre. Ce qui a tranché est un `wc -c`
+    dans le conteneur : 61 octets au lieu de 60.
+
+    Un secret ne contient jamais d'espace en tête ni en queue. Les couper est
+    donc sans risque, et supprime une classe entière de pannes muettes.
     """
-    return os.environ.get(depuis_env, "")
+    return os.environ.get(depuis_env, "").strip()
 
 
 def chaine_de_base(horodatage: str, corps: bytes) -> bytes:

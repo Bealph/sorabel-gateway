@@ -94,8 +94,28 @@ class ClientPersistant:
 
     # --- côté appelant synchrone -------------------------------------------
 
-    def appeler(self, tool: str, arguments: dict, delai: float = 900) -> dict:
-        """Un appel, rendu tel que le client le reçoit : l'enveloppe décodée."""
+    #: Erreurs qui signifient « le processus serveur n'est plus là », par
+    #: opposition à un simple délai dépassé. Reconnaître la différence évite de
+    #: relancer un serveur qui était seulement lent.
+    MORTES = ("ClosedResourceError", "BrokenResourceError", "BrokenPipeError",
+              "EndOfStream", "ProcessLookupError")
+
+    def appeler(self, tool: str, arguments: dict, delai: float = 900,
+                rouvrir: bool = True) -> dict:
+        """Un appel, rendu tel que le client le reçoit : l'enveloppe décodée.
+
+        UNE SESSION MORTE SE ROUVRE, ET C'EST UNE CORRECTION DU 2026-09-07.
+        Le conteneur Slack avait saturé ses 3 Gio et le noyau avait tué le
+        sous-processus serveur MCP, sans tuer le conteneur : zéro redémarrage
+        au compteur, et un flux stdio fermé. Cette classe gardait alors sa
+        session morte et rendait `ClosedResourceError` à **tous** les appels
+        suivants, définitivement. Le service paraissait cassé alors qu'il
+        suffisait de relancer le serveur.
+
+        Un client MCP durable doit survivre à la mort de son serveur : un IDE
+        le fait. On rouvre donc une fois, puis on rejoue l'appel. Une seule
+        fois, pour ne pas boucler si le serveur meurt à chaque démarrage.
+        """
         if self.erreur:
             return {"status": "error", "payload": {},
                     "message": f"session indisponible : {self.erreur}"}
@@ -110,11 +130,36 @@ class ClientPersistant:
         try:
             return futur.result(timeout=delai)
         except Exception as e:  # noqa: BLE001
+            morte = type(e).__name__ in self.MORTES
+            if morte and rouvrir and self._rouvrir():
+                # Un seul rejeu : `rouvrir=False` coupe la recursion.
+                return self.appeler(tool, arguments, delai, rouvrir=False)
             # Un delai depasse ou une panne de transport est rendu comme un
             # statut, jamais comme une exception : la page doit pouvoir
             # l'afficher au meme titre qu'un refus.
+            message = f"{type(e).__name__}: {e}"
+            if morte:
+                message += " (session serveur perdue, reouverture echouee)"
             return {"status": "error", "payload": {"code": "TRANSPORT"},
-                    "message": f"{type(e).__name__}: {e}"}
+                    "message": message}
+
+    def _rouvrir(self) -> bool:
+        """Relance un processus serveur et une session. Vrai si c'est reparti."""
+        print(f"session MCP perdue pour le profil {self.profil}, reouverture",
+              file=sys.stderr)
+        self.fermer()
+        self.outils = []
+        self.erreur = ""
+        self._pret = threading.Event()
+        self._arret = None
+        self._fil = threading.Thread(target=self._tourner, daemon=True)
+        self._fil.start()
+        self._pret.wait(timeout=180)
+        if self.erreur:
+            print(f"reouverture impossible : {self.erreur}", file=sys.stderr)
+            return False
+        print(f"session MCP rouverte, {len(self.outils)} tools", file=sys.stderr)
+        return True
 
     def fermer(self) -> None:
         if self._boucle and self._arret and not self._arret.done():

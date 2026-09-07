@@ -4,7 +4,8 @@
 #   bash deploy/azure.sh --controles   verifie les droits, ne cree RIEN
 #   bash deploy/azure.sh --a-vide      eprouve la chaine avec une image d'exemple
 #   bash deploy/azure.sh               construit et deploie pour de bon
-#   bash deploy/azure.sh --slack       deploie l'application Slack (A1)
+#   bash deploy/azure.sh --slack       deploie le bot Slack, profil support
+#   bash deploy/azure.sh --slack commercial   idem, profil commercial
 #   bash deploy/azure.sh --detruire    supprime ce que ce script a cree
 #
 # POURQUOI LE MODE À VIDE EXISTE
@@ -265,6 +266,30 @@ deployer() {
 }
 
 deployer_slack() {
+  # UN SERVICE PAR PROFIL, ET C'EST LE POINT. Un processus porte un profil,
+  # fige a son lancement (D28). Deux canaux Slack qui parleraient au meme
+  # service obtiendraient tous deux `support`, et leurs noms MENTIRAIENT, ce
+  # qui est pire qu'un canal unique : un nom qui promet des droits qu'il ne
+  # donne pas trompe l'utilisateur.
+  #
+  # L'autorisation devient alors l'appartenance au canal, controlee par SLACK.
+  # Nous ne fabriquons plus le controle d'acces, nous nous appuyons sur un
+  # systeme dont c'est le metier. C'est meilleur qu'un selecteur, refuse par
+  # D40 parce qu'il ferait du profil un parametre rempli par l'appelant.
+  #
+  # ECARTEE : un seul service qui aiguillerait selon le canal. L'identifiant
+  # de canal est certes atteste par la signature de Slack, mais il vient du
+  # CONTENU DE LA REQUETE, ce que D28 a ete ecrit pour empecher. L'isolation
+  # deviendrait une propriete de mon code au lieu d'une propriete du
+  # deploiement. Sur un projet dont le sujet est la gouvernance, mauvais
+  # echange.
+  local profil="${1:-support}"
+  case "$profil" in
+    support)    APPLICATION_SLACK="${SORABEL_APP_SLACK:-sorabel-slack}" ;;
+    commercial) APPLICATION_SLACK="${SORABEL_APP_SLACK:-sorabel-slack-commercial}" ;;
+    *) rouge "profil inconnu : ${profil}. Attendus : support, commercial"; exit 1 ;;
+  esac
+
   socle
 
   etape "Image"
@@ -280,7 +305,7 @@ deployer_slack() {
   motdepasse="$(az acr credential show --name "$REGISTRE" \
                 --query 'passwords[0].value' -o tsv)"
 
-  etape "Application Slack"
+  etape "Application Slack, profil ${profil}"
   # PAS DE -m ICI : un argument qui commence par un tiret est pris par
   # az pour une option, et il rend "unrecognized arguments". Le chemin
   # est RELATIF, car MSYS convertit tout argument ressemblant a un chemin
@@ -310,8 +335,9 @@ deployer_slack() {
       --target-port 8080 --ingress external \
       --cpu "$CPU_SLACK" --memory "$MEMOIRE_SLACK" \
       --min-replicas 1 --max-replicas 1 \
+      --env-vars "SORABEL_PROFILE=${profil}" \
       -o none
-    vert "  ${APPLICATION_SLACK} creee"
+    vert "  ${APPLICATION_SLACK} creee, profil ${profil}"
   fi
 
   local url
@@ -334,6 +360,20 @@ deployer_slack() {
   echo "                   SLACK_BOT_TOKEN=secretref:slack-token"
   echo
   gris "Tant qu'ils manquent, le service repond mais REFUSE toute requete."
+  echo
+  rouge "  DEUX PIEGES, constates le 2026-09-07 :"
+  gris  "  1. 'secret set' affiche « must be restarted in order for secret"
+  gris  "     changes to take effect ». REDEMARRER LA REVISION NE SUFFIT PAS :"
+  gris  "     la valeur est resolue a la CREATION de la revision. Pour qu un"
+  gris  "     nouveau secret prenne effet, il faut donc en creer une :"
+  gris  "       az containerapp update --name ${APPLICATION_SLACK} \\"
+  gris  "         --resource-group ${GROUPE} --revision-suffix <un-nom-neuf>"
+  gris  "  2. La nouvelle revision recoit 100 % du trafic AVANT d etre saine."
+  gris  "     Pendant le tirage des 6 Go, c est l ANCIENNE replique qui repond,"
+  gris  "     donc l ancien secret marche encore et le nouveau semble refuse."
+  gris  "     Attendre healthState=Healthy avant de conclure, et LIRE la valeur"
+  gris  "     avec 'az containerapp secret show' plutot que la deduire du"
+  gris  "     comportement observe."
 }
 
 
@@ -342,13 +382,13 @@ detruire() {
   # il portait des ressources avant nous. On retire seulement ce que ce script
   # a cree, nomme par nomme.
   etape "Suppression de ce que ce script a cree, dans ${GROUPE}"
-  echo "  applications ${APPLICATION}, ${APPLICATION}-essai, ${APPLICATION_SLACK}"
+  echo "  applications ${APPLICATION}, ${APPLICATION}-essai, les deux bots Slack"
   echo "  environnement ${ENVIRONNEMENT}"
   echo "  registre     ${REGISTRE}"
   rouge "  Le groupe ${GROUPE} n'est PAS touche : il est partage."
   read -r -p "Confirmer en tapant le nom de l'application : " saisie
   [ "$saisie" = "$APPLICATION" ] || { echo "Abandon."; exit 1; }
-  for nom in "$APPLICATION" "${APPLICATION}-essai" "$APPLICATION_SLACK"; do
+  for nom in "$APPLICATION" "${APPLICATION}-essai" sorabel-slack sorabel-slack-commercial; do
     az containerapp delete --name "$nom" --resource-group "$GROUPE" --yes \
       -o none 2>/dev/null || gris "  ${nom} absente"
   done
@@ -362,7 +402,7 @@ detruire() {
 case "${1:-}" in
   --controles) controles ;;
   --a-vide)    deployer_a_vide ;;
-  --slack)     deployer_slack ;;
+  --slack)     deployer_slack "${2:-support}" ;;
   --detruire)  detruire ;;
   "")          deployer ;;
   *)           sed -n '3,7p' "$0"; exit 1 ;;

@@ -254,10 +254,31 @@ class ServiceSql:
                 "clarification", "AMBIGUOUS",
                 generation.message or "La question est ambigue, preciser.")
         if generation.cas == "HORS_SCHEMA":
+            # LE MESSAGE DU MODELE N'EST PAS PROPAGE, ET C'EST UNE CORRECTION.
+            #
+            # Jusqu'au 2026-09-07, `generation.message` remontait tel quel. Le
+            # pilote a vu le bot commercial repondre, sur « quelle est la marge
+            # sur la REF-8842 ? » :
+            #     « le schema ne contient aucune donnee de marge »
+            # C'est FAUX : le profil commercial n'a aucune colonne interdite, et
+            # `marge_pct` figure bien dans son schema. Le modele avait recopie
+            # la tournure d'un exemple de notre propre prompt, « le schema ne
+            # contient aucune donnee meteorologique », en substituant le mot.
+            #
+            # Une justification inventee est pire qu'un refus sec : elle fait
+            # croire a une regle qui n'existe pas, et un integrateur qui la lit
+            # conclut a tort que la donnee est hors perimetre. C'est l'esprit
+            # d'E1, « ne jamais inventer », applique au chemin SQL.
+            #
+            # On rend donc un message DETERMINISTE, qui n'affirme que ce que
+            # nous savons : aucune requete n'a ete produite. Le texte du modele
+            # reste dans la trace et dans `brut`, pour le diagnostic.
             return trace.conclure(
                 "refused", "OUT_OF_SCHEMA",
-                generation.message or "Cette question ne releve pas des donnees "
-                "accessibles a ce profil. Aucune requete n'a ete produite.")
+                "Aucune requete n'a pu etre produite pour cette question. "
+                "Cela ne signifie PAS que la donnee est hors de votre "
+                "perimetre : appeler get_schema pour voir les tables et "
+                "colonnes qui vous sont accessibles.")
 
         # --- Couches 2, 3 et 4 ------------------------------------------------
         with trace.etape("2, 3, 4 · AST, périmètre, LIMIT") as e:

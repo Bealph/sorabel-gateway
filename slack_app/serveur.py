@@ -56,10 +56,22 @@ sys.path.insert(0, str(RACINE))
 
 from slack_app import formatage, signature  # noqa: E402
 
-#: Le profil est celui du SERVEUR, fixé à son lancement (D28). Le bot Slack est
-#: le client du profil `support`, la matrice le dit elle-même. Aucun message
-#: Slack ne peut en changer.
-PROFIL = "support"
+#: Le profil est celui du SERVEUR, fixé à son lancement (D28) et lu dans
+#: `SORABEL_PROFILE`, comme le serveur MCP le fait déjà. Le bot Slack est le
+#: client du profil `support`, la matrice le dit elle-même, d'où le défaut.
+#:
+#: IL ETAIT CODE EN DUR JUSQU'AU 2026-09-07, et le pilote l'a relevé : le
+#: service dérogeait ainsi à la décision qu'il citait en commentaire, et
+#: déployer une instance commerciale exigeait de modifier le code.
+#:
+#: CE QU'IL NE FAUT SURTOUT PAS EN CONCLURE : que le profil devienne
+#: choisissable depuis Slack. Ce serait rouvrir le trou que la conception a
+#: bouché, où `profil` était un paramètre rempli par l'appelant : n'importe qui
+#: dans l'espace de travail se déclarerait commercial et obtiendrait les
+#: marges. Servir les commerciaux par Slack demande un SECOND service, lancé
+#: avec ce profil et joignable depuis un canal privé dont Slack contrôle
+#: l'appartenance (topologie D39). Aucun message ne peut changer ce profil.
+PROFIL = os.environ.get("SORABEL_PROFILE", "support").strip() or "support"
 
 API_SLACK = "https://slack.com/api/chat.postMessage"
 
@@ -89,7 +101,10 @@ def publier(canal: str, blocs: list[dict], fil: str = "") -> None:
     Un échec ici ne doit pas faire tomber le service : Slack a déjà reçu son
     `200`, et l'utilisateur verra simplement l'accusé sans suite. On le trace.
     """
-    jeton = os.environ.get("SLACK_BOT_TOKEN", "")
+    # `.strip()` pour la meme raison que le secret de signature : un retour
+    # chariot ramasse au copier-coller a valu une heure de diagnostic, et le
+    # CLI d'Azure ne le montrait pas.
+    jeton = os.environ.get("SLACK_BOT_TOKEN", "").strip()
     if not jeton:
         print("SLACK_BOT_TOKEN absent : rien n'est publie.", file=sys.stderr)
         return
@@ -104,7 +119,13 @@ def publier(canal: str, blocs: list[dict], fil: str = "") -> None:
     try:
         with urllib.request.urlopen(requete, timeout=20) as reponse:
             resultat = json.load(reponse)
-        if not resultat.get("ok"):
+        if resultat.get("ok"):
+            # ON TRACE AUSSI LES SUCCES, et pas seulement les echecs. Tant que
+            # seul l'echec parlait, le silence etait ambigu : il fallait
+            # deduire la reussite de l'absence d'erreur, ce qui n'est pas une
+            # preuve. Constate le 2026-09-07 en diagnostiquant `invalid_auth`.
+            print(f"publie dans {canal} ({len(blocs)} bloc(s))")
+        else:
             print(f"Slack a refuse la publication : {resultat.get('error')}",
                   file=sys.stderr)
     except urllib.error.URLError as e:

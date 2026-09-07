@@ -289,6 +289,57 @@ def eprouver_service_http() -> None:
         httpd.server_close()
 
 
+def eprouver_secrets_sales() -> None:
+    """Un secret avec un caractere de fin invisible doit quand meme marcher.
+
+    Ce n'est pas une precaution theorique : le 2026-09-07, le jeton Slack avait
+    ete pose depuis PowerShell avec un retour chariot ramasse au copier-coller
+    depuis le navigateur. Slack repondait `invalid_auth` sans rien dire, et le
+    CLI d'Azure ne montrait rien, car `secret show -o tsv` ROGNE les espaces de
+    fin : il affichait 59 caracteres la ou le conteneur en avait 60.
+    """
+    import importlib
+    import os
+
+    print("\nSECRETS SALES, la panne muette du 2026-09-07")
+    corps = json.dumps({"type": "event_callback"}).encode()
+    entetes = requete(corps)          # signes avec le secret PROPRE
+
+    for suffixe, quoi in (("\r", "retour chariot"), ("\n", "saut de ligne"),
+                          (" ", "espace"), ("\r\n", "les deux")):
+        os.environ["SLACK_SIGNING_SECRET"] = SECRET + suffixe
+        v = signature.verifier(corps, entetes)      # sans passer la cle
+        controle(f"un secret suivi d'un {quoi} est quand meme accepte",
+                 bool(v), v.motif)
+
+    os.environ["SLACK_SIGNING_SECRET"] = "  " + SECRET + "  "
+    controle("des espaces des DEUX cotes sont coupes",
+             bool(signature.verifier(corps, entetes)))
+
+    # Le controle en negatif : un secret REELLEMENT different reste refuse.
+    # Sans lui, un `.strip()` trop large passerait pour un succes.
+    os.environ["SLACK_SIGNING_SECRET"] = SECRET + "X"
+    controle("un secret different d'un vrai caractere reste REFUSE",
+             not signature.verifier(corps, entetes))
+    os.environ["SLACK_SIGNING_SECRET"] = SECRET
+
+    print("\nPROFIL, lu dans l'environnement et non code en dur")
+    for valeur, attendu, quoi in ((None, "support", "absent, defaut support"),
+                                  ("commercial", "commercial", "commercial"),
+                                  ("  commercial\r", "commercial",
+                                   "commercial sale"),
+                                  ("", "support", "vide, defaut support")):
+        if valeur is None:
+            os.environ.pop("SORABEL_PROFILE", None)
+        else:
+            os.environ["SORABEL_PROFILE"] = valeur
+        recharge = importlib.reload(serveur)
+        controle(f"profil {quoi} -> {attendu}", recharge.PROFIL == attendu,
+                 f"obtenu {recharge.PROFIL!r}")
+    os.environ.pop("SORABEL_PROFILE", None)
+    importlib.reload(serveur)
+
+
 def main() -> int:
     print("EPREUVE HORS LIGNE DE L'APPLICATION SLACK")
     print(f"{GRIS}  L'espace de travail Slack n'existe pas : le dialogue reel "
@@ -297,6 +348,7 @@ def main() -> int:
     eprouver_deduplication()
     eprouver_formatage()
     eprouver_defi()
+    eprouver_secrets_sales()
     eprouver_service_http()
 
     print()
