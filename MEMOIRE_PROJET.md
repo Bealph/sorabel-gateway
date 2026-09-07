@@ -154,6 +154,10 @@ sorabel-data-gateway/
 │   ├── mesure_e6.md       # protocole de mesure du gain RAG, chiffres au lot 3
 │   ├── PASSATION_DEV.md   # POINT D'ENTREE DEV : lots, criteres, garde-fous
 │   ├── RESTE_A_FAIRE.md   # ce qui reste, l'historique est dans git
+│   ├── manuel/            # SOURCE du manuel pedagogique, en 5 parties
+│   ├── manuel_pedagogique.md  # assemble, 2490 lignes. SOURCE du Word
+│   ├── vers_docx.py       # Markdown -> Word, bibliotheque STANDARD seule
+│   ├── Manuel_Sorabel_Data_Gateway.docx  # GENERE. Ne pas editer, regenerer
 │   ├── releve_donnees.py  # GENERE le bloc de releve de analyse_donnees.md
 │   ├── build_schemas.py   # GENERE schemas.html depuis les blocs mermaid des .md
 │   ├── schemas.html       # schemas rendus. NE PAS editer, regenerer.
@@ -948,6 +952,8 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
               uv run python tests/eprouver_gardes.py
               uv run python tests/eprouver_slack.py
               uv run python deploy/cout.py           (demande az login)
+              uv run python docs/vers_docx.py docs/manuel_pedagogique.md \
+                docs/Manuel_Sorabel_Data_Gateway.docx
               uv run python -m ingest --controles-seuls
               uv run ruff check .
 2026-09-03  CHANTIER 3, SERVEUR MCP. Termine. La suite d'acceptance passe de
