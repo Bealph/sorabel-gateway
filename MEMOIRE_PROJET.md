@@ -120,6 +120,7 @@ Chaque décision porte un statut : **VALIDÉ** (acté avec le pilote) /
 | Perimetre SQL | Porte sur TOUTE occurrence d'une colonne, pas les projections : WHERE, ORDER BY, GROUP BY, HAVING, sous-requetes (D43) | PROPOSE |
 | Ancrage des invariants | Ecrits EN DUR dans verifier_matrice.py, hors du YAML qu'ils controlent (D44) | PROPOSE |
 | Routage conversationnel | Amorce lexicale DECLAREE (schema + lexique de refus) puis similarite e5. Le modele local de D48 a ete REFUTE par la mesure : 4 montages, tous au hasard (D49) | VALIDE |
+| Deploiement effectif | Azure Container Apps, groupe adialloRG en francecentral, image construite par az acr build cote Azure. Une replique en continu, une seule au maximum (D50) | VALIDE |
 
 Référence méthodo RBAC/MCP retenue par le pilote :
 https://dev.to/deeptishuklatfy/how-to-implement-rbac-for-mcp-tools-a-practical-guide-for-engineering-teams-fhf
@@ -134,7 +135,8 @@ sorabel-data-gateway/
 ├── app.py                 # INTERFACE LIVRABLE : entree multipage, 5 ecrans
 ├── Dockerfile             # image de l'interface. JAMAIS CONSTRUITE
 ├── .dockerignore          # contexte reduit a 10,4 Mo
-├── deploy/azure.sh        # Container Apps, mode --a-vide pour eprouver
+├── deploy/                # azure.sh (modes --controles, --a-vide,
+│                          # --detruire), purger_cuda.py, telecharger_modeles.py
 ├── README.md             # vitrine du projet
 ├── .gitignore
 ├── pyproject.toml        # metadata + dependances (a valider en phase dev)
@@ -1215,6 +1217,109 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             qui echoue si la description disparait. 28 controles.
             VERIFIE : suite d'acceptance 12/12 en 226 s, six verificateurs
             verts dont la mesure de routage, ruff propre.
+
+2026-09-07  DEPLOIEMENT REUSSI. Le dernier livrable du brief est livre :
+            https://sorabel-gateway.mangoplant-5634ed08.francecentral.azurecontainerapps.io
+            Les six ecrans repondent, et la demonstration des deux profils a
+            ete jouee DANS le conteneur Azure : 12 entrees pour 12 appels,
+            7 autorises, 5 refuses. E1, E3, E4 et E5 se demontrent sur l'URL
+            publique. Le RAG repond en 7,6 s a froid puis 1 s.
+            LE COMPTE AZURE, ET UN FAUX PROBLEME. Le pilote butait sur une
+            boite de dialogue Windows "Impossible d'activer la gestion des
+            appareils", code -2145910764, MDM ne prend pas en charge cette
+            plate-forme. Ce n'etait PAS az login : c'est le flux Windows
+            "compte professionnel", qui tente en plus d'inscrire le poste dans
+            l'Intune de Simplon. az login n'a pas besoin de cela. Resolu par
+            az login --use-device-code, qui evite tout dialogue Windows.
+            LES DROITS REELS, ET ILS ONT FAIT REECRIRE LE SCRIPT. Le compte est
+            Reader sur l'abonnement REMOTE_WCS_211537_DEV IA et Owner sur le
+            SEUL groupe adialloRG, en francecentral. Consequences :
+              az group create aurait echoue a la premiere commande. Le script
+                deploie desormais DANS un groupe existant et verifie qu'il est
+                la, au lieu de le creer.
+              az provider register aurait echoue aussi. Heureusement les trois
+                fournisseurs necessaires etaient deja enregistres. Le script le
+                VERIFIE et dit quoi demander a l'administrateur sinon.
+              --detruire ne supprime plus le groupe, qui est PARTAGE avec
+                d'autres apprenants, mais seulement nos ressources nommement.
+            Mode --controles ajoute, en lecture seule.
+            A3 EST FERME, l'item que la revue avait rendu obligatoire et qui
+            n'avait jamais ete fait. Le mode --a-vide a deploye une image
+            d'exemple Microsoft : URL publique en HTTP 200, TLS valide. Toute la
+            chaine validee en quelques minutes, AVANT d'y envoyer nos gigaoctets.
+            C'est ce qui a revele que az group create echouerait.
+            CINQ ECHECS DE CONSTRUCTION, ET AUCUN A L'ETAPE QUE J'AVAIS
+            DESIGNEE COMME FRAGILE. J'avais ecrit en tete du Dockerfile que la
+            reinstallation de torch etait le point a surveiller. Elle n'a jamais
+            echoue.
+            (a) L'analyse de dependances d'az acr build ne comprend pas la
+                syntaxe HEREDOC et lisait mes lignes Python comme des
+                instructions Dockerfile : "unable to understand line from
+                huggingface_hub import snapshot_download". D'ou les scripts de
+                deploy/ plutot que du Python en ligne.
+            (b) Le CLI Azure s'est ECRASE en affichant les journaux :
+                UnicodeEncodeError, console en cp1252 contre les symboles
+                Unicode d'uv. Or la construction se poursuivait cote Azure :
+                seul l'AFFICHAGE etait mort, et le script s'arretait sur un
+                succes. Corrige par PYTHONIOENCODING=utf-8 et --no-logs.
+                LECON : un affichage mort n'est pas une construction morte.
+            (c) Image a 12,63 Go contre 10,74 Go de plafond sur le SKU Basic du
+                registre. Quota DEPASSE, et Container Apps rendait un
+                ImagePullUnauthorized qui ne disait RIEN de la vraie cause.
+                J'ai perdu du temps a soupconner les identifiants, jusqu'a
+                prouver par un jeton HTTP 200 qu'ils fonctionnaient.
+                Cause : uv.lock epingle QUINZE paquets nvidia-* et triton,
+                parce que la roue torch de PyPI est la variante CUDA. Ma
+                reinstallation de torch en version processeur remplacait TORCH
+                SEUL. L'etape avait fait la MOITIE du travail, ce qui est plus
+                sournois qu'un echec franc.
+            (d) MA PREMIERE CORRECTION A AGGRAVE LE PROBLEME : purger CUDA dans
+                un RUN separe a donne 14,83 Go, PLUS GROS qu'avant. Les couches
+                Docker sont ADDITIVES : retirer des fichiers dans une couche
+                ulterieure n'efface pas celle qui les avait ajoutes, cela empile
+                un masque par-dessus. La bonne correction soude installation,
+                remplacement et purge dans UNE SEULE couche.
+                  sans purge                    12,63 Go
+                  purge en couche separee       14,83 Go
+                  purge dans la meme couche      6,15 Go
+                Piege traite au passage : le uv sync final aurait REINSTALLE les
+                paquets CUDA en reconciliant avec le verrou, annulant la purge
+                en silence. Remplace par uv pip install --no-deps .
+                deploy/purger_cuda.py RELEVE les paquets installes au lieu d'en
+                recopier la liste, et echoue s'il en reste un : une liste figee
+                deriverait au premier changement de uv.lock.
+            (e) DEFAUT TROUVE PAR LE PILOTE SUR UNE CAPTURE DE PRODUCTION, et
+                c'est le plus instructif. L'application demarrait, servait ses
+                six pages, et answer_question rendait error/INTERNAL_ERROR avec
+                un InvalidCollectionException de Chroma. Le chemin dans la trace
+                disait tout : C:/Program Files/Git/app/data/index/manifeste.json
+                GIT BASH convertit tout argument ressemblant a un chemin POSIX
+                en chemin Windows. En passant --env-vars SORABEL_DATA_DIR=
+                /app/data, MSYS l'a reecrit, et le conteneur a recu
+                SORABEL_DATA_DIR=C:/Program Files/Git/app/data.
+                Or le Dockerfile posait DEJA ces variables correctement : les
+                repasser etait une redondance qui n'apportait rien et a tout
+                casse. Retirees du script, avec le motif ecrit. Verifie dans le
+                conteneur : printenv SORABEL_DATA_DIR rend /app/data.
+            UNE FAUTE DE METHODE QUE J'AI REPRODUITE. En diagnostiquant, un
+            "| tail -2" a masque le code de retour d'une commande, et
+            "attribue" s'est affiche alors que l'attribution de role avait
+            echoue. C'est EXACTEMENT le defaut consigne le 2026-09-02 : ne
+            jamais croire un message de confirmation qui s'affiche
+            independamment du resultat. Deuxieme occurrence.
+            D50 : une replique en continu (min-replicas 1), une seule au maximum
+            (max-replicas 1). La premiere parce qu'un reveil a froid suppose de
+            retirer 6 Go puis de charger les modeles, soit plusieurs minutes de
+            page muette pour qui clique. La seconde parce que le journal est un
+            fichier local au conteneur, et que deux repliques tiendraient deux
+            journaux differents, ce qui ferait mentir l'ecran du journal
+            partage. Passer a l'echelle demanderait un stockage partage, que
+            D33 n'a pas prevu.
+            RESERVES MAINTENUES : le cout n'est PAS chiffre, l'item A4 reste
+            ouvert, et l'application est facturee en continu dans un abonnement
+            de formation PARTAGE. Pour l'eteindre sans rien detruire :
+              az containerapp update --name sorabel-gateway \
+                --resource-group adialloRG --min-replicas 0
 ```
 
 ---

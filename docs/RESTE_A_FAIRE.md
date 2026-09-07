@@ -6,6 +6,12 @@
 > Garder les lignes closes ferait de ce fichier un compte rendu, alors que c'est
 > une liste de travail.
 >
+> **A3 et L3 sont fermes le 2026-09-07.** La chaine de deploiement a ete
+> eprouvee a vide, puis l'interface a ete deployee et verifiee en production :
+> https://sorabel-gateway.mangoplant-5634ed08.francecentral.azurecontainerapps.io
+> La demonstration des deux profils a ete jouee DANS le conteneur, 12 entrees
+> pour 12 appels. Le brief est **entierement livre**.
+>
 > Relu le 2026-09-03. Il annonçait encore L1 et L3 comme « bloqués par : le
 > serveur n'existe pas encore », trois commits après que le serveur ait fait
 > passer la suite d'acceptance de 12 rouges à 12 verts. Même mode de
@@ -18,8 +24,6 @@
 
 | Id | Travail | Fichier | Bloqué par |
 | --- | --- | --- | --- |
-| **A3** | Éprouver la chaîne de déploiement Azure **à vide**, avant qu'elle porte quelque chose. Parade au report de risque de D37, rendue critère de fin de lot par la revue | `deploy/azure.sh --a-vide`, écrit | `az login`, qui ouvre un navigateur et revient donc au pilote |
-| **L3** | Le **lien** vers l'interface déployée. Dernier livrable du brief | `deploy/azure.sh` | A3 |
 | A4 | Coût mensuel réel, à établir avec la calculatrice Azure et les volumes du projet | `docs/conception/07_cible_deploiement.md` | rien, mais la décision d'allumer une réplique en continu appartient au pilote |
 | A1 | Application Slack : hébergement, vérification de signature, réponse différée en deux messages (D34) | `slack_app/`, à créer | un espace de travail Slack, qui n'existe pas |
 | A2 | Format de restitution des sources dans un message Slack. E1 exige des sources citées, un message mal conçu les rend illisibles | à définir | A1 |
@@ -59,15 +63,23 @@ différée en deux messages.
 ## L'ordre dans lequel le reste se débloque
 
 ```
-az login          ->  A3, la chaine eprouvee a vide
-A3                ->  L3, le lien vers l'interface deployee
-independant       ->  A4, le cout chiffre
-un espace Slack   ->  A1 puis A2
+fait le 2026-09-07  ->  A3 puis L3, la chaine eprouvee puis l'interface en ligne
+independant         ->  A4, le cout chiffre
+un espace Slack     ->  A1 puis A2
 ```
 
-Le brief est **livré sauf L3**. Le dossier de conception et le serveur MCP avec
-son guide sont faits, la suite d'acceptance passe 12/12, et l'interface existe :
-il lui manque une URL publique.
+**Le brief est entierement livre** : dossier de conception, serveur MCP avec son
+guide, suite d'acceptance a 12/12, et l'interface en ligne. Ce qui reste ne
+figure pas au brief.
+
+Une reserve qui n'est pas un item de travail mais une decision a prendre :
+l'application tourne avec une replique **en continu**, donc facturee en continu,
+dans un abonnement de formation partage. Pour l'eteindre sans rien detruire :
+
+```
+az containerapp update --name sorabel-gateway \
+  --resource-group adialloRG --min-replicas 0
+```
 
 ---
 
@@ -79,5 +91,5 @@ git log -p docs/RESTE_A_FAIRE.md   l'etat de la liste, jour par jour
 MEMOIRE_PROJET.md section 10       le journal d'avancement
 ```
 
-La phase de conception est close : décisions D1 à D49, arbitrages P1 à P8, plus
+La phase de conception est close : décisions D1 à D50, arbitrages P1 à P8, plus
 aucun point ouvert de conception.

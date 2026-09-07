@@ -11,6 +11,23 @@ SAV) et une base SQL (produits, stocks, commandes, ventes). Résultat : chaque
 le SQL tapé à la main a déjà verrouillé la base en production. La Gateway remet
 de l'ordre : **une porte, des règles, une trace.**
 
+## L'interface, en ligne
+
+**https://sorabel-gateway.mangoplant-5634ed08.francecentral.azurecontainerapps.io**
+
+Six écrans. Le plus parlant n'est pas la recherche mais **« Serveur MCP »** :
+le même appel y est joué sur les deux profils, et les deux issues s'écrivent à
+la suite dans le même journal. Le produit de Sorabel n'est pas la recherche, ce
+sont les **droits sur la recherche**.
+
+Comptez une trentaine de secondes au premier affichage d'un écran : les modèles
+d'embedding, de reranking et de génération SQL se chargent à la demande.
+
+Déployé sur Azure Container Apps, image construite côté Azure par
+`az acr build`. Tout est dans `deploy/azure.sh`, y compris un mode
+`--controles` en lecture seule et un mode `--a-vide` qui éprouve la chaîne sans
+rien construire.
+
 ---
 
 ## Ce que fait la Gateway
