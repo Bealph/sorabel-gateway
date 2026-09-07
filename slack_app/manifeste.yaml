@@ -1,0 +1,73 @@
+# Manifeste de l'application Slack de la Sorabel Data Gateway.
+#
+# COMMENT S'EN SERVIR
+#   1. https://api.slack.com/apps  ->  « Create an App »  ->  « D'un manifeste »
+#   2. choisir l'espace de travail, coller ce fichier, créer.
+#   3. « Install to Workspace », qui produit le Bot User OAuth Token `xoxb-…`.
+#   4. relever le « Signing Secret » dans Basic Information.
+#   5. poser les deux secrets sur le service (voir `deploy/azure.sh --slack`,
+#      qui affiche les deux commandes exactes).
+#   6. SEULEMENT ALORS, « Event Subscriptions » -> activer -> coller
+#      https://<url-du-service>/slack/events
+#      Slack envoie aussitôt son défi de vérification, que le service traite.
+#
+# POURQUOI CE FICHIER NE DECLARE AUCUN EVENEMENT, ET C'EST UNE CORRECTION
+# La premiere version declarait `settings.event_subscriptions.bot_events` sans
+# `request_url`, en supposant que Slack accepterait et qu'on ajouterait l'URL
+# ensuite. FAUX, verifie le 2026-09-07 : Slack REFUSE le manifeste, avec deux
+# erreurs sans ambiguite,
+#     « L abonnement a un evenement necessite une URL de demande »
+#     « ... necessite le mode socket si aucune URL de requete n est fournie »
+#
+# Et fournir l URL des maintenant ne marche pas davantage : Slack la VERIFIE en
+# y envoyant un defi, que le service ne sait relever qu une fois son
+# `SLACK_SIGNING_SECRET` pose. L ordre de l en-tete est donc contraint par
+# Slack lui-meme, et non une preference : creer l application, l installer,
+# poser les secrets, PUIS abonner aux evenements depuis l interface.
+#
+# LECON : j avais ecrit ici une affirmation sur le comportement d un service
+# tiers sans l avoir verifiee. Elle etait fausse, et le pilote l a decouverte a
+# l ecran.
+#
+# CE QUE CE MANIFESTE NE DEMANDE PAS, ET C'EST DELIBERE
+# Aucune portée d'écriture de fichiers, aucun accès à l'historique des canaux,
+# aucune portée utilisateur. Le bot a besoin de deux choses : entendre qu'on
+# l'appelle, et répondre. Une portée demandée « au cas où » est une surface
+# d'exposition offerte, sur un client que la matrice décrit elle-même comme
+# « tourné vers l'extérieur ».
+
+display_information:
+  name: Sorabel Data Gateway
+  description: Le savoir de Sorabel, gouverne. Fiches, notices, procedures SAV, stocks et commandes.
+  background_color: "#1f3b57"
+  long_description: >-
+    Point d'acces unique et gouverne au savoir de Sorabel. Posez votre question
+    en langage naturel : l'assistant choisit lui-meme s'il faut chercher dans la
+    documentation ou interroger la base metier, cite ses sources, et refuse ce
+    que la matrice d'acces du profil support interdit. Toute reponse
+    documentaire porte son titre, sa reference et sa date. Tout appel, autorise
+    ou refuse, est journalise.
+
+features:
+  bot_user:
+    display_name: sorabel
+    # Le bot reste en ligne : les reponses arrivent en deux temps, un accuse de
+    # reception immediat puis la reponse, et un bot affiche hors ligne
+    # laisserait croire que la question est perdue.
+    always_online: true
+
+oauth_config:
+  scopes:
+    bot:
+      # Entendre qu'on l'appelle par une mention.
+      - app_mentions:read
+      # Publier l'accuse de reception, puis la reponse.
+      - chat:write
+
+# A ABONNER DEPUIS L INTERFACE, une fois le service en marche : l evenement
+# `app_mention`, et lui SEUL. `message.channels` ferait entendre au bot tout ce
+# qui se dit dans le canal, ce qui est a la fois inutile et intrusif.
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

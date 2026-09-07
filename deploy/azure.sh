@@ -4,6 +4,7 @@
 #   bash deploy/azure.sh --controles   verifie les droits, ne cree RIEN
 #   bash deploy/azure.sh --a-vide      eprouve la chaine avec une image d'exemple
 #   bash deploy/azure.sh               construit et deploie pour de bon
+#   bash deploy/azure.sh --slack       deploie l'application Slack (A1)
 #   bash deploy/azure.sh --detruire    supprime ce que ce script a cree
 #
 # POURQUOI LE MODE À VIDE EXISTE
@@ -65,6 +66,15 @@ MEMOIRE="${SORABEL_MEMOIRE:-4.0Gi}"
 # qui ne répond pas. Une réplique toujours allumée est facturée en continu.
 # La mettre à 0 est légitime hors période de soutenance.
 REPLIQUES_MIN="${SORABEL_REPLIQUES_MIN:-1}"
+
+# L'application Slack tourne dans la MEME image : tout est sous /app, et
+# seule la commande de demarrage change. Construire une seconde image
+# doublerait les 6 Go et le temps de construction pour rien.
+# Elle appelle la gateway, donc elle charge les memes modeles : la memoire
+# mesuree du conteneur d'interface est de 2,5 Gio, d'ou 3 Gio ici.
+APPLICATION_SLACK="${SORABEL_APP_SLACK:-sorabel-slack}"
+CPU_SLACK="${SORABEL_CPU_SLACK:-1.5}"
+MEMOIRE_SLACK="${SORABEL_MEMOIRE_SLACK:-3.0Gi}"
 
 vert() { printf '\033[32m%s\033[0m\n' "$*"; }
 rouge() { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -254,18 +264,91 @@ deployer() {
   echo "    az containerapp logs show --name ${APPLICATION} --resource-group ${GROUPE} --follow"
 }
 
+deployer_slack() {
+  socle
+
+  etape "Image"
+  local serveur utilisateur motdepasse
+  serveur="$(az acr show --name "$REGISTRE" --query loginServer -o tsv)"
+  if ! az acr repository show-tags --name "$REGISTRE" \
+         --repository "$IMAGE" -o tsv 2>/dev/null | grep -q .; then
+    rouge "  aucune image dans ${REGISTRE}. Lancer d'abord : bash deploy/azure.sh"
+    exit 1
+  fi
+  gris "  ${serveur}/${IMAGE}:latest"
+  utilisateur="$(az acr credential show --name "$REGISTRE" --query username -o tsv)"
+  motdepasse="$(az acr credential show --name "$REGISTRE" \
+                --query 'passwords[0].value' -o tsv)"
+
+  etape "Application Slack"
+  # PAS DE -m ICI : un argument qui commence par un tiret est pris par
+  # az pour une option, et il rend "unrecognized arguments". Le chemin
+  # est RELATIF, car MSYS convertit tout argument ressemblant a un chemin
+  # POSIX en chemin Windows, defaut qui a deja casse le premier
+  # deploiement de l interface. WORKDIR vaut /app dans l image.
+  # LES DEUX SECRETS NE SONT PAS PASSES ICI, ET C'EST DELIBERE. Un secret en
+  # argument de ligne de commande finit dans l'historique du shell et dans les
+  # journaux d'audit d'Azure. Ils se posent apres, par `az containerapp secret
+  # set`, et la commande exacte est affichee a la fin.
+  #
+  # Sans SLACK_SIGNING_SECRET, le service demarre et REFUSE tout : c'est le bon
+  # comportement pour un point d'entree public, et cela permet de deployer
+  # avant que l'application Slack existe.
+  if az containerapp show --name "$APPLICATION_SLACK" \
+       --resource-group "$GROUPE" -o none 2>/dev/null; then
+    az containerapp update --name "$APPLICATION_SLACK" --resource-group "$GROUPE" \
+      --image "${serveur}/${IMAGE}:latest" -o none
+    gris "  ${APPLICATION_SLACK} mise a jour"
+  else
+    az containerapp create --name "$APPLICATION_SLACK" --resource-group "$GROUPE" \
+      --environment "$ENVIRONNEMENT" \
+      --image "${serveur}/${IMAGE}:latest" \
+      --registry-server "$serveur" \
+      --registry-username "$utilisateur" \
+      --registry-password "$motdepasse" \
+      --command "python" --args "slack_app/serveur.py" \
+      --target-port 8080 --ingress external \
+      --cpu "$CPU_SLACK" --memory "$MEMOIRE_SLACK" \
+      --min-replicas 1 --max-replicas 1 \
+      -o none
+    vert "  ${APPLICATION_SLACK} creee"
+  fi
+
+  local url
+  url="https://$(az containerapp show --name "$APPLICATION_SLACK" \
+        --resource-group "$GROUPE" \
+        --query properties.configuration.ingress.fqdn -o tsv)"
+  etape "Deploye"
+  vert "  point d'entree Slack : ${url}/slack/events"
+  gris "  sonde de sante       : ${url}/sante"
+  echo
+  echo "IL RESTE DEUX SECRETS A POSER, et vous seul devez les manipuler :"
+  echo
+  echo "  az containerapp secret set --name ${APPLICATION_SLACK} \\"
+  echo "    --resource-group ${GROUPE} \\"
+  echo "    --secrets slack-signing=LE_SIGNING_SECRET slack-token=xoxb-LE_TOKEN"
+  echo
+  echo "  az containerapp update --name ${APPLICATION_SLACK} \\"
+  echo "    --resource-group ${GROUPE} \\"
+  echo "    --set-env-vars SLACK_SIGNING_SECRET=secretref:slack-signing \\"
+  echo "                   SLACK_BOT_TOKEN=secretref:slack-token"
+  echo
+  gris "Tant qu'ils manquent, le service repond mais REFUSE toute requete."
+}
+
+
 detruire() {
   # On ne supprime PAS le groupe : il ne nous appartient pas, il est partage et
   # il portait des ressources avant nous. On retire seulement ce que ce script
   # a cree, nomme par nomme.
   etape "Suppression de ce que ce script a cree, dans ${GROUPE}"
-  echo "  application  ${APPLICATION} et ${APPLICATION}-essai"
+  echo "  applications ${APPLICATION}, ${APPLICATION}-essai, ${APPLICATION_SLACK}"
   echo "  environnement ${ENVIRONNEMENT}"
   echo "  registre     ${REGISTRE}"
   rouge "  Le groupe ${GROUPE} n'est PAS touche : il est partage."
   read -r -p "Confirmer en tapant le nom de l'application : " saisie
   [ "$saisie" = "$APPLICATION" ] || { echo "Abandon."; exit 1; }
-  for nom in "$APPLICATION" "${APPLICATION}-essai"; do
+  for nom in "$APPLICATION" "${APPLICATION}-essai" "$APPLICATION_SLACK"; do
     az containerapp delete --name "$nom" --resource-group "$GROUPE" --yes \
       -o none 2>/dev/null || gris "  ${nom} absente"
   done
@@ -279,6 +362,7 @@ detruire() {
 case "${1:-}" in
   --controles) controles ;;
   --a-vide)    deployer_a_vide ;;
+  --slack)     deployer_slack ;;
   --detruire)  detruire ;;
   "")          deployer ;;
   *)           sed -n '3,7p' "$0"; exit 1 ;;
