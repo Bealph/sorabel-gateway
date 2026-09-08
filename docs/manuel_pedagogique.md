@@ -568,7 +568,7 @@ Puis, et c'est **la règle la plus importante de tout le projet** :
 > **Chaque morceau est préfixé de son titre, sa référence et sa version.**
 
 Autrement dit, un morceau ne commence pas par « Étape 3 : dévisser le
-capot » mais par « Fiche technique disjoncteur 40 A | REF-8842 | v2.1 — Étape
+capot » mais par « Fiche technique disjoncteur 40 A | REF-8842 | v2.1, puis Étape
 3 : dévisser le capot ».
 
 **Pourquoi, et voici la mesure.** Souvenez-vous du chapitre 5 : les 80 notices
@@ -1572,7 +1572,7 @@ recherche, entre la question et une description de chaque catégorie.
 
 | Montage | Sur tout le jeu | Hors questions hors corpus |
 | --- | --- | --- |
-| Embeddings seuls, descriptions en définitions | 33/54 | — |
+| Embeddings seuls, descriptions en définitions | 33/54 | non mesure |
 | Embeddings seuls, descriptions en **exemples** | 41/54 | 38/46 |
 | + vocabulaire déclaré | 44/54 | 41/46 |
 | **+ listes d'intention** | **47/54** | **44/46** |
@@ -1797,7 +1797,7 @@ vous appuyez sur un système dont c'est le métier.
 
 **Mais deux canaux seuls ne suffisent pas.** Un processus porte **un** profil.
 Deux canaux qui parleraient au même service obtiendraient tous deux le même
-profil, et **leurs noms mentiraient** — ce qui est pire qu'un canal unique, car
+profil, et **leurs noms mentiraient**, ce qui est pire qu'un canal unique, car
 un nom qui promet des droits qu'il ne donne pas trompe l'utilisateur.
 
 **À faire :** deux services, chacun lancé avec son profil, et **deux
@@ -2224,20 +2224,20 @@ chantier avec deux devantures.
 
 ## Les exigences
 
-- [ ] **E1** — une réponse documentaire cite titre, référence, date
-- [ ] **E1** — une question hors corpus rend une **abstention affichée**
-- [ ] **E1** — une question sur une référence cite **cette** référence, pas une autre
-- [ ] **E2** — une référence exacte remonte en tête
-- [ ] **E2** — une question en langage naturel aboutit
-- [ ] **E3** — une demande d'écriture est refusée
-- [ ] **E3** — la requête est renvoyée avec le résultat
-- [ ] **E3** — la requête d'un refus est visible
-- [ ] **E4** — les deux profils ont deux catalogues d'outils différents
-- [ ] **E4** — un outil interdit rend un refus, pas une erreur technique
-- [ ] **E5** — une colonne sensible est refusée au profil restreint
-- [ ] **E5** — le refus tient même par un tri ou une sous-requête
-- [ ] **E5** — le journal contient **tous** les appels, refus compris
-- [ ] **E6** — le rapport de mesure existe, **généré**, avec ses intervalles
+- [ ] **E1** : une réponse documentaire cite titre, référence, date
+- [ ] **E1** : une question hors corpus rend une **abstention affichée**
+- [ ] **E1** : une question sur une référence cite **cette** référence, pas une autre
+- [ ] **E2** : une référence exacte remonte en tête
+- [ ] **E2** : une question en langage naturel aboutit
+- [ ] **E3** : une demande d'écriture est refusée
+- [ ] **E3** : la requête est renvoyée avec le résultat
+- [ ] **E3** : la requête d'un refus est visible
+- [ ] **E4** : les deux profils ont deux catalogues d'outils différents
+- [ ] **E4** : un outil interdit rend un refus, pas une erreur technique
+- [ ] **E5** : une colonne sensible est refusée au profil restreint
+- [ ] **E5** : le refus tient même par un tri ou une sous-requête
+- [ ] **E5** : le journal contient **tous** les appels, refus compris
+- [ ] **E6** : le rapport de mesure existe, **généré**, avec ses intervalles
 
 ## La rigueur
 

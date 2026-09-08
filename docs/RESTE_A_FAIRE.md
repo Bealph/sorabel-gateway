@@ -8,7 +8,7 @@
 >
 > **A3 et L3 sont fermes le 2026-09-07.** La chaine de deploiement a ete
 > eprouvee a vide, puis l'interface a ete deployee et verifiee en production :
-> https://sorabel-gateway.mangoplant-5634ed08.francecentral.azurecontainerapps.io
+> <https://sorabel-gateway.mangoplant-5634ed08.francecentral.azurecontainerapps.io>
 > La demonstration des deux profils a ete jouee DANS le conteneur, 12 entrees
 > pour 12 appels. Le brief est **entierement livre**.
 >
@@ -22,10 +22,25 @@
 
 ## Ce qui reste
 
-| Id | Travail | Ce qui manque |
-| --- | --- | --- |
-| A1 | Application Slack : **écrite et éprouvée hors ligne**, `slack_app/`, 42 contrôles verts dont la signature, le rejeu, la déduplication et le budget de 3 s. | Un **espace de travail Slack**, qui n'existe pas, et un administrateur pour y installer l'application. Le dialogue réel avec l'API Slack n'est donc pas éprouvé, et le service n'est pas déployé. |
-| — | `eval/results/` : archiver une sortie datée par exécution de la mesure E6 | Rien ne le bloque. Mineur : le rapport est régénéré, pas archivé. |
+Plus aucun item du brief. Trois travaux d'entretien, dont deux sans blocage.
+
+| Travail | Ce qui manque |
+| --- | --- |
+| `eval/results/` : archiver une sortie datée par exécution de la mesure E6 | Rien ne le bloque. Mineur : le rapport est régénéré, pas archivé. |
+| Régénérer les deux secrets Slack, qui ont transité par une conversation | Rien ne le bloque. `Basic Information`, puis `Regenerate`, puis reposer la valeur. |
+| Éteindre les trois services après la soutenance | Une décision de date. Les trois commandes sont plus bas et dans le README. |
+
+**A1 est fait et déployé le 2026-09-07**, ce que ce tableau annonçait encore
+comme bloqué par un espace de travail inexistant. Deux bots tournent, un par
+profil, dans deux canaux distincts : `sorabel-slack` en profil support et
+`sorabel-slack-commercial` en profil commercial. L'autorisation est
+l'appartenance au canal, contrôlée par Slack.
+
+Deux canaux seuls n'auraient pas suffi : un processus porte **un** profil (D28),
+donc deux canaux parlant au même service auraient tous deux obtenu `support`, et
+leurs noms auraient **menti**. D'où deux services et deux applications Slack,
+une URL d'événements par application. 52 contrôles hors ligne, plus le dialogue
+réel désormais éprouvé en production.
 
 **A2 est fait** : `slack_app/formatage.py` rend les sources en liste Block Kit,
 titre en gras, référence en code, date en clair, avec un refus marqué comme un
@@ -67,21 +82,27 @@ n'est archivée par exécution.
 `scripts/demo_deux_profils.py` joue la même séquence de six appels sur les deux
 profils par le vrai protocole stdio, avec un journal partagé.
 
-**A1, à moitié.** L'assistant conversationnel a exigé un **routeur** : décider,
-depuis une phrase libre, quel tool appeler. C'est exactement le travail du bot
-Slack, qui reçoit une phrase et doit faire ce choix. `client/routeur.py` et
-`client/conversation.py` sont donc déjà la moitié de A1, la moitié difficile,
-et elle est mesurée (`eval/mesure_routage.py`). Ce qui reste propre à Slack est
-la **façade** : point d'entrée public, vérification de signature, réponse
-différée en deux messages.
+**A1, fait par un détour.** L'assistant conversationnel a exigé un **routeur** :
+décider, depuis une phrase libre, quel tool appeler. C'est exactement le travail
+du bot Slack, qui reçoit une phrase et doit faire ce même choix.
+`client/routeur.py` et `client/conversation.py` étaient donc déjà la moitié
+difficile de A1, et elle est mesurée par `eval/mesure_routage.py`. Il n'est
+ensuite resté que la **façade** : point d'entrée public, vérification de
+signature, réponse différée en deux messages, déduplication des rejeux.
+
+Autrement dit A1 n'a jamais été un chantier séparé de l'assistant : c'était la
+même pièce avec une autre devanture, et c'est ce qui l'a rendu faisable en un
+après-midi.
 
 ---
 
 ## L'ordre dans lequel le reste se débloque
 
-```
+```text
 fait le 2026-09-07  ->  A3, L3, A4, A2, et A1 ecrite et eprouvee hors ligne
-un espace Slack     ->  deployer A1 et la confronter au vrai Slack
+fait le 2026-09-07  ->  A1 deployee, deux bots, un par profil
+rien ne bloque      ->  archiver les sorties de mesure, regenerer les secrets
+une date            ->  eteindre les trois services
 ```
 
 **Le brief est entierement livre** : dossier de conception, serveur MCP avec son
@@ -89,19 +110,28 @@ guide, suite d'acceptance a 12/12, et l'interface en ligne. Ce qui reste ne
 figure pas au brief.
 
 Une reserve qui n'est pas un item de travail mais une decision a prendre :
-l'application tourne avec une replique **en continu**, donc facturee en continu,
-dans un abonnement de formation partage. Pour l'eteindre sans rien detruire :
+**trois** services tournent avec une replique en continu, donc factures en
+continu, dans un abonnement de formation partage. Environ **465 USD par mois**,
+soit **15 USD par jour**, chiffre par `deploy/cout.py`.
 
+Pour les eteindre sans rien detruire, une commande par service, chacune sur une
+seule ligne car PowerShell n'accepte pas la continuation par antislash :
+
+```text
+az containerapp update --name sorabel-gateway --resource-group adialloRG --min-replicas 0
+az containerapp update --name sorabel-slack --resource-group adialloRG --min-replicas 0
+az containerapp update --name sorabel-slack-commercial --resource-group adialloRG --min-replicas 0
 ```
-az containerapp update --name sorabel-gateway \
-  --resource-group adialloRG --min-replicas 0
-```
+
+Les rallumer se fait avec `--min-replicas 1`, au prix de quelques minutes de
+reveil. Pour tout retirer, `bash deploy/azure.sh --detruire`, qui ne touche pas
+au groupe de ressources puisqu'il est partage avec d'autres apprenants.
 
 ---
 
 ## Où trouver le reste
 
-```
+```text
 git log --oneline                  les commits, chacun avec son raisonnement
 git log -p docs/RESTE_A_FAIRE.md   l'etat de la liste, jour par jour
 MEMOIRE_PROJET.md section 10       le journal d'avancement

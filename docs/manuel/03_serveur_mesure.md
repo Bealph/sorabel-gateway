@@ -386,7 +386,7 @@ recherche, entre la question et une description de chaque catégorie.
 
 | Montage | Sur tout le jeu | Hors questions hors corpus |
 | --- | --- | --- |
-| Embeddings seuls, descriptions en définitions | 33/54 | — |
+| Embeddings seuls, descriptions en définitions | 33/54 | non mesure |
 | Embeddings seuls, descriptions en **exemples** | 41/54 | 38/46 |
 | + vocabulaire déclaré | 44/54 | 41/46 |
 | **+ listes d'intention** | **47/54** | **44/46** |

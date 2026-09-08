@@ -33,13 +33,20 @@ mesuré : environ **155 USD par mois**, calculé par `deploy/cout.py` depuis
 l'API tarifaire d'Azure et la consommation réelle du conteneur. Pour l'éteindre
 sans rien détruire, le jour où le lien n'est plus nécessaire :
 
-```
-az containerapp update --name sorabel-gateway \
-  --resource-group adialloRG --min-replicas 0
+**Trois** services tournent : l'interface, et deux bots Slack, un par profil.
+Une commande par service, chacune sur **une seule ligne** car PowerShell
+n'accepte pas la continuation par antislash :
+
+```text
+az containerapp update --name sorabel-gateway --resource-group adialloRG --min-replicas 0
+az containerapp update --name sorabel-slack --resource-group adialloRG --min-replicas 0
+az containerapp update --name sorabel-slack-commercial --resource-group adialloRG --min-replicas 0
 ```
 
-Le rallumer se fait avec `--min-replicas 1`, au prix de quelques minutes de
-réveil.
+Les rallumer se fait avec `--min-replicas 1`, au prix de quelques minutes de
+réveil, le temps de retirer 6 Go d'image et de charger les modèles. Pour tout
+retirer, `bash deploy/azure.sh --detruire`, qui ne touche pas au groupe de
+ressources puisqu'il est partagé.
 
 ---
 
@@ -58,9 +65,9 @@ réveil.
 ```mermaid
 flowchart TD
     subgraph Clients
-        A1[Bot Slack - support]
-        A2[IDE - devs]
-        A3[Poste - commerciaux]
+        A1[Bot Slack - profil support]
+        A2[Bot Slack - profil commercial]
+        A3[Interface de demonstration]
     end
 
     A1 --> G
@@ -102,10 +109,10 @@ docs/
 eval/
   questions_rag.jsonl # questions documentaires : couvertes, hors corpus, par référence exacte
   questions_sql.jsonl # questions métier en langage naturel, dont cas limites
-ingest/               # chaîne d'ingestion du corpus (à concevoir et construire)
-retrieval/            # recherche documentaire (à concevoir et construire)
-sql/                  # accès SQL en langage naturel (à concevoir et construire)
-mcp_server/           # serveur MCP de la gateway (à concevoir et construire)
+ingest/               # chaîne d'ingestion du corpus : 400 documents, 910 chunks
+retrieval/            # recherche documentaire : hybride, fusion RRF, reranking
+sql/                  # accès SQL en langage naturel : sept couches de gardes
+mcp_server/           # serveur MCP de la gateway, plus son guide d'accès généré
 scripts/
   seed.py             # génère et peuple data/sorabel.db
   mcp_client.py       # client MCP de test (profils support / commercial)
@@ -125,7 +132,9 @@ eval/attendus_*.jsonl      oracles metier, et cas_mcp.jsonl pour la gouvernance
 ## Stack
 
 - Python 3.11 (géré avec `uv`)
-- Chroma pour l'index vectoriel (`docker compose`, port 8002)
+- Chroma pour l'index vectoriel, **embarque** (`PersistentClient`), sans service
+  ni conteneur : le filtrage par metadonnee avant la recherche est ce qui l'a fait
+  retenir, et la virtualisation est coupee au firmware de ce poste (D45)
 - SQLite pour la base (`data/sorabel.db`, générée par le seed, à ouvrir en lecture seule)
 - SDK MCP (`mcp`) pour le serveur et le client stdio
 - `pypdf` / `beautifulsoup4` pour l'extraction du corpus, `rank-bm25` pour la piste lexicale
@@ -138,11 +147,13 @@ uv sync --extra vector        # + sentence-transformers
 
 ## Démarrage
 
+`make up` a disparu de cette liste : Chroma est embarqué depuis D45, il n'y a
+plus de service à lancer.
+
 ```bash
 make install      # uv sync
 make seed         # génère data/sorabel.db (déterministe, aligné sur le corpus)
-make up           # docker compose : Chroma sur localhost:8002
-make test         # suite d'acceptance (rouge tant que la gateway n'est pas construite)
+make test         # suite d'acceptance : 12/12 en environ 210 s
 make serve        # serveur MCP stdio (profil via SORABEL_PROFILE)
 make client       # client de test (PROFILE=support|commercial)
 ```
@@ -188,18 +199,29 @@ comparaison vérifiable : les deux décisions opposées se lisent à la suite.
 
 ## État d'avancement
 
-| Phase                             | Statut       |
-|-----------------------------------|--------------|
-| Squelette + mémoire de projet     | Fait         |
-| Analyse des données               | Fait, relevé généré |
-| Conception (7 chantiers + schémas)| Fait, D1 à D37 |
-| Jeux d'évaluation + attendus      | Fait         |
-| Protocole de mesure E6            | Fait, chiffres au lot 3 |
-| Implémentation RAG                | À venir      |
-| Implémentation Text-to-SQL        | À venir      |
-| Gouvernance + serveur MCP         | À venir      |
-| Interface graphique               | À venir      |
-| Mesure E6 + soutenance            | À venir      |
+| Phase | Statut |
+| --- | --- |
+| Squelette + memoire de projet | Fait |
+| Analyse des donnees | Fait, releve genere |
+| Conception, 8 chantiers et schemas | Fait, D1 a D50 |
+| Jeux d'evaluation + attendus | Fait, plus l'oracle de gouvernance |
+| Implementation RAG | Fait, 400 documents, 910 chunks |
+| Implementation Text-to-SQL | Fait, 27 gardes eprouvees |
+| Gouvernance + serveur MCP | Fait, suite d'acceptance 12/12 |
+| Interface graphique | Fait, deployee sur Azure, six ecrans |
+| Mesure E6 | Fait, `eval/rapport_gain.md` genere |
+| Bots Slack, un par profil | Fait, deux services deployes |
+| Manuel pedagogique | Fait, `docs/Manuel_Sorabel_Data_Gateway.docx` |
+| Soutenance | A venir |
 
 ---
 
+---
+
+## Le manuel
+
+`docs/Manuel_Sorabel_Data_Gateway.docx`, 148 titres et 36 tableaux, reconstruit
+le projet pas à pas : chaque décision, son motif, et les **44 pièges** payés en
+cours de route, comptés dans le document produit et non dans la source. Il est **généré** depuis `docs/manuel_pedagogique.md` par
+`docs/vers_docx.py`, qui n'emploie que la bibliothèque standard, et qui refuse
+d'écrire si plus de 2 % des lignes de source se perdaient en route.

@@ -58,7 +58,7 @@ Puis, et c'est **la règle la plus importante de tout le projet** :
 > **Chaque morceau est préfixé de son titre, sa référence et sa version.**
 
 Autrement dit, un morceau ne commence pas par « Étape 3 : dévisser le
-capot » mais par « Fiche technique disjoncteur 40 A | REF-8842 | v2.1 — Étape
+capot » mais par « Fiche technique disjoncteur 40 A | REF-8842 | v2.1, puis Étape
 3 : dévisser le capot ».
 
 **Pourquoi, et voici la mesure.** Souvenez-vous du chapitre 5 : les 80 notices

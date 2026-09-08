@@ -1521,6 +1521,42 @@ MCP        : profil autorise -> acces borne aux tools/collections/tables prevus 
             commandes d'extinction sont dans le README.
             VERIFIE : suite d'acceptance 12/12 en 207 s, 52 controles Slack,
             sept verificateurs verts, 27 gardes SQL, ruff propre.
+2026-09-08  CLOTURE DU DOSSIER. Aucun code touche, seulement ce qui MENTAIT.
+            CONVENTION DU TIRET CADRATIN, 38 violations trouvees par balayage.
+            Les 4 de docs/cadrage_dsi.md NE SONT PAS CORRIGEES : c'est le
+            document de la DSI, restaure depuis l'amont, et conftest.py le cite
+            comme imposant la matrice. Le reformuler serait exactement le defaut
+            paye quatre fois sur ce projet. Les 34 autres sont dans MON manuel,
+            corrigees dans les PARTIES de docs/manuel/ puis reassemblees, jamais
+            dans le fichier assemble qui est genere.
+            LE README ETAIT LA DERNIERE PIECE PERIMEE, et c'est la vitrine :
+              le tableau d'avancement annoncait "A venir" les cinq phases
+                LIVREES, dont le serveur MCP et l'interface deployee
+              la pile citait Chroma en service docker compose sur le port 8002,
+                supprime par D45 il y a six jours
+              le schema d'architecture montrait un client "IDE - devs", or le
+                profil dev N'EXISTE PAS au contrat depuis le rapatriement de
+                l'amont. Un lecteur du depot y aurait cru.
+              quatre dossiers etaient annonces "a concevoir et construire"
+              make up etait donne comme etape de demarrage, sans objet
+            UNE AFFIRMATION FAUSSE ATTRAPEE DANS LA MINUTE OU JE L'ECRIVAIS.
+            En ajoutant la section sur le manuel j'ai ecrit "63 pieges", de
+            memoire. Le controle relit le .docx PRODUIT, en depliant le ZIP et
+            en retirant les balises : 44. Source et document produit coincident
+            mot pour mot sur les cinq mots-cles, donc rien ne s'est perdu a la
+            conversion, c'est mon chiffre qui etait invente. Corrige a 44.
+            C'est la cinquieme occurrence du meme mode de defaillance, et la
+            premiere ou le controle attrape la derive AVANT le commit.
+            LECON, la meme depuis le debut : ne pas ecrire un nombre de memoire.
+            Le compter, ou ne pas l'ecrire.
+            RESTE, ET RIEN N'EST BLOQUANT : regenerer les deux secrets Slack,
+            qui ont transite par une conversation ; eteindre les trois services
+            apres la soutenance, commandes dans le README ; archiver une sortie
+            datee dans eval/results/. Aucun n'est au brief.
+            VERIFIE : cinq verificateurs verts, 52 controles Slack, ruff propre,
+            0 violation de convention hors le document de la DSI, manuel
+            regenere a 1816 lignes utiles sur 1833.
+
 ```
 
 ---
